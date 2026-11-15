@@ -31,3 +31,18 @@ worktrees/
 
 # 含真实姓名与学号的课程样例，不入公开仓库
 materials/
+
+# Android / Gradle 构建产物与本地配置
+.gradle/
+build/
+*.apk
+*.aab
+.kotlin/
+.idea/
+*.iml
+captures/
+.cxx/
+local.properties
+keystore.properties
+*.jks
+*.keystore
