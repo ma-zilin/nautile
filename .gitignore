@@ -39,6 +39,7 @@ build/
 *.aab
 .kotlin/
 .idea/
+.vscode/
 *.iml
 captures/
 .cxx/
