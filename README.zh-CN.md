@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="许可证：MIT"></a>
-  <img src="https://img.shields.io/badge/status-design%20stage-lightgrey.svg" alt="状态：设计阶段">
+  <img src="https://img.shields.io/badge/status-scaffold%20stage-lightgrey.svg" alt="状态：脚手架阶段">
 </p>
 
 ## 概览
@@ -15,7 +15,7 @@ Nautile 是一款面向个人的计划、时间记录与复盘应用，把待办
 
 ## 当前状态
 
-设计阶段：仓库目前只有文档，还没有可运行的产品。
+脚手架阶段：Android 工程可构建 debug APK，存在仓库外签名配置时可构建签名的 release APK；已在 vivo X200s（Android 16）上安装并冷启动。工程使用 compileSdk 37、targetSdk 36、minSdk 31。存储方案确定为 Room 15 个实体加 DataStore 承载的 UserSettings，但当前增量尚未启用 Room/KSP，也未建表或生成 schema。目前只有空壳首页，未实现任何首版（S1）业务功能。
 
 ## 计划中的功能（首版范围，尚未实现）
 
@@ -72,19 +72,19 @@ Nautile 是一款面向个人的计划、时间记录与复盘应用，把待办
 
 ## 界面截图
 
-暂无截图，因为产品还没有可运行版本。实现后在此补充待办列表、日历、日志与 AI 页面的界面。
+暂无截图。当前版本只有空壳首页；待办列表、日历、日志与 AI 页面的界面将在实现后补充。
 
 ## 快速开始
 
-Nautile 暂不能安装或运行。以下记录已确定的部分和仍然待定的部分。
+Nautile 已可构建和安装，但还没有可用的业务流程。以下为当前脚手架的环境与构建方式。
 
 ### 环境要求
 
-目标平台为 Android，手机优先。最低 Android 版本、开发环境与工具链待定。
+Android 12（API 31）及以上。工程使用 compileSdk 37、targetSdk 36、JDK 17（在仓库外配置）与 Gradle wrapper 9.6.0。
 
 ### 安装
 
-暂无可安装的构建。
+执行 `./gradlew assembleDebug` 构建 debug APK，输出位于 `app/build/outputs/apk/debug/app-debug.apk`；使用 `adb install -r app/build/outputs/apk/debug/app-debug.apk` 安装。release 构建需要仓库外的签名配置文件，缺少时跳过 release 变体。
 
 ### 配置
 
@@ -96,11 +96,11 @@ DEEPSEEK_API_KEY=<在此填写>
 
 ### 数据库
 
-存储方案尚未确定。建表或初始化步骤将在确定后补充。
+存储方案确定为 Room 15 个实体，加 DataStore 承载的 UserSettings。当前增量尚未启用 Room/KSP，也未建表或生成 schema。
 
 ## 使用
 
-暂无可用版本，也无法提供操作说明。主要使用流程将在实现后补充。
+当前版本只打开空壳首页。主要使用流程将在首版功能实现后补充。
 
 ## 文档
 
@@ -109,7 +109,7 @@ DEEPSEEK_API_KEY=<在此填写>
 | [docs/作业要求.md](docs/作业要求.md) | 课程作业要求与评分标准（中文） |
 | [docs/需求分析指导.md](docs/需求分析指导.md) | 需求分析指导书与标准（指导性，不新增评分项）（中文） |
 | [docs/产品构想.md](docs/产品构想.md) | 产品定位、业务决定与首版目标范围（中文） |
-| [docs/需求基线.md](docs/需求基线.md) | v2.2 需求基线：范围与验收标准（中文） |
+| [docs/需求基线.md](docs/需求基线.md) | v2.7 需求基线：范围与验收标准（中文） |
 | [docs/开发架构设计.md](docs/开发架构设计.md) | 开发流程、角色分工、验证与取证规则（中文） |
 
 `docs/任务进度.md` 与 `docs/项目初始化工作纪要.md` 属于内部过程记录，不在此列出。
@@ -120,7 +120,7 @@ DEEPSEEK_API_KEY=<在此填写>
 
 ## 参与贡献
 
-Nautile 处于早期设计阶段，贡献流程尚未制定，暂未开放。
+Nautile 处于早期开发阶段，贡献流程尚未制定，暂未开放。
 
 ## 许可证
 

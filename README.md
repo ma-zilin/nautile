@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/status-design%20stage-lightgrey.svg" alt="Status: design stage">
+  <img src="https://img.shields.io/badge/status-scaffold%20stage-lightgrey.svg" alt="Status: scaffold stage">
 </p>
 
 ## Overview
@@ -15,7 +15,7 @@ Nautile is a personal planning, time-tracking and review app. It keeps todos, sc
 
 ## Status
 
-Design stage: this repository currently contains documentation only, and there is no runnable build yet.
+Scaffold stage: the Android project builds debug APKs, and a signed release APK when an external signing configuration is present; it installs and cold-starts on a vivo X200s running Android 16. It uses compileSdk 37, targetSdk 36 and minSdk 31. Storage is planned as 15 Room entities plus UserSettings in DataStore, but Room/KSP are not enabled yet and no tables or schema exist. The only screen is an empty home shell, and no first-release (S1) business features are implemented.
 
 ## Planned Features
 
@@ -72,19 +72,19 @@ These are outside the first-release scope and are not implemented yet.
 
 ## Screenshots
 
-There are no screenshots yet, because the app has no runnable build. This section will show the todo list, the calendar, the log and the AI page once they are available.
+There are no screenshots yet. The current build opens an empty home screen; screenshots of the todo list, calendar, log and AI page will be added as those features are implemented.
 
 ## Getting Started
 
-Nautile cannot be installed or run yet. The sections below record what is already decided and what is still open.
+Nautile can be built and installed, but no business workflow is available yet. The sections below cover the current scaffold.
 
 ### Prerequisites
 
-The target platform is Android, phone first. The minimum Android version, development environment and toolchain are still to be decided.
+Android 12 (API 31) or later. The project uses compileSdk 37, targetSdk 36, JDK 17 (configured outside the repository) and the Gradle wrapper 9.6.0.
 
 ### Installation
 
-There is no installable build yet.
+Build a debug APK with `./gradlew assembleDebug`; the output is `app/build/outputs/apk/debug/app-debug.apk`. Install it with `adb install -r app/build/outputs/apk/debug/app-debug.apk`. Release builds need a signing properties file outside the repository; when it is absent, the release variant is skipped.
 
 ### Configuration
 
@@ -96,11 +96,11 @@ DEEPSEEK_API_KEY=<your-key>
 
 ### Database
 
-The storage design has not been finalised. Schema and initialisation steps will be documented here when available.
+Storage is planned as 15 Room entities plus UserSettings in DataStore. Room and KSP are not enabled in this increment, and no schema or tables exist yet.
 
 ## Usage
 
-There is no usable version yet, and no usage instructions can be given. The main workflows will be documented once they exist.
+The current build only opens an empty home screen. Usage workflows will be documented once the first-release features exist.
 
 ## Documentation
 
@@ -109,7 +109,7 @@ There is no usable version yet, and no usage instructions can be given. The main
 | [docs/作业要求.md](docs/作业要求.md) | Course requirements and grading criteria (Chinese) |
 | [docs/需求分析指导.md](docs/需求分析指导.md) | Requirements analysis guide and standards (advisory, no added grading criteria; Chinese) |
 | [docs/产品构想.md](docs/产品构想.md) | Product vision, decisions and first-release scope (Chinese) |
-| [docs/需求基线.md](docs/需求基线.md) | Requirements baseline v2.2: scope and acceptance criteria (Chinese) |
+| [docs/需求基线.md](docs/需求基线.md) | Requirements baseline v2.7: scope and acceptance criteria (Chinese) |
 | [docs/开发架构设计.md](docs/开发架构设计.md) | Development workflow, roles, verification and evidence rules (Chinese) |
 
 `docs/任务进度.md` and `docs/项目初始化工作纪要.md` are internal process records and are not listed here.
@@ -120,7 +120,7 @@ Future directions, not commitments and without dates: bring the workflow to univ
 
 ## Contributing
 
-Nautile is at an early design stage. Contribution guidelines have not been defined, and contributions are not open yet.
+Nautile is at an early development stage. Contribution guidelines have not been defined, and contributions are not open yet.
 
 ## License
 
