@@ -130,3 +130,18 @@ dependencies {
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
+
+// T-060：仅对齐 androidTest 类路径。room-migration 2.8.5 需要 kotlinx-serialization 1.8.1，
+// app 运行时仍由 savedstate 1.4.0 使用 1.7.3；这里不改 app 运行时依赖。
+configurations.matching { it.name.contains("AndroidTest") }.configureEach {
+    resolutionStrategy {
+        val serialization = libs.versions.kotlinxSerialization.get()
+        force(
+            "org.jetbrains.kotlinx:kotlinx-serialization-core:$serialization",
+            "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:$serialization",
+            "org.jetbrains.kotlinx:kotlinx-serialization-json:$serialization",
+            "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:$serialization",
+            "org.jetbrains.kotlinx:kotlinx-serialization-bom:$serialization",
+        )
+    }
+}
