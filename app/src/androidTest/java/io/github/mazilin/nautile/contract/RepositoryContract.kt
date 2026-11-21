@@ -1,0 +1,1 @@
+../../../../../../../test/java/io/github/mazilin/nautile/contract/RepositoryContract.kt

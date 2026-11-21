@@ -1,0 +1,8 @@
+task=T-052
+time=2026-11-21T12:34:55+08:00
+head=238aa0afd87d094f58b69c5818b6f598596d6330
+dirty_entries=17
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_T-052_20261121T123441.log
