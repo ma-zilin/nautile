@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 // release 签名只从仓库外读取（默认 ~/.config/nautile/keystore.properties）；
@@ -67,6 +68,11 @@ android {
         }
     }
 
+    // Room schema 作为 androidTest 资源，供 MigrationTestHelper 读取（06-STO-01/02）。
+    sourceSets {
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -87,7 +93,7 @@ kotlin {
     }
 }
 
-// 增量 1：不启用 Room/KSP（决策 3）；第二次增量再加。
+// 当前状态：已启用 Room/KSP，schemaLocation 指向 app/schemas（T-04 起导出 version 1）；T-047 探针已删除。
 dependencies {
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
@@ -107,10 +113,20 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
 
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.room.testing)
+}
+
+// Room schema 导出到 app/schemas，纳入版本控制；不关闭导出（06-STO-01）。
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
