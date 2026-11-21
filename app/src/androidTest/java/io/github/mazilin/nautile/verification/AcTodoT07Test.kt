@@ -22,6 +22,7 @@ import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.domain.rule.TaskGroup
 import io.github.mazilin.nautile.ui.screen.todo.GtdSelector
+import io.github.mazilin.nautile.ui.screen.todo.ProjectConfirmation
 import io.github.mazilin.nautile.ui.screen.todo.TodoScreen
 import io.github.mazilin.nautile.ui.screen.todo.TodoUiState
 import io.github.mazilin.nautile.ui.theme.NautileTheme
@@ -337,5 +338,166 @@ class AcTodoT07Test {
 
         composeRule.onRoot().performTouchInput { swipeDown() }
         composeRule.runOnIdle { assertTrue("下滑应触发显示", visibility.contains(true)) }
+    }
+
+    @Test
+    fun AC_G_05_full_screen_empty_list_pull_switches_and_keeps_full_screen() {
+        var switched: GtdPosition? = null
+        var opened = false
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(emptyList()),
+                    onOpenSelector = { opened = true },
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput { swipeUp() }
+
+        composeRule.runOnIdle {
+            assertEquals(GtdPosition.NEXT_ACTION, switched)
+            assertFalse("全屏切换不应打开 GTD 选择器", opened)
+        }
+    }
+
+    @Test
+    fun AC_G_05_full_screen_short_list_pull_switches() {
+        var switched: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(listOf(task(1L, "唯一任务"))),
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput { swipeUp() }
+
+        composeRule.runOnIdle { assertEquals(GtdPosition.NEXT_ACTION, switched) }
+    }
+
+    @Test
+    fun AC_G_05_full_screen_below_threshold_rebounds_and_keeps_position() {
+        var switched: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(emptyList()),
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput {
+            swipeDown(startY = center.y, endY = center.y + 30f)
+        }
+
+        composeRule.runOnIdle { assertNull("未超阈值不应切换清单", switched) }
+    }
+
+    @Test
+    fun AC_G_05_full_screen_above_threshold_switches_previous() {
+        var switched: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(emptyList()).copy(position = GtdPosition.WAITING),
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput {
+            swipeDown(startY = height * 0.3f, endY = height * 0.8f)
+        }
+
+        composeRule.runOnIdle { assertEquals(GtdPosition.NEXT_ACTION, switched) }
+    }
+
+    @Test
+    fun AC_G_05_full_screen_first_position_pull_down_does_not_wrap() {
+        var switched: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(emptyList()),
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput {
+            swipeDown(startY = height * 0.3f, endY = height * 0.8f)
+        }
+
+        composeRule.runOnIdle { assertNull(switched) }
+    }
+
+    @Test
+    fun AC_G_05_full_screen_last_position_pull_up_does_not_wrap() {
+        var switched: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(emptyList()).copy(position = GtdPosition.ENDED),
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput {
+            swipeUp(startY = height * 0.8f, endY = height * 0.3f)
+        }
+
+        composeRule.runOnIdle { assertNull(switched) }
+    }
+
+    @Test
+    fun AC_G_05_full_screen_long_list_ordinary_scroll_does_not_switch() {
+        var switched: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith((1L..30L).map { task(it, "任务$it") }),
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput { swipeUp() }
+
+        composeRule.runOnIdle { assertNull("普通滚动不应触发边界切换", switched) }
+    }
+
+    @Test
+    fun AC_T_17_project_confirmation_text_has_required_space() {
+        val project = Project(
+            id = ProjectId(7L),
+            name = "课程项目",
+            createdAt = now,
+            updatedAt = now,
+        )
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = TodoUiState(
+                        position = GtdPosition.INBOX,
+                        groups = listOf(TaskGroup(project, emptyList())),
+                        visibleTasks = emptyList(),
+                        projectConfirmation = ProjectConfirmation(
+                            projectId = ProjectId(7L),
+                            projectName = "课程项目",
+                            outcome = ClosedOutcome.COMPLETED,
+                            taskCount = 3,
+                        ),
+                    ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("将完成 3 个子待办").assertIsDisplayed()
     }
 }

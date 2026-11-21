@@ -1,0 +1,60 @@
+T-057 设备执行证据摘要
+
+命令：VERIFY_CONNECTED=1 bash scripts/verify.sh S1-T07
+退出码：1（connectedDebugAndroidTest FAIL；JVM/编译/lint 步骤均为 0）
+时间：2026-11-21 16:09:57—16:10:50（+08:00），约 53s
+HEAD：543ecbff62238f644ff12e00e931a403e7367e78
+门禁日志：docs/验证记录/门禁/verify_S1-T07_20261121T160957.log
+测试 XML：app/build/outputs/androidTest-results/connected/debug/TEST-V2458A - 16.xml
+
+设备：
+- 序列号：10AF561Y5R002KL
+- adb devices -l：10AF561Y5R002KL device usb:3-10 product:PD2415M model:V2458A device:PD2415
+- 厂商/型号：vivo / V2458A
+- Android：16（SDK 36）
+- 状态：mAwake=true、mScreenOnEarly=true、mScreenOnFully=true、mDreamingLockscreen=false、mShowingDream=false；当前焦点 com.bbk.launcher2
+- 动画比例：window_animation_scale=1.0、transition_animation_scale=1.0、animator_duration_scale=1.0
+- 人工条件：按任务说明，用户在场、解锁、亮屏；本摘要不把用户未实际执行的截图或手势视为已保存证据。
+- 未受控变量：系统导航模式/边缘手势宽度、OEM 触摸采样与动画、通知/弹窗状态、字体/显示尺寸；本轮未单独固定。E-05a 未执行。
+
+汇总：testsuites tests=56 failures=4 errors=0 skipped=0
+
+T-06：
+- io.github.mazilin.nautile.verification.AcAppRootT06Test：5 tests，0 failures（全部通过）
+- io.github.mazilin.nautile.ui.AppRootTest：5 tests，0 failures（开发自测，仅辅助）
+
+T-07：
+- io.github.mazilin.nautile.verification.AcTodoT07Test：22 tests，2 failures
+- 新增全屏 8 例全部通过：
+  AC_G_05_full_screen_below_threshold_rebounds_and_keeps_position
+  AC_G_05_full_screen_empty_list_pull_switches_and_keeps_full_screen
+  AC_G_05_full_screen_first_position_pull_down_does_not_wrap
+  AC_G_05_full_screen_short_list_pull_switches
+  AC_G_05_full_screen_last_position_pull_up_does_not_wrap
+  AC_G_05_full_screen_above_threshold_switches_previous
+  AC_G_05_full_screen_long_list_ordinary_scroll_does_not_switch
+  AC_T_17_project_confirmation_text_has_required_space
+- 失败 2 例（半屏 GtdSelector，空/短清单）：
+  AC_G_05_boundary_pull_on_empty_list_commits_to_adjacent
+    java.lang.AssertionError: expected:<NEXT_ACTION> but was:<null>
+  AC_G_05_short_list_boundary_pull_commits_to_adjacent
+    java.lang.AssertionError: expected:<NEXT_ACTION> but was:<null>
+- 其余 20 例通过，包括：
+  AC_G_04_item_swipe_abandons_item_and_does_not_open_selector
+  AC_G_04_sub_threshold_right_swipe_does_not_open_gtd_selector
+  AC_N_15_todo_scroll_hides_and_shows_navigation
+  AC_T_17_project_swipe_right_requests_abandon_confirmation
+  AC_G_04_selector_close_button_and_blank_left_swipe_close
+  AC_G_05_click_switch_keeps_selector_open
+
+T-04/T-051 迁移测试（随设备门禁执行，非 T-07 AC）：
+- io.github.mazilin.nautile.data.db.MigrationTest：2 tests，2 failures
+- 失败：AC_T_01_schema_v1_contains_tasks_and_projects、AC_T_01_schema_v1_opens_without_migration
+- 异常：java.lang.AbstractMethodError: kotlinx.serialization.internal.GeneratedSerializer.typeParametersSerializers()
+  接收者 androidx.room.migration.bundle.FieldBundle$$serializer
+- 依赖观察：room-testing 2.8.5 → room-migration 2.8.5 → kotlinx-serialization-json 1.8.1；
+  androidTest classpath 中 kotlinx-serialization-core 被 strict 1.7.3 约束（1.8.1 -> 1.7.3），
+  形成运行时二进制不兼容。属测试基础设施/依赖版本问题，不是 T-07 手势实现。
+- 日志：/tmp/t057_androidTest_deps.log（依赖树）
+
+说明：以上为设备 instrumentation 结果；真机手感、系统边缘返回抢手势、预览动画未自动化，仍需人工判定与截图。
