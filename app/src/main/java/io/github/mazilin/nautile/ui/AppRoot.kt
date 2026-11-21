@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.mazilin.nautile.interaction.AppTab
 import io.github.mazilin.nautile.interaction.FullScreenPage
 import io.github.mazilin.nautile.interaction.NavigationCoordinator
+import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.interaction.OverlayBackStack
 
 /**
@@ -31,7 +32,7 @@ fun AppRoot(
     fullScreenContent: @Composable (FullScreenPage) -> Unit,
     modifier: Modifier = Modifier,
     scrollNavigationVisible: Boolean = true,
-    overlayContent: @Composable () -> Unit = {},
+    overlayContent: @Composable (Overlay) -> Unit = {},
 ) {
     val activeTab by navigation.activeTab.collectAsStateWithLifecycle()
     val fullScreenStack by navigation.fullScreenStack.collectAsStateWithLifecycle()
@@ -71,7 +72,7 @@ fun AppRoot(
         ) {
             tabContent(activeTab)
             if (overlayEntry != null) {
-                overlayContent()
+                overlayContent(overlayEntry!!.overlay)
             }
         }
     }

@@ -14,6 +14,8 @@ import io.github.mazilin.nautile.domain.port.Clock
 import io.github.mazilin.nautile.domain.repository.ProjectRepository
 import io.github.mazilin.nautile.domain.repository.SettingsRepository
 import io.github.mazilin.nautile.domain.repository.TaskRepository
+import io.github.mazilin.nautile.domain.usecase.ProjectCommands
+import io.github.mazilin.nautile.domain.usecase.TaskCommands
 import io.github.mazilin.nautile.interaction.BackDispatcher
 import io.github.mazilin.nautile.interaction.KeyboardCoordinator
 import io.github.mazilin.nautile.interaction.NavigationCoordinator
@@ -49,6 +51,9 @@ class AppContainer(context: Context) {
     val projectRepository: ProjectRepository = RoomProjectRepository(database)
     val settingsRepository: SettingsRepository = DataStoreSettingsRepository(dataStore)
     val clock: Clock = SystemClock()
+
+    val taskCommands = TaskCommands(taskRepository, projectRepository, clock)
+    val projectCommands = ProjectCommands(projectRepository, taskRepository, clock)
 
     val navigationCoordinator = NavigationCoordinator()
     val overlayBackStack = OverlayBackStack()

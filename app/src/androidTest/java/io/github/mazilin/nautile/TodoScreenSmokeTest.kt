@@ -24,7 +24,7 @@ class TodoScreenSmokeTest {
             }
         }
 
-        composeRule.onNodeWithText("Nautile").assertIsDisplayed()
+        composeRule.onNodeWithText("收件箱").assertIsDisplayed()
     }
 
     companion object {

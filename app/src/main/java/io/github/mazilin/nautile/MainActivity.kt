@@ -12,22 +12,33 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.mazilin.nautile.di.AppContainer
 import io.github.mazilin.nautile.interaction.AppTab
 import io.github.mazilin.nautile.interaction.FullScreenPage
+import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
+import io.github.mazilin.nautile.ui.screen.todo.GtdSelector
 import io.github.mazilin.nautile.ui.screen.todo.TodoScreen
+import io.github.mazilin.nautile.ui.screen.todo.TodoViewModel
 import io.github.mazilin.nautile.ui.theme.NautileTheme
 
 /**
- * 单 Activity 宿主：装配 AppRoot 并注册系统返回分发（S1-T06）。
+ * 单 Activity 宿主：装配 AppRoot 并注册系统返回分发（S1-T06/T07）。
  *
  * 返回顺序由 [io.github.mazilin.nautile.interaction.BackDispatcher] 决定；
  * 本类只提供收键盘动作与“交还系统”的兜底。
@@ -41,12 +52,43 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             NautileTheme {
+                val todoViewModel: TodoViewModel = viewModel(
+                    factory = remember {
+                        viewModelFactory {
+                            initializer {
+                                TodoViewModel(
+                                    taskRepository = container.taskRepository,
+                                    projectRepository = container.projectRepository,
+                                    settingsRepository = container.settingsRepository,
+                                    taskCommands = container.taskCommands,
+                                    projectCommands = container.projectCommands,
+                                )
+                            }
+                        }
+                    },
+                )
+                val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
+                val activeTab by container.navigationCoordinator.activeTab.collectAsStateWithLifecycle()
+                var scrollNavigationVisible by remember { mutableStateOf(true) }
+
                 AppRoot(
                     navigation = container.navigationCoordinator,
                     overlays = container.overlayBackStack,
+                    scrollNavigationVisible = if (activeTab == AppTab.TODO) scrollNavigationVisible else true,
                     tabContent = { tab ->
                         when (tab) {
-                            AppTab.TODO -> TodoScreen()
+                            AppTab.TODO -> TodoScreen(
+                                state = todoState,
+                                onOpenSettings = container.navigationCoordinator::navigateToSettings,
+                                onOpenSelector = { container.overlayBackStack.open(Overlay.GtdSelector) },
+                                onCompleteTask = todoViewModel::completeTask,
+                                onAbandonTask = todoViewModel::abandonTask,
+                                onRequestProjectClose = todoViewModel::requestProjectClose,
+                                onConfirmProjectClose = todoViewModel::confirmProjectClose,
+                                onCancelProjectClose = todoViewModel::cancelProjectClose,
+                                onNavigationVisibilityChanged = { scrollNavigationVisible = it },
+                            )
+
                             else -> PlaceholderScreen(
                                 title = tab.title,
                                 onOpenSettings = container.navigationCoordinator::navigateToSettings,
@@ -55,6 +97,18 @@ class MainActivity : ComponentActivity() {
                     },
                     fullScreenContent = { page ->
                         FullScreenPlaceholder(page, onBack = { container.navigationCoordinator.back() })
+                    },
+                    overlayContent = { overlay ->
+                        when (overlay) {
+                            Overlay.GtdSelector -> GtdSelector(
+                                currentPosition = todoState.position,
+                                tasks = todoState.visibleTasks,
+                                onSelect = todoViewModel::selectPosition,
+                                onClose = { container.overlayBackStack.close() },
+                            )
+
+                            else -> Unit
+                        }
                     },
                 )
             }
