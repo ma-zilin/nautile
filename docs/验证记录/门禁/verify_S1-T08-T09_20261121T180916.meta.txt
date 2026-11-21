@@ -1,0 +1,8 @@
+task=S1-T08-T09
+time=2026-11-21T18:09:35+08:00
+head=aa4c5b117a206e391124f25c858a49677d61bcfc
+dirty_entries=23
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_S1-T08-T09_20261121T180916.log

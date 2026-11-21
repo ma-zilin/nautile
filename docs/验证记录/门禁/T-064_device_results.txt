@@ -1,0 +1,40 @@
+T-064 设备执行证据摘要
+
+设备：
+- 序列号：10AF561Y5R002KL
+- adb devices -l：10AF561Y5R002KL device usb:3-10 product:PD2415M model:V2458A device:PD2415
+- 厂商/型号：vivo / V2458A
+- Android：16（SDK 36）
+- 执行时：mAwake=true、mScreenOnFully=true、mDreamingLockscreen=false；动画比例均为 1.0
+- 人工条件：用户在场、解锁、亮屏；Agent 未代替用户保存手势截图
+
+HEAD：aa4c5b117a206e391124f25c858a49677d61bcfc
+代码：S1-T08=5e9fef4、S1-T09=4e9a7e4
+
+一、最终有效设备门禁
+命令：VERIFY_CONNECTED=1 bash scripts/verify.sh S1-T08-T09
+时间：2026-11-21 18:08:12 起，退出码 0
+门禁结果：GATE RESULT: PASS
+日志：docs/验证记录/门禁/verify_S1-T08-T09_20261121T180626.log
+测试 XML：app/build/outputs/androidTest-results/connected/debug/TEST-V2458A - 16.xml
+结果：tests=65 failures=0 errors=0 skipped=0
+
+分组：
+- AcAppRootT06Test：5/5
+- AcTodoT07Test：23/23
+- AcDetailNewTaskUiT08T09Test：8/8
+- MigrationTest：2/2
+- 其余 instrumentation：27/27
+
+二、测试代码修正记录（不改变业务实现）
+- 17:57:16 设备门禁：3 failures。两例 IME 回调因静态 state 在失焦时二次触发，测试预期写成 exactly 1；一例“标题不能为空”同时出现 supportingText 与 error，单节点选择失败。均为验证测试代码错误，修正为 `>=1` 与 `onAllNodesWithText(...).onFirst()`。
+- 18:02:12 设备门禁：2 failures。改用动态 draft 后文本节点消失，IME 操作找不到输入框；属于测试夹具状态问题，恢复静态 state 并保留 `>=1` 断言。
+- 18:06:26 设备门禁：PASS（最终有效结果）。
+- 上述失败日志保留：verify_S1-T08-T09_20261121T175716.log、...180212.log；未删除、未篡改。
+
+三、依赖与变异
+- T-060 依赖对齐保持：androidTest serialization core/json 1.8.1，app runtime 1.7.3；MigrationTest 2/2 通过。
+- 变异：ProjectCommands.reopen 的 `!confirmed` 改为 `confirmed`；AcReopenT08Test 7 例中 6 例失败；还原后 diff 0、7/7 通过。日志 mutation_T064_reopen_red/green.log。
+
+四、未自动化
+- 详情下滑关闭手感、IME 两步返回体验、新建面板插入位置与滚动观感、项目重开提示文案/误触、AC-D-07 人工评审部分、系统边缘/混合手势误触。
