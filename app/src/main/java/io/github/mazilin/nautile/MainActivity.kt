@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
                                 onConfirmProjectClose = todoViewModel::confirmProjectClose,
                                 onCancelProjectClose = todoViewModel::cancelProjectClose,
                                 onNavigationVisibilityChanged = { scrollNavigationVisible = it },
+                                onSwitchPosition = todoViewModel::selectPosition,
                             )
 
                             else -> PlaceholderScreen(

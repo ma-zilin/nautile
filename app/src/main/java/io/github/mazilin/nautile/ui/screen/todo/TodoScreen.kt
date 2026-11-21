@@ -30,12 +30,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.domain.model.ClosedOutcome
+import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
@@ -58,12 +64,66 @@ fun TodoScreen(
     onConfirmProjectClose: () -> Unit = {},
     onCancelProjectClose: () -> Unit = {},
     onNavigationVisibilityChanged: (Boolean) -> Unit = {},
+    onSwitchPosition: (GtdPosition) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val density = LocalDensity.current.density
+    val maxPullPx = with(LocalDensity.current) { 120.dp.toPx() }
     var gtdSwipe by remember { mutableFloatStateOf(0f) }
     var blockedByRow by remember { mutableStateOf(false) }
     var rowDragging by remember { mutableStateOf(false) }
+
+    val previousPosition = GestureArbiter.adjacentPosition(state.position, -1)
+    val nextPosition = GestureArbiter.adjacentPosition(state.position, 1)
+    var pullOffset by remember { mutableFloatStateOf(0f) }
+    var pullTarget by remember { mutableStateOf<GtdPosition?>(null) }
+    var pullActive by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.position) {
+        listState.scrollToItem(0)
+        pullOffset = 0f
+        pullTarget = null
+        pullActive = false
+    }
+
+    // 全屏边界拉动（FR-G-18、BR-61）：普通滚动优先，到顶/底后继续拉才预览；
+    // 松手过阈值切换相邻清单并保持全屏，否则回弹；首尾不循环。
+    val boundaryConnection = remember(state.position, maxPullPx, density) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (source != NestedScrollSource.UserInput || available.y == 0f) return Offset.Zero
+                val atTop = !listState.canScrollBackward
+                val atBottom = !listState.canScrollForward
+                val target = when {
+                    available.y > 0f && atTop -> previousPosition
+                    available.y < 0f && atBottom -> nextPosition
+                    else -> return Offset.Zero
+                }
+                pullActive = true
+                pullTarget = target
+                val resistance = if (target == null) 0.15f else 0.5f
+                pullOffset = (pullOffset + available.y * resistance).coerceIn(-maxPullPx, maxPullPx)
+                return Offset(0f, available.y)
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (pullActive) {
+                    val target = pullTarget
+                    if (target != null && GestureArbiter.isBoundaryPullCommit(pullOffset, density)) {
+                        onSwitchPosition(target)
+                    }
+                    pullOffset = 0f
+                    pullTarget = null
+                    pullActive = false
+                }
+                return Velocity.Zero
+            }
+        }
+    }
 
     // 导航隐藏：仅普通页面纵向滚动触发（AC-N-15）；覆盖层/键盘由 AppRoot/返回层处理。
     LaunchedEffect(listState) {
@@ -125,12 +185,27 @@ fun TodoScreen(
                 }
             }
 
-            if (state.isEmpty) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("该清单暂无任务", style = MaterialTheme.typography.bodyMedium)
-                }
-            } else {
-                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(boundaryConnection),
+            ) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { translationY = pullOffset },
+                ) {
+                    if (state.isEmpty) {
+                        item(key = "empty") {
+                            Box(
+                                modifier = Modifier.fillParentMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text("该清单暂无任务", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
                     state.groups.forEach { group ->
                         val project = group.project
                         if (project != null) {
@@ -169,6 +244,18 @@ fun TodoScreen(
                         }
                     }
                 }
+
+                pullTarget?.let { target ->
+                    Text(
+                        text = "松手切换到 ${target.title}",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier
+                            .align(
+                                if (pullOffset > 0f) Alignment.TopCenter else Alignment.BottomCenter,
+                            )
+                            .padding(8.dp),
+                    )
+                }
             }
         }
     }
@@ -178,7 +265,7 @@ fun TodoScreen(
         AlertDialog(
             onDismissRequest = onCancelProjectClose,
             title = { Text(pending.projectName) },
-            text = { Text("将$action${pending.taskCount} 个子待办") },
+            text = { Text("将$action ${pending.taskCount} 个子待办") },
             confirmButton = {
                 TextButton(onClick = onConfirmProjectClose) { Text("确认") }
             },
