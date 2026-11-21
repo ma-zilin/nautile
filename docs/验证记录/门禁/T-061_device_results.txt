@@ -1,0 +1,59 @@
+T-061 设备执行证据摘要（授权成功后的有效结果）
+
+设备：
+- 序列号：10AF561Y5R002KL
+- adb devices -l：10AF561Y5R002KL device usb:3-10 product:PD2415M model:V2458A device:PD2415
+- 厂商/型号：vivo / V2458A
+- Android：16（SDK 36）
+- 执行时状态：mAwake=true、mScreenOnFully=true、mDreamingLockscreen=false；动画比例均为 1.0
+- 人工条件：用户在场、解锁、亮屏；Agent 未代替用户保存手势截图
+
+HEAD：ab8f61f769bed46a39d101d9c75582a5d5115101
+代码：T-059=10d488b、T-060=0a287e9
+
+一、授权成功后的完整设备门禁（有效结果）
+命令：VERIFY_CONNECTED=1 bash scripts/verify.sh S1-T07
+时间：2026-11-21 16:47:50 起，约 53s，退出码 0
+门禁结果：GATE RESULT: PASS
+日志：docs/验证记录/门禁/verify_S1-T07_20261121T164750.log
+测试 XML：app/build/outputs/androidTest-results/connected/debug/TEST-V2458A - 16.xml
+结果：tests=57 failures=0 errors=0 skipped=0
+
+关键分组：
+- io.github.mazilin.nautile.verification.AcAppRootT06Test：5 tests，0 failures
+- io.github.mazilin.nautile.verification.AcTodoT07Test：23 tests，0 failures
+- io.github.mazilin.nautile.data.db.MigrationTest：2 tests，0 failures
+
+T-07 关键通过项：
+- AC_G_05_boundary_pull_on_empty_list_commits_to_adjacent：通过
+- AC_G_05_short_list_boundary_pull_commits_to_adjacent：通过
+- AC_G_05_half_screen_below_threshold_rebounds_and_keeps_position：通过
+- AC_G_05_full_screen_below_threshold_rebounds_and_keeps_position：通过
+- AC_G_05_full_screen_empty_list_pull_switches_and_keeps_full_screen：通过
+- AC_G_05_full_screen_short_list_pull_switches：通过
+- AC_G_05_full_screen_above_threshold_switches_previous：通过
+- AC_G_05_full_screen_first_position_pull_down_does_not_wrap：通过
+- AC_G_05_full_screen_last_position_pull_up_does_not_wrap：通过
+- AC_G_05_full_screen_long_list_ordinary_scroll_does_not_switch：通过
+- AC_G_04_item_swipe_abandons_item_and_does_not_open_selector：通过
+- AC_G_04_sub_threshold_right_swipe_does_not_open_gtd_selector：通过
+- AC_N_15_todo_scroll_hides_and_shows_navigation：通过
+- AC_T_17_project_confirmation_text_has_required_space：通过（“将完成 3 个子待办”）
+- MigrationTest 2/2 通过，AbstractMethodError 未复现
+
+二、授权失败期间的无效/诊断结果（不作为产品结论）
+- 16:30:07 完整设备门禁：退出码 1；TodoScreenSmokeTest status -1、testRunFailed process crashed；按用户说明属于授权/环境未成功，不能据此判 T-059/T-060。
+- 16:31 单独 MigrationTest：退出码 0，2/2 通过（诊断结果，与最终有效结果一致）。
+- 16:32 单独 AcTodoT07Test：约 10m43s 后退出码 1，首例 status -1、testRunFailed；使用 adb force-stop 恢复；属于授权/环境失败，不作为产品结论。
+
+三、依赖树（T-060 后，debugAndroidTestRuntimeClasspath）
+- kotlinx-serialization-core:1.7.3 -> 1.8.1
+- kotlinx-serialization-core-jvm:1.8.1
+- kotlinx-serialization-json:1.8.1
+- room-migration 2.8.5 -> kotlinx-serialization-json 1.8.1
+- app debugRuntimeClasspath 仍为 1.7.3（T-060 只作用于 AndroidTest configuration）
+日志：/tmp/t061_deps_after.log
+
+四、限制
+- 本轮授权成功后的 57 例设备测试通过；真机手势手感、系统边缘返回冲突（E-05a）、半屏边界阻力/动画、条目优先误触、导航隐藏抖动仍属人工，未自动化。
+- 设备自动化测试从内容区注入事件，不能证明系统边缘返回不抢手势。

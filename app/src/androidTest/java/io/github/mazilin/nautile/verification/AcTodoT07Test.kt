@@ -303,6 +303,27 @@ class AcTodoT07Test {
     }
 
     @Test
+    fun AC_G_05_half_screen_below_threshold_rebounds_and_keeps_position() {
+        var selected: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                GtdSelector(
+                    currentPosition = GtdPosition.INBOX,
+                    tasks = emptyList(),
+                    onSelect = { selected = it },
+                    onClose = {},
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput {
+            swipeDown(startY = center.y, endY = center.y + 30f)
+        }
+
+        composeRule.runOnIdle { assertNull("半屏未超阈值不应切换清单", selected) }
+    }
+
+    @Test
     fun AC_G_05_short_list_boundary_pull_commits_to_adjacent() {
         var selected: GtdPosition? = null
         composeRule.setContent {
