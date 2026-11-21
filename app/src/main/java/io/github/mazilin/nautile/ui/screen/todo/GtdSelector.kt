@@ -2,6 +2,7 @@ package io.github.mazilin.nautile.ui.screen.todo
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -66,6 +67,33 @@ fun GtdSelector(
 
     LaunchedEffect(currentPosition) {
         rightListState.scrollToItem(0)
+        pullOffset = 0f
+        pullTarget = null
+        pullActive = false
+    }
+
+    fun resetPull() {
+        pullOffset = 0f
+        pullTarget = null
+        pullActive = false
+    }
+
+    /** 空/短清单没有可滚动源，由指针层直接累积预览偏移。 */
+    fun accumulatePull(dragY: Float) {
+        val target = if (dragY > 0f) previous else next
+        pullActive = true
+        pullTarget = target
+        // 首尾无相邻清单时阻力更大且不提交（AC-G-05 首尾阻力）。
+        val resistance = if (target == null) 0.15f else 0.5f
+        pullOffset = (pullOffset + dragY * resistance).coerceIn(-maxPullPx, maxPullPx)
+    }
+
+    fun commitPull() {
+        val target = pullTarget
+        if (target != null && GestureArbiter.isBoundaryPullCommit(pullOffset, densityValue)) {
+            onSelect(target)
+        }
+        resetPull()
     }
 
     val connection = remember(currentPosition, maxPullPx, densityValue) {
@@ -200,6 +228,24 @@ fun GtdSelector(
                                     }
                                 }
                             }
+                        }
+                        // 空/短清单没有任何可滚动余量，嵌套滚动拿不到事件；
+                        // 用仅在该状态下启用的纵向指针层完成边界拉动预览与提交。
+                        if (!rightListState.canScrollBackward && !rightListState.canScrollForward) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .pointerInput(previous, next, densityValue) {
+                                        detectVerticalDragGestures(
+                                            onVerticalDrag = { change, dragAmount ->
+                                                change.consume()
+                                                accumulatePull(dragAmount)
+                                            },
+                                            onDragEnd = { commitPull() },
+                                            onDragCancel = { resetPull() },
+                                        )
+                                    },
+                            )
                         }
                     }
                 }
