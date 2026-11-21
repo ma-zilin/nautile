@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,6 +40,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -70,9 +73,25 @@ fun TodoScreen(
     onOpenProjectDetail: (ProjectId) -> Unit = {},
     onConfirmProjectReopen: () -> Unit = {},
     onCancelProjectReopen: () -> Unit = {},
+    onOpenNewTask: () -> Unit = {},
+    newTaskOpen: Boolean = false,
 ) {
     val listState = rememberLazyListState()
     val density = LocalDensity.current.density
+    var savedFirstIndex by remember { mutableIntStateOf(0) }
+    var savedFirstOffset by remember { mutableIntStateOf(0) }
+    var wasNewTaskOpen by remember { mutableStateOf(false) }
+
+    // 打开新建面板前记录滚动位置，关闭后恢复；列表本身不因面板开合重建。
+    LaunchedEffect(newTaskOpen) {
+        if (newTaskOpen) {
+            savedFirstIndex = listState.firstVisibleItemIndex
+            savedFirstOffset = listState.firstVisibleItemScrollOffset
+        } else if (wasNewTaskOpen) {
+            listState.scrollToItem(savedFirstIndex, savedFirstOffset)
+        }
+        wasNewTaskOpen = newTaskOpen
+    }
     val maxPullPx = with(LocalDensity.current) { 120.dp.toPx() }
     var gtdSwipe by remember { mutableFloatStateOf(0f) }
     var blockedByRow by remember { mutableStateOf(false) }
@@ -264,6 +283,17 @@ fun TodoScreen(
                     )
                 }
             }
+        }
+
+        // 右侧、导航上方的添加按钮（FR-D-02）；面板打开时由覆盖层遮挡。
+        FloatingActionButton(
+            onClick = onOpenNewTask,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+                .testTag("add_task"),
+        ) {
+            Text("+")
         }
     }
 

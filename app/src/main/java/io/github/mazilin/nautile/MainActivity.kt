@@ -33,6 +33,7 @@ import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
 import io.github.mazilin.nautile.ui.screen.todo.GtdSelector
+import io.github.mazilin.nautile.ui.screen.todo.NewTaskSheet
 import io.github.mazilin.nautile.ui.screen.todo.ProjectDetailSheet
 import io.github.mazilin.nautile.ui.screen.todo.TaskDetailSheet
 import io.github.mazilin.nautile.ui.screen.todo.TodoScreen
@@ -72,6 +73,7 @@ class MainActivity : ComponentActivity() {
                 val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
                 val projectDetailState by todoViewModel.projectDetail.collectAsStateWithLifecycle()
+                val newTaskState by todoViewModel.newTask.collectAsStateWithLifecycle()
                 val activeTab by container.navigationCoordinator.activeTab.collectAsStateWithLifecycle()
                 var scrollNavigationVisible by remember { mutableStateOf(true) }
 
@@ -85,6 +87,19 @@ class MainActivity : ComponentActivity() {
                     val canLeave = todoViewModel.requestDetailLeave()
                     if (canLeave) todoViewModel.closeDetail()
                     canLeave
+                }
+                val newTaskCanDismiss: () -> Boolean = {
+                    val canLeave = todoViewModel.requestNewTaskDismiss()
+                    if (canLeave) {
+                        todoViewModel.closeNewTask()
+                        scrollNavigationVisible = true
+                    }
+                    canLeave
+                }
+                val closeNewTaskPanel: () -> Unit = {
+                    todoViewModel.closeNewTask()
+                    container.overlayBackStack.close()
+                    scrollNavigationVisible = true
                 }
 
                 AppRoot(
@@ -122,6 +137,15 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onConfirmProjectReopen = todoViewModel::confirmProjectReopen,
                                 onCancelProjectReopen = todoViewModel::cancelProjectReopen,
+                                onOpenNewTask = {
+                                    todoViewModel.openNewTask()
+                                    val opened = container.overlayBackStack.open(
+                                        Overlay.NewTaskSheet,
+                                        canDismiss = newTaskCanDismiss,
+                                    )
+                                    if (!opened) todoViewModel.closeNewTask()
+                                },
+                                newTaskOpen = newTaskState != null,
                             )
 
                             else -> PlaceholderScreen(
@@ -161,6 +185,20 @@ class MainActivity : ComponentActivity() {
                                         todoViewModel.toggleProjectCollapsed(detail.project.id)
                                     },
                                     onCloseRequested = requestCloseDetail,
+                                )
+                            }
+
+                            Overlay.NewTaskSheet -> newTaskState?.let { state ->
+                                NewTaskSheet(
+                                    state = state,
+                                    onTitleChanged = todoViewModel::onNewTaskTitleChanged,
+                                    onCreate = {
+                                        todoViewModel.createNewTask { closeNewTaskPanel() }
+                                    },
+                                    onCancel = closeNewTaskPanel,
+                                    onDismissRequest = {
+                                        if (newTaskCanDismiss()) closeNewTaskPanel()
+                                    },
                                 )
                             }
 

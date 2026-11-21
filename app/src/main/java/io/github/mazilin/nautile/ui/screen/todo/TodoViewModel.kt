@@ -23,6 +23,7 @@ import io.github.mazilin.nautile.domain.usecase.TaskFieldUpdate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -75,6 +76,9 @@ class TodoViewModel(
     private val projectNameInvalid = MutableStateFlow(false)
     private val projectDetailExtras = MutableStateFlow(DetailExtras())
     private val collapsedProjects = MutableStateFlow<Set<ProjectId>>(emptySet())
+
+    private val newTaskState = MutableStateFlow<NewTaskUiState?>(null)
+    val newTask: StateFlow<NewTaskUiState?> = newTaskState.asStateFlow()
 
     val uiState: StateFlow<TodoUiState> = combine(
         settingsRepository.settings,
@@ -332,6 +336,75 @@ class TodoViewModel(
     fun toggleProjectCollapsed(projectId: ProjectId) {
         collapsedProjects.update { current ->
             if (projectId in current) current - projectId else current + projectId
+        }
+    }
+
+    // ---- 新建待办底部面板（S1-T09、FR-D-02、BR-69） ----
+
+    /** 打开面板时固定当前 GTD 清单；不自动聚焦输入框。 */
+    fun openNewTask() {
+        newTaskState.value = NewTaskUiState(position = uiState.value.position)
+    }
+
+    /** 取消/显式关闭：不产生任何记录。 */
+    fun closeNewTask() {
+        newTaskState.value = null
+    }
+
+    fun onNewTaskTitleChanged(text: String) {
+        newTaskState.update { current ->
+            current?.copy(title = text, titleInvalid = false, error = null)
+        }
+    }
+
+    /** 系统返回/背景关闭：创建中或已尝试创建且标题无效时阻止并提示。 */
+    fun requestNewTaskDismiss(): Boolean {
+        val current = newTaskState.value ?: return true
+        if (current.saving) return false
+        if (current.attempted && TaskRules.validateTitle(current.title) != null) {
+            newTaskState.update { it?.copy(titleInvalid = true, error = "请先填写有效标题") }
+            return false
+        }
+        return true
+    }
+
+    /** 只有点“创建”才写库；校验失败留在面板，成功后才关闭并回调。 */
+    fun createNewTask(onCreated: () -> Unit) {
+        val current = newTaskState.value ?: return
+        if (current.saving) return
+        if (TaskRules.validateTitle(current.title) != null) {
+            newTaskState.update {
+                it?.copy(titleInvalid = true, attempted = true, error = "标题不能为空")
+            }
+            return
+        }
+        viewModelScope.launch {
+            newTaskState.update { it?.copy(saving = true, error = null) }
+            when (val result = taskCommands.create(current.title, current.position, null)) {
+                is TaskCommandResult.Success -> {
+                    newTaskState.value = null
+                    onCreated()
+                }
+
+                is TaskCommandResult.Invalid -> newTaskState.update {
+                    it?.copy(
+                        saving = false,
+                        attempted = true,
+                        titleInvalid = result.error == TaskCommandError.BLANK_TITLE,
+                        error = taskErrorText(result.error),
+                    )
+                }
+
+                is TaskCommandResult.NotFound -> newTaskState.update {
+                    it?.copy(saving = false, error = "创建失败，请重试")
+                }
+
+                is TaskCommandResult.NeedsProjectReopen -> newTaskState.update {
+                    it?.copy(saving = false, error = "项目已结项，无法创建")
+                }
+
+                TaskCommandResult.Deleted -> newTaskState.update { it?.copy(saving = false) }
+            }
         }
     }
 

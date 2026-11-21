@@ -26,3 +26,20 @@ data class ProjectConfirmation(
     val outcome: ClosedOutcome,
     val taskCount: Int,
 )
+
+/**
+ * 新建待办底部面板状态（S1-T09、FR-D-02、BR-69）。
+ *
+ * 只有点“创建”才产生记录；取消/关闭不生成半成品。
+ * [attempted] 为 true 且标题无效时，系统返回/背景关闭被阻止并提示。
+ */
+data class NewTaskUiState(
+    val position: GtdPosition = GtdPosition.INBOX,
+    val title: String = "",
+    val titleInvalid: Boolean = false,
+    val saving: Boolean = false,
+    val error: String? = null,
+    val attempted: Boolean = false,
+) {
+    val canLeave: Boolean get() = !(attempted && title.isBlank())
+}
