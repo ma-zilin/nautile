@@ -33,6 +33,8 @@ import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
 import io.github.mazilin.nautile.ui.screen.todo.GtdSelector
+import io.github.mazilin.nautile.ui.screen.todo.ProjectDetailSheet
+import io.github.mazilin.nautile.ui.screen.todo.TaskDetailSheet
 import io.github.mazilin.nautile.ui.screen.todo.TodoScreen
 import io.github.mazilin.nautile.ui.screen.todo.TodoViewModel
 import io.github.mazilin.nautile.ui.theme.NautileTheme
@@ -68,8 +70,22 @@ class MainActivity : ComponentActivity() {
                     },
                 )
                 val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
+                val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
+                val projectDetailState by todoViewModel.projectDetail.collectAsStateWithLifecycle()
                 val activeTab by container.navigationCoordinator.activeTab.collectAsStateWithLifecycle()
                 var scrollNavigationVisible by remember { mutableStateOf(true) }
+
+                val requestCloseDetail: () -> Unit = {
+                    if (todoViewModel.requestDetailLeave()) {
+                        todoViewModel.closeDetail()
+                        container.overlayBackStack.close()
+                    }
+                }
+                val detailCanDismiss: () -> Boolean = {
+                    val canLeave = todoViewModel.requestDetailLeave()
+                    if (canLeave) todoViewModel.closeDetail()
+                    canLeave
+                }
 
                 AppRoot(
                     navigation = container.navigationCoordinator,
@@ -88,6 +104,24 @@ class MainActivity : ComponentActivity() {
                                 onCancelProjectClose = todoViewModel::cancelProjectClose,
                                 onNavigationVisibilityChanged = { scrollNavigationVisible = it },
                                 onSwitchPosition = todoViewModel::selectPosition,
+                                onOpenTaskDetail = { taskId ->
+                                    todoViewModel.openTaskDetail(taskId)
+                                    val opened = container.overlayBackStack.open(
+                                        Overlay.TaskDetail(taskId.value),
+                                        canDismiss = detailCanDismiss,
+                                    )
+                                    if (!opened) todoViewModel.closeDetail()
+                                },
+                                onOpenProjectDetail = { projectId ->
+                                    todoViewModel.openProjectDetail(projectId)
+                                    val opened = container.overlayBackStack.open(
+                                        Overlay.ProjectDetail,
+                                        canDismiss = detailCanDismiss,
+                                    )
+                                    if (!opened) todoViewModel.closeDetail()
+                                },
+                                onConfirmProjectReopen = todoViewModel::confirmProjectReopen,
+                                onCancelProjectReopen = todoViewModel::cancelProjectReopen,
                             )
 
                             else -> PlaceholderScreen(
@@ -107,6 +141,28 @@ class MainActivity : ComponentActivity() {
                                 onSelect = todoViewModel::selectPosition,
                                 onClose = { container.overlayBackStack.close() },
                             )
+
+                            is Overlay.TaskDetail -> taskDetailState?.let { detail ->
+                                TaskDetailSheet(
+                                    state = detail,
+                                    onTitleChanged = todoViewModel::onTaskTitleChanged,
+                                    onCommitTitle = todoViewModel::commitTaskTitle,
+                                    onReopen = { todoViewModel.reopenTask(detail.task.id) },
+                                    onCloseRequested = requestCloseDetail,
+                                )
+                            }
+
+                            Overlay.ProjectDetail -> projectDetailState?.let { detail ->
+                                ProjectDetailSheet(
+                                    state = detail,
+                                    onNameChanged = todoViewModel::onProjectNameChanged,
+                                    onCommitName = todoViewModel::commitProjectName,
+                                    onToggleCollapsed = {
+                                        todoViewModel.toggleProjectCollapsed(detail.project.id)
+                                    },
+                                    onCloseRequested = requestCloseDetail,
+                                )
+                            }
 
                             else -> Unit
                         }

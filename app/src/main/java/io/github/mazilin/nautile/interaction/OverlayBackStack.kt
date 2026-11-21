@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.asStateFlow
 sealed interface Overlay {
     data class TaskDetail(val taskId: Long? = null) : Overlay
 
+    data object ProjectDetail : Overlay
+
     data object GtdSelector : Overlay
 
     data object NewTaskSheet : Overlay

@@ -18,6 +18,10 @@ import kotlinx.coroutines.flow.first
 sealed interface ProjectCommandResult {
     data class Success(val project: Project) : ProjectCommandResult
     data class NeedsConfirmation(val taskCount: Int) : ProjectCommandResult
+    data class NeedsReopenConfirmation(
+        val projectId: ProjectId,
+        val status: ProjectStatus,
+    ) : ProjectCommandResult
     data class Invalid(val error: ProjectCommandError) : ProjectCommandResult
     data class NotFound(val id: ProjectId) : ProjectCommandResult
     data object Deleted : ProjectCommandResult
@@ -65,6 +69,25 @@ class ProjectCommands(
     /** 完成项目；有活动子任务时先返回需要确认的数量（AC-T-17）。 */
     suspend fun complete(projectId: ProjectId, confirmed: Boolean = false): ProjectCommandResult =
         closeProject(projectId, ClosedOutcome.COMPLETED, confirmed)
+
+    /**
+     * 重新打开已结项项目（T50-01、AC-T-28）。
+     *
+     * 只恢复项目为活跃并更新 updatedAt，不修改任何子任务；活跃项目幂等返回 Success。
+     * 未确认时返回 [ProjectCommandResult.NeedsReopenConfirmation]，由界面确认后再传 confirmed=true。
+     */
+    suspend fun reopen(projectId: ProjectId, confirmed: Boolean = false): ProjectCommandResult {
+        val project = projects.get(projectId) ?: return ProjectCommandResult.NotFound(projectId)
+        if (ProjectRules.isActive(project)) {
+            return ProjectCommandResult.Success(project)
+        }
+        if (!confirmed) {
+            return ProjectCommandResult.NeedsReopenConfirmation(projectId, project.status)
+        }
+        val reopened = ProjectRules.reopen(project, clock.now())
+        projects.update(reopened)
+        return ProjectCommandResult.Success(reopened)
+    }
 
     /** 放弃项目；与完成同一口径（AC-T-17、BR-47）。 */
     suspend fun abandon(projectId: ProjectId, confirmed: Boolean = false): ProjectCommandResult =

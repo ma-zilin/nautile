@@ -14,6 +14,7 @@ data class TodoUiState(
     val groups: List<TaskGroup> = emptyList(),
     val visibleTasks: List<Task> = emptyList(),
     val projectConfirmation: ProjectConfirmation? = null,
+    val projectReopenPrompt: ProjectReopenPrompt? = null,
 ) {
     val isEmpty: Boolean get() = visibleTasks.isEmpty()
 }

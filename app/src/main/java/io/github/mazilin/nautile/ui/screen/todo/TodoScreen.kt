@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.screen.todo
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.draggable
@@ -65,6 +66,10 @@ fun TodoScreen(
     onCancelProjectClose: () -> Unit = {},
     onNavigationVisibilityChanged: (Boolean) -> Unit = {},
     onSwitchPosition: (GtdPosition) -> Unit = {},
+    onOpenTaskDetail: (TaskId) -> Unit = {},
+    onOpenProjectDetail: (ProjectId) -> Unit = {},
+    onConfirmProjectReopen: () -> Unit = {},
+    onCancelProjectReopen: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val density = LocalDensity.current.density
@@ -215,6 +220,7 @@ fun TodoScreen(
                                     onSwipeRight = { onRequestProjectClose(project.id, ClosedOutcome.ABANDONED) },
                                     onRowDragStart = { rowDragging = true },
                                     onRowDragEnd = { rowDragging = false },
+                                    onClick = { onOpenProjectDetail(project.id) },
                                 ) {
                                     Text(
                                         text = "${project.name}（${group.tasks.size}）",
@@ -238,6 +244,7 @@ fun TodoScreen(
                                 onSwipeRight = { onAbandonTask(task.id) },
                                 onRowDragStart = { rowDragging = true },
                                 onRowDragEnd = { rowDragging = false },
+                                onClick = { onOpenTaskDetail(task.id) },
                             ) {
                                 TaskTitle(task)
                             }
@@ -274,6 +281,20 @@ fun TodoScreen(
             },
         )
     }
+
+    state.projectReopenPrompt?.let { prompt ->
+        AlertDialog(
+            onDismissRequest = onCancelProjectReopen,
+            title = { Text(prompt.projectName) },
+            text = { Text("项目「${prompt.projectName}」已结项，是否重新打开项目？") },
+            confirmButton = {
+                TextButton(onClick = onConfirmProjectReopen) { Text("重新打开") }
+            },
+            dismissButton = {
+                TextButton(onClick = onCancelProjectReopen) { Text("取消") }
+            },
+        )
+    }
 }
 
 @Composable
@@ -298,6 +319,7 @@ private fun SwipeableRow(
     onSwipeRight: () -> Unit,
     onRowDragStart: () -> Unit,
     onRowDragEnd: () -> Unit,
+    onClick: () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current.density
@@ -332,7 +354,8 @@ private fun SwipeableRow(
                         }
                         offset = 0f
                     },
-                ),
+                )
+                .clickable(onClick = onClick),
         ) {
             content()
         }
