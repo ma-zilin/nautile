@@ -4,21 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -32,6 +21,9 @@ import io.github.mazilin.nautile.interaction.FullScreenPage
 import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
+import io.github.mazilin.nautile.ui.screen.settings.DefaultPageScreen
+import io.github.mazilin.nautile.ui.screen.settings.SettingsScreen
+import io.github.mazilin.nautile.ui.screen.settings.SettingsViewModel
 import io.github.mazilin.nautile.ui.screen.todo.GtdSelector
 import io.github.mazilin.nautile.ui.screen.todo.NewTaskSheet
 import io.github.mazilin.nautile.ui.screen.todo.ProjectDetailSheet
@@ -70,7 +62,17 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                 )
+                val settingsViewModel: SettingsViewModel = viewModel(
+                    factory = remember {
+                        viewModelFactory {
+                            initializer {
+                                SettingsViewModel(container.settingsRepository)
+                            }
+                        }
+                    },
+                )
                 val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
+                val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
                 val projectDetailState by todoViewModel.projectDetail.collectAsStateWithLifecycle()
                 val newTaskState by todoViewModel.newTask.collectAsStateWithLifecycle()
@@ -155,8 +157,24 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     fullScreenContent = { page ->
-                        FullScreenPlaceholder(page, onBack = { container.navigationCoordinator.back() })
+                        when (page) {
+                            FullScreenPage.Settings -> SettingsScreen(
+                                settings = settings,
+                                onBack = { container.navigationCoordinator.back() },
+                                onOpenDefaultPage = {
+                                    container.navigationCoordinator.navigateToDefaultPage()
+                                },
+                                onPredictiveBackChanged = settingsViewModel::setPredictiveBackEnabled,
+                            )
+
+                            FullScreenPage.DefaultPage -> DefaultPageScreen(
+                                currentPage = settings.defaultPage,
+                                onSelect = settingsViewModel::setDefaultPage,
+                                onBack = { container.navigationCoordinator.back() },
+                            )
+                        }
                     },
+                    predictiveBackEnabled = settings.predictiveBackEnabled,
                     overlayContent = { overlay ->
                         when (overlay) {
                             Overlay.GtdSelector -> GtdSelector(
@@ -235,27 +253,5 @@ class MainActivity : ComponentActivity() {
     private fun hideIme() {
         WindowInsetsControllerCompat(window, window.decorView)
             .hide(WindowInsetsCompat.Type.ime())
-    }
-}
-
-/** T-06 的全屏子页占位；T-10 替换为设置根与默认页的真实内容。 */
-@Composable
-private fun FullScreenPlaceholder(page: FullScreenPage, onBack: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) {
-                Text("返回")
-            }
-            Text(text = page.title, style = MaterialTheme.typography.titleLarge)
-        }
-        Text(
-            text = "${page.title}（T-10 实现）",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(top = 24.dp),
-        )
     }
 }
