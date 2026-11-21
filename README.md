@@ -15,7 +15,7 @@ Nautile is a personal planning, time-tracking and review app. It keeps todos, sc
 
 ## Status
 
-Scaffold stage: the Android project builds debug APKs, and a signed release APK when an external signing configuration is present; it installs and cold-starts on a vivo X200s running Android 16. It uses compileSdk 37, targetSdk 36 and minSdk 31. Storage is planned as 15 Room entities plus UserSettings in DataStore, but Room/KSP are not enabled yet and no tables or schema exist. The only screen is an empty home shell, and no first-release (S1) business features are implemented.
+Scaffold stage: the Android project builds debug APKs, and a signed release APK when an external signing configuration is present; it installs and cold-starts on a vivo X200s running Android 16. It uses compileSdk 37, targetSdk 36 and minSdk 31. Room and KSP are enabled (Room 2.8.5, KSP 2.3.14), and database version 1 defines the `tasks` and `projects` tables with the schema exported under `app/schemas/`. DAO and migration tests have not been run on a device. The only screen is a placeholder todo page, and no first-release (S1) business UI is implemented yet.
 
 ## Planned Features
 
@@ -72,7 +72,7 @@ These are outside the first-release scope and are not implemented yet.
 
 ## Screenshots
 
-There are no screenshots yet. The current build opens an empty home screen; screenshots of the todo list, calendar, log and AI page will be added as those features are implemented.
+There are no screenshots yet. The current build opens a placeholder todo page; screenshots of the todo list, calendar, log and AI page will be added as those features are implemented.
 
 ## Getting Started
 
@@ -96,11 +96,11 @@ DEEPSEEK_API_KEY=<your-key>
 
 ### Database
 
-Storage is planned as 15 Room entities plus UserSettings in DataStore. Room and KSP are not enabled in this increment, and no schema or tables exist yet.
+Storage uses Room and KSP (Room 2.8.5, KSP 2.3.14). Database version 1 defines the `tasks` and `projects` tables, and the exported schema is committed under `app/schemas/`. DAO and migration tests have not been run on a device.
 
 ## Usage
 
-The current build only opens an empty home screen. Usage workflows will be documented once the first-release features exist.
+The current build only opens a placeholder todo page. Usage workflows will be documented once the first-release features exist.
 
 ## Documentation
 
@@ -109,7 +109,7 @@ The current build only opens an empty home screen. Usage workflows will be docum
 | [docs/作业要求.md](docs/作业要求.md) | Course requirements and grading criteria (Chinese) |
 | [docs/需求分析指导.md](docs/需求分析指导.md) | Requirements analysis guide and standards (advisory, no added grading criteria; Chinese) |
 | [docs/产品构想.md](docs/产品构想.md) | Product vision, decisions and first-release scope (Chinese) |
-| [docs/需求基线.md](docs/需求基线.md) | Requirements baseline v2.7: scope and acceptance criteria (Chinese) |
+| [docs/需求基线.md](docs/需求基线.md) | Requirements baseline v2.9: scope and acceptance criteria (Chinese) |
 | [docs/开发架构设计.md](docs/开发架构设计.md) | Development workflow, roles, verification and evidence rules (Chinese) |
 
 `docs/任务进度.md` and `docs/项目初始化工作纪要.md` are internal process records and are not listed here.

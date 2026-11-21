@@ -15,7 +15,7 @@ Nautile 是一款面向个人的计划、时间记录与复盘应用，把待办
 
 ## 当前状态
 
-脚手架阶段：Android 工程可构建 debug APK，存在仓库外签名配置时可构建签名的 release APK；已在 vivo X200s（Android 16）上安装并冷启动。工程使用 compileSdk 37、targetSdk 36、minSdk 31。存储方案确定为 Room 15 个实体加 DataStore 承载的 UserSettings，但当前增量尚未启用 Room/KSP，也未建表或生成 schema。目前只有空壳首页，未实现任何首版（S1）业务功能。
+脚手架阶段：Android 工程可构建 debug APK，存在仓库外签名配置时可构建签名的 release APK；已在 vivo X200s（Android 16）上安装并冷启动。工程使用 compileSdk 37、targetSdk 36、minSdk 31。Room/KSP 已启用（Room 2.8.5、KSP 2.3.14），数据库 version 1 包含 `tasks` 与 `projects` 两张表，schema 已导出到 `app/schemas/`。DAO 与迁移测试尚未在真机执行。目前只有空壳待办页，尚未实现首版（S1）业务 UI。
 
 ## 计划中的功能（首版范围，尚未实现）
 
@@ -72,7 +72,7 @@ Nautile 是一款面向个人的计划、时间记录与复盘应用，把待办
 
 ## 界面截图
 
-暂无截图。当前版本只有空壳首页；待办列表、日历、日志与 AI 页面的界面将在实现后补充。
+暂无截图。当前版本只打开空壳待办页；待办列表、日历、日志与 AI 页面的界面将在实现后补充。
 
 ## 快速开始
 
@@ -96,11 +96,11 @@ DEEPSEEK_API_KEY=<在此填写>
 
 ### 数据库
 
-存储方案确定为 Room 15 个实体，加 DataStore 承载的 UserSettings。当前增量尚未启用 Room/KSP，也未建表或生成 schema。
+存储使用 Room 与 KSP（Room 2.8.5、KSP 2.3.14）。数据库 version 1 包含 `tasks` 与 `projects` 两张表，schema 已导出并提交到 `app/schemas/`。DAO 与迁移测试尚未在真机执行。
 
 ## 使用
 
-当前版本只打开空壳首页。主要使用流程将在首版功能实现后补充。
+当前版本只打开空壳待办页。主要使用流程将在首版功能实现后补充。
 
 ## 文档
 
@@ -109,7 +109,7 @@ DEEPSEEK_API_KEY=<在此填写>
 | [docs/作业要求.md](docs/作业要求.md) | 课程作业要求与评分标准（中文） |
 | [docs/需求分析指导.md](docs/需求分析指导.md) | 需求分析指导书与标准（指导性，不新增评分项）（中文） |
 | [docs/产品构想.md](docs/产品构想.md) | 产品定位、业务决定与首版目标范围（中文） |
-| [docs/需求基线.md](docs/需求基线.md) | v2.7 需求基线：范围与验收标准（中文） |
+| [docs/需求基线.md](docs/需求基线.md) | v2.9 需求基线：范围与验收标准（中文） |
 | [docs/开发架构设计.md](docs/开发架构设计.md) | 开发流程、角色分工、验证与取证规则（中文） |
 
 `docs/任务进度.md` 与 `docs/项目初始化工作纪要.md` 属于内部过程记录，不在此列出。
