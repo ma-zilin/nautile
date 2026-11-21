@@ -1,3 +1,69 @@
 package io.github.mazilin.nautile.interaction
 
-// 四入口/底部导航协调；增量 1 只占位，不实现逻辑。
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+
+/** 四个一级入口；设置不占底部导航（FR-N-18、BR-59）。 */
+enum class AppTab(val title: String) {
+    TODO("待办"),
+    SCHEDULE("日程"),
+    LOG("日志"),
+    AI("AI"),
+}
+
+/** 全屏子页；S1 只有设置根与默认页（AC-N-21、D-11）。 */
+sealed interface FullScreenPage {
+    val title: String
+
+    data object Settings : FullScreenPage {
+        override val title: String = "设置"
+    }
+
+    data object DefaultPage : FullScreenPage {
+        override val title: String = "默认页"
+    }
+}
+
+/**
+ * 四入口与全屏子页栈（FR-N-18—N-20、AC-N-14）。
+ *
+ * 一级页面只允许底部导航点按切换；全屏子页打开时不接受 tab 切换。
+ * 预测返回预览由 T10 的协调器接入，本类只维护栈与普通返回。
+ */
+class NavigationCoordinator {
+
+    private val _activeTab = MutableStateFlow(AppTab.TODO)
+    val activeTab: StateFlow<AppTab> = _activeTab.asStateFlow()
+
+    private val _fullScreenStack = MutableStateFlow<List<FullScreenPage>>(emptyList())
+    val fullScreenStack: StateFlow<List<FullScreenPage>> = _fullScreenStack.asStateFlow()
+
+    val currentFullScreenPage: FullScreenPage? get() = _fullScreenStack.value.lastOrNull()
+
+    fun selectTab(tab: AppTab) {
+        if (_fullScreenStack.value.isNotEmpty()) return
+        _activeTab.value = tab
+    }
+
+    /** 任一一级页面的设置入口都进入同一个根设置页（FR-N-19）。 */
+    fun navigateToSettings() {
+        if (currentFullScreenPage != FullScreenPage.Settings) {
+            _fullScreenStack.update { it + FullScreenPage.Settings }
+        }
+    }
+
+    fun navigateToDefaultPage() {
+        if (currentFullScreenPage != FullScreenPage.DefaultPage) {
+            _fullScreenStack.update { it + FullScreenPage.DefaultPage }
+        }
+    }
+
+    /** 全屏子页返回；栈空时返回 false，交系统处理。 */
+    fun back(): Boolean {
+        if (_fullScreenStack.value.isEmpty()) return false
+        _fullScreenStack.update { it.dropLast(1) }
+        return true
+    }
+}
