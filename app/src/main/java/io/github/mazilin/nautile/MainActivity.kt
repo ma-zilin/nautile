@@ -22,6 +22,7 @@ import io.github.mazilin.nautile.domain.model.AppPage
 import io.github.mazilin.nautile.interaction.AppTab
 import io.github.mazilin.nautile.interaction.FullScreenPage
 import io.github.mazilin.nautile.interaction.Overlay
+import io.github.mazilin.nautile.interaction.PreviewBackdrop
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
 import io.github.mazilin.nautile.ui.screen.settings.DefaultPageScreen
@@ -240,6 +241,39 @@ class MainActivity : ComponentActivity() {
                             }
 
                             else -> Unit
+                        }
+                    },
+                    // T-075：预测预览的下层页面一律用无回调的只读实例，避免写数据/改状态。
+                    previewContent = { backdrop ->
+                        when (backdrop) {
+                            is PreviewBackdrop.Tab -> when (backdrop.tab) {
+                                AppTab.TODO -> TodoScreen(
+                                    // 预览实例不携带确认/重开对话框，避免在预览期产生 Dialog 副作用。
+                                    state = todoState.copy(
+                                        projectConfirmation = null,
+                                        projectReopenPrompt = null,
+                                    ),
+                                )
+                                else -> PlaceholderScreen(
+                                    title = backdrop.tab.title,
+                                    onOpenSettings = {},
+                                )
+                            }
+
+                            is PreviewBackdrop.FullScreen -> when (backdrop.page) {
+                                FullScreenPage.Settings -> SettingsScreen(
+                                    settings = settings,
+                                    onBack = {},
+                                    onOpenDefaultPage = {},
+                                    onPredictiveBackChanged = {},
+                                )
+
+                                FullScreenPage.DefaultPage -> DefaultPageScreen(
+                                    currentPage = settings.defaultPage,
+                                    onSelect = {},
+                                    onBack = {},
+                                )
+                            }
                         }
                     },
                 )

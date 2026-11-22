@@ -5,6 +5,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
+ * 预测预览下方需要组合的页面（T-075、AC-N-21）。
+ *
+ * 只描述“视觉下层”，不携带任何可写状态或回调；组合方必须使用无副作用参数。
+ */
+sealed interface PreviewBackdrop {
+    data class Tab(val tab: AppTab) : PreviewBackdrop
+
+    data class FullScreen(val page: FullScreenPage) : PreviewBackdrop
+}
+
+/**
  * 预测性返回预览范围（AC-N-21 部分覆盖、FR-N-30）。
  *
  * 只在栈顶为全屏子页（设置根/默认页）且 `canLeave` 为 true 时允许注册预览；
