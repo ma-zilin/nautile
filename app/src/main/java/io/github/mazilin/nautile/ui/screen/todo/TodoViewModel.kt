@@ -341,9 +341,18 @@ class TodoViewModel(
 
     // ---- 新建待办底部面板（S1-T09、FR-D-02、BR-69） ----
 
-    /** 打开面板时固定当前 GTD 清单；不自动聚焦输入框。 */
+    /** 打开面板时固定当前 GTD 清单；已结束时默认目标收件箱并要求选择（T-09）。 */
     fun openNewTask() {
-        newTaskState.value = NewTaskUiState(position = uiState.value.position)
+        val position = uiState.value.position
+        newTaskState.value = if (position == GtdPosition.ENDED) {
+            NewTaskUiState(
+                position = position,
+                targetPosition = GtdPosition.INBOX,
+                showTargetPicker = true,
+            )
+        } else {
+            NewTaskUiState(position = position, targetPosition = position)
+        }
     }
 
     /** 取消/显式关闭：不产生任何记录。 */
@@ -351,21 +360,66 @@ class TodoViewModel(
         newTaskState.value = null
     }
 
-    fun onNewTaskTitleChanged(text: String) {
-        newTaskState.update { current ->
-            current?.copy(title = text, titleInvalid = false, error = null)
+    fun onNewTaskKindChanged(kind: NewTaskKind) {
+        newTaskState.update {
+            it?.copy(kind = kind, error = null, attempted = false)
         }
     }
 
-    /** 系统返回/背景关闭：创建中或已尝试创建且标题无效时阻止并提示。 */
+    /** 已结束清单内添加时可选目标清单；已结束不可选（T-09、AC-T-01）。 */
+    fun onNewTaskTargetChanged(target: GtdPosition) {
+        if (target == GtdPosition.ENDED) return
+        newTaskState.update { it?.copy(targetPosition = target) }
+    }
+
+    fun onNewTaskTitleChanged(text: String) {
+        newTaskState.update { current ->
+            current?.copy(
+                title = text,
+                titleInvalid = TaskRules.validateTitle(text) != null,
+                error = null,
+            )
+        }
+    }
+
+    fun onNewProjectNameChanged(text: String) {
+        newTaskState.update { current ->
+            current?.copy(
+                projectName = text,
+                projectNameInvalid = ProjectRules.validateName(text) != null,
+                error = null,
+            )
+        }
+    }
+
+    /** 系统返回/背景关闭：创建中或已尝试创建且当前表单无效时阻止并提示。 */
     fun requestNewTaskDismiss(): Boolean {
         val current = newTaskState.value ?: return true
         if (current.saving) return false
-        if (current.attempted && TaskRules.validateTitle(current.title) != null) {
-            newTaskState.update { it?.copy(titleInvalid = true, error = "请先填写有效标题") }
-            return false
+        if (!current.attempted) return true
+        return when (current.kind) {
+            NewTaskKind.TODO -> {
+                if (TaskRules.validateTitle(current.title) != null) {
+                    newTaskState.update {
+                        it?.copy(titleInvalid = true, error = "请先填写有效标题")
+                    }
+                    false
+                } else {
+                    true
+                }
+            }
+
+            NewTaskKind.PROJECT -> {
+                if (ProjectRules.validateName(current.projectName) != null) {
+                    newTaskState.update {
+                        it?.copy(projectNameInvalid = true, error = "请先填写有效项目名称")
+                    }
+                    false
+                } else {
+                    true
+                }
+            }
         }
-        return true
     }
 
     /** 只有点“创建”才写库；校验失败留在面板，成功后才关闭并回调。 */
@@ -380,7 +434,7 @@ class TodoViewModel(
         }
         viewModelScope.launch {
             newTaskState.update { it?.copy(saving = true, error = null) }
-            when (val result = taskCommands.create(current.title, current.position, null)) {
+            when (val result = taskCommands.create(current.title, current.targetPosition, null)) {
                 is TaskCommandResult.Success -> {
                     newTaskState.value = null
                     onCreated()
@@ -404,6 +458,40 @@ class TodoViewModel(
                 }
 
                 TaskCommandResult.Deleted -> newTaskState.update { it?.copy(saving = false) }
+            }
+        }
+    }
+
+    /** T-07：在新建面板内创建项目，复用既有 ProjectCommands.create。 */
+    fun createProject(onCreated: () -> Unit) {
+        val current = newTaskState.value ?: return
+        if (current.saving) return
+        if (ProjectRules.validateName(current.projectName) != null) {
+            newTaskState.update {
+                it?.copy(projectNameInvalid = true, attempted = true, error = "项目名称不能为空")
+            }
+            return
+        }
+        viewModelScope.launch {
+            newTaskState.update { it?.copy(saving = true, error = null) }
+            when (val result = projectCommands.create(current.projectName)) {
+                is ProjectCommandResult.Success -> {
+                    newTaskState.value = null
+                    onCreated()
+                }
+
+                is ProjectCommandResult.Invalid -> newTaskState.update {
+                    it?.copy(
+                        saving = false,
+                        attempted = true,
+                        projectNameInvalid = true,
+                        error = "项目名称不能为空",
+                    )
+                }
+
+                else -> newTaskState.update {
+                    it?.copy(saving = false, error = "创建失败，请重试")
+                }
             }
         }
     }

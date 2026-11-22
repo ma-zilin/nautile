@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,6 +42,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -75,6 +78,7 @@ fun TodoScreen(
     onCancelProjectReopen: () -> Unit = {},
     onOpenNewTask: () -> Unit = {},
     newTaskOpen: Boolean = false,
+    navigationUpdatesEnabled: Boolean = true,
 ) {
     val listState = rememberLazyListState()
     val density = LocalDensity.current.density
@@ -110,16 +114,42 @@ fun TodoScreen(
         pullActive = false
     }
 
+    // 导航隐藏：累计位移阈值 24dp＋16dp 滞后；仅普通纵向滚动触发（AC-N-15、T-11）。
+    var navigationVisible by remember { mutableStateOf(true) }
+    var navigationAccumulator by remember { mutableFloatStateOf(0f) }
+    val hideThresholdPx = with(LocalDensity.current) { 24.dp.toPx() }
+    val showThresholdPx = with(LocalDensity.current) { 16.dp.toPx() }
+
     // 全屏边界拉动（FR-G-18、BR-61）：普通滚动优先，到顶/底后继续拉才预览；
     // 松手过阈值切换相邻清单并保持全屏，否则回弹；首尾不循环。
-    val boundaryConnection = remember(state.position, maxPullPx, density) {
+    val boundaryConnection = remember(
+        state.position,
+        maxPullPx,
+        density,
+        navigationUpdatesEnabled,
+        hideThresholdPx,
+        showThresholdPx,
+    ) {
         object : NestedScrollConnection {
             override fun onPostScroll(
                 consumed: Offset,
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                if (source != NestedScrollSource.UserInput || available.y == 0f) return Offset.Zero
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                if (navigationUpdatesEnabled && consumed.y != 0f && !pullActive) {
+                    navigationAccumulator += consumed.y
+                    if (navigationVisible && navigationAccumulator > hideThresholdPx) {
+                        navigationVisible = false
+                        navigationAccumulator = 0f
+                        onNavigationVisibilityChanged(false)
+                    } else if (!navigationVisible && navigationAccumulator < -showThresholdPx) {
+                        navigationVisible = true
+                        navigationAccumulator = 0f
+                        onNavigationVisibilityChanged(true)
+                    }
+                }
+                if (available.y == 0f) return Offset.Zero
                 val atTop = !listState.canScrollBackward
                 val atBottom = !listState.canScrollForward
                 val target = when {
@@ -149,20 +179,8 @@ fun TodoScreen(
         }
     }
 
-    // 导航隐藏：仅普通页面纵向滚动触发（AC-N-15）；覆盖层/键盘由 AppRoot/返回层处理。
-    LaunchedEffect(listState) {
-        var previous = listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
-        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-            .collect { current ->
-                when {
-                    current.first == 0 && current.second == 0 -> onNavigationVisibilityChanged(true)
-                    current.first > previous.first ||
-                        (current.first == previous.first && current.second > previous.second) ->
-                        onNavigationVisibilityChanged(false)
-                    else -> onNavigationVisibilityChanged(true)
-                }
-                previous = current
-            }
+    LaunchedEffect(navigationUpdatesEnabled, state.position) {
+        navigationAccumulator = 0f
     }
 
     Box(
@@ -200,10 +218,19 @@ fun TodoScreen(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onOpenSelector) {
-                    Text(state.position.title, style = MaterialTheme.typography.titleLarge)
+                // 独立 GTD 入口；标题文字不再兼任按钮（T-02、AC-G-04）。
+                IconButton(
+                    onClick = onOpenSelector,
+                    modifier = Modifier
+                        .testTag("gtd_entry")
+                        .semantics { contentDescription = "GTD 清单" },
+                ) {
+                    Text("☰", style = MaterialTheme.typography.titleLarge)
                 }
-                Spacer(modifier = Modifier.weight(1f))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("待办", style = MaterialTheme.typography.titleLarge)
+                    Text(state.position.title, style = MaterialTheme.typography.labelMedium)
+                }
                 TextButton(onClick = onOpenSettings) {
                     Text("设置")
                 }
@@ -264,8 +291,30 @@ fun TodoScreen(
                                 onRowDragStart = { rowDragging = true },
                                 onRowDragEnd = { rowDragging = false },
                                 onClick = { onOpenTaskDetail(task.id) },
+                                // 已结项行禁用滑动，只保留查看详情（T-10、AC-T-29）。
+                                swipeEnabled = task.closedOutcome == null,
                             ) {
-                                TaskTitle(task)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = task.title,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    if (task.closedOutcome != null) {
+                                        Text(
+                                            text = "已结项",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            modifier = Modifier.padding(start = 8.dp),
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -327,21 +376,9 @@ fun TodoScreen(
     }
 }
 
-@Composable
-private fun TaskTitle(task: Task) {
-    Text(
-        text = task.title,
-        style = MaterialTheme.typography.bodyLarge,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    )
-}
-
 /**
  * 条目左右滑：左滑完成、右滑放弃；仅越过阈值才提交，否则回原位（BR-46、AC-T-17）。
+ * [swipeEnabled] 为 false 时（已结项）不挂拖拽，只保留点按。
  */
 @Composable
 private fun SwipeableRow(
@@ -350,41 +387,49 @@ private fun SwipeableRow(
     onRowDragStart: () -> Unit,
     onRowDragEnd: () -> Unit,
     onClick: () -> Unit = {},
+    swipeEnabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current.density
     var offset by remember { mutableFloatStateOf(0f) }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .matchParentSize()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("放弃", style = MaterialTheme.typography.labelMedium)
-            Text("完成", style = MaterialTheme.typography.labelMedium)
+        if (swipeEnabled) {
+            Row(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("放弃", style = MaterialTheme.typography.labelMedium)
+                Text("完成", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+        val dragModifier = if (swipeEnabled) {
+            Modifier.draggable(
+                state = rememberDraggableState { delta ->
+                    offset += delta
+                    if (offset != 0f) onRowDragStart()
+                },
+                orientation = Orientation.Horizontal,
+                onDragStopped = {
+                    onRowDragEnd()
+                    when {
+                        GestureArbiter.isCommitSwipe(offset, density) && offset < 0f -> onSwipeLeft()
+                        GestureArbiter.isCommitSwipe(offset, density) && offset > 0f -> onSwipeRight()
+                    }
+                    offset = 0f
+                },
+            )
+        } else {
+            Modifier
         }
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { translationX = offset }
-                .draggable(
-                    state = rememberDraggableState { delta ->
-                        offset += delta
-                        if (offset != 0f) onRowDragStart()
-                    },
-                    orientation = Orientation.Horizontal,
-                    onDragStopped = {
-                        onRowDragEnd()
-                        when {
-                            GestureArbiter.isCommitSwipe(offset, density) && offset < 0f -> onSwipeLeft()
-                            GestureArbiter.isCommitSwipe(offset, density) && offset > 0f -> onSwipeRight()
-                        }
-                        offset = 0f
-                    },
-                )
+                .then(dragModifier)
                 .clickable(onClick = onClick),
         ) {
             content()

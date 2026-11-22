@@ -28,18 +28,31 @@ data class ProjectConfirmation(
 )
 
 /**
- * 新建待办底部面板状态（S1-T09、FR-D-02、BR-69）。
+ * 新建待办底部面板状态（S1-T09、FR-D-02、BR-69；T-071 增加项目/目标清单）。
  *
  * 只有点“创建”才产生记录；取消/关闭不生成半成品。
- * [attempted] 为 true 且标题无效时，系统返回/背景关闭被阻止并提示。
+ * [attempted] 为 true 且当前表单无效时，系统返回/背景关闭被阻止并提示。
  */
+enum class NewTaskKind { TODO, PROJECT }
+
 data class NewTaskUiState(
+    val kind: NewTaskKind = NewTaskKind.TODO,
     val position: GtdPosition = GtdPosition.INBOX,
+    val targetPosition: GtdPosition = GtdPosition.INBOX,
+    val showTargetPicker: Boolean = false,
     val title: String = "",
     val titleInvalid: Boolean = false,
+    val projectName: String = "",
+    val projectNameInvalid: Boolean = false,
     val saving: Boolean = false,
     val error: String? = null,
     val attempted: Boolean = false,
 ) {
-    val canLeave: Boolean get() = !(attempted && title.isBlank())
+    val canLeave: Boolean get() = !(attempted && invalid)
+
+    val invalid: Boolean
+        get() = when (kind) {
+            NewTaskKind.TODO -> title.isBlank()
+            NewTaskKind.PROJECT -> projectName.isBlank()
+        }
 }

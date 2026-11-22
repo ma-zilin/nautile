@@ -1,15 +1,22 @@
 package io.github.mazilin.nautile
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -28,6 +35,7 @@ import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
 import io.github.mazilin.nautile.ui.screen.settings.DefaultPageScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsViewModel
+import io.github.mazilin.nautile.ui.screen.settings.StartupState
 import io.github.mazilin.nautile.ui.screen.todo.GtdSelector
 import io.github.mazilin.nautile.ui.screen.todo.NewTaskSheet
 import io.github.mazilin.nautile.ui.screen.todo.ProjectDetailSheet
@@ -77,27 +85,46 @@ class MainActivity : ComponentActivity() {
                 )
                 val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
                 val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+                val startup by settingsViewModel.startup.collectAsStateWithLifecycle()
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
                 val projectDetailState by todoViewModel.projectDetail.collectAsStateWithLifecycle()
                 val newTaskState by todoViewModel.newTask.collectAsStateWithLifecycle()
                 val activeTab by container.navigationCoordinator.activeTab.collectAsStateWithLifecycle()
-                val settingsLoaded by settingsViewModel.loaded.collectAsStateWithLifecycle()
+                val imeVisible by container.keyboardCoordinator.imeVisible.collectAsStateWithLifecycle()
+                val overlayEntry by container.overlayBackStack.top.collectAsStateWithLifecycle()
                 var startupApplied by remember { mutableStateOf(false) }
                 var scrollNavigationVisible by remember { mutableStateOf(true) }
 
-                // AC-N-14：等 DataStore 首次发射后再渲染，避免先闪默认待办再跳页。
-                LaunchedEffect(settingsLoaded, settings) {
-                    if (settingsLoaded) {
-                        val startupPage = settings.lastPage ?: settings.defaultPage
-                        container.navigationCoordinator.applyInitialTab(startupPage.toTab())
-                        startupApplied = true
+                // AC-N-14/P-03：等 DataStore 首次发射；失败回落待办并提示，不伪造设置。
+                LaunchedEffect(startup) {
+                    when (val state = startup) {
+                        is StartupState.Ready -> if (!startupApplied) {
+                            val startupPage = state.settings.lastPage ?: state.settings.defaultPage
+                            container.navigationCoordinator.applyInitialTab(startupPage.toTab())
+                            startupApplied = true
+                        }
+
+                        StartupState.Failed -> if (!startupApplied) {
+                            container.navigationCoordinator.applyInitialTab(AppTab.TODO)
+                            startupApplied = true
+                            Toast.makeText(
+                                this@MainActivity,
+                                "设置读取失败，已回到待办",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
+
+                        StartupState.Loading -> Unit
                     }
                 }
-                // 切换一级页时记录 lastPage；首次恢复不重复写入用户可见行为。
+                // 切换一级页时记录 lastPage。
                 LaunchedEffect(activeTab, startupApplied) {
                     if (startupApplied) settingsViewModel.recordLastPage(activeTab.toPage())
                 }
-                if (!settingsLoaded || !startupApplied) return@NautileTheme
+                if (startup == StartupState.Loading || !startupApplied) {
+                    StartupPlaceholder()
+                    return@NautileTheme
+                }
 
                 val requestCloseDetail: () -> Unit = {
                     if (todoViewModel.requestDetailLeave()) {
@@ -168,6 +195,7 @@ class MainActivity : ComponentActivity() {
                                     if (!opened) todoViewModel.closeNewTask()
                                 },
                                 newTaskOpen = newTaskState != null,
+                                navigationUpdatesEnabled = !imeVisible && overlayEntry == null,
                             )
 
                             else -> PlaceholderScreen(
@@ -222,6 +250,17 @@ class MainActivity : ComponentActivity() {
                                     onToggleCollapsed = {
                                         todoViewModel.toggleProjectCollapsed(detail.project.id)
                                     },
+                                    onOpenChild = { taskId ->
+                                        // 单主覆盖层：先关项目详情再开任务详情；返回回列表。
+                                        container.overlayBackStack.close()
+                                        todoViewModel.closeDetail()
+                                        todoViewModel.openTaskDetail(taskId)
+                                        val opened = container.overlayBackStack.open(
+                                            Overlay.TaskDetail(taskId.value),
+                                            canDismiss = detailCanDismiss,
+                                        )
+                                        if (!opened) todoViewModel.closeDetail()
+                                    },
                                     onCloseRequested = requestCloseDetail,
                                 )
                             }
@@ -229,9 +268,15 @@ class MainActivity : ComponentActivity() {
                             Overlay.NewTaskSheet -> newTaskState?.let { state ->
                                 NewTaskSheet(
                                     state = state,
+                                    onKindChanged = todoViewModel::onNewTaskKindChanged,
+                                    onTargetChanged = todoViewModel::onNewTaskTargetChanged,
                                     onTitleChanged = todoViewModel::onNewTaskTitleChanged,
+                                    onProjectNameChanged = todoViewModel::onNewProjectNameChanged,
                                     onCreate = {
                                         todoViewModel.createNewTask { closeNewTaskPanel() }
+                                    },
+                                    onCreateProject = {
+                                        todoViewModel.createProject { closeNewTaskPanel() }
                                     },
                                     onCancel = closeNewTaskPanel,
                                     onDismissRequest = {
@@ -306,6 +351,14 @@ class MainActivity : ComponentActivity() {
     private fun hideIme() {
         WindowInsetsControllerCompat(window, window.decorView)
             .hide(WindowInsetsCompat.Type.ime())
+    }
+}
+
+/** 启动期轻量占位（P-03）：不写业务数据，读取完成后进入默认/上次页。 */
+@Composable
+private fun StartupPlaceholder() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text("正在载入…", style = MaterialTheme.typography.bodyMedium)
     }
 }
 

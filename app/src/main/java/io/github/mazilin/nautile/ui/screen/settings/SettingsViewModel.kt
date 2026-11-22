@@ -7,9 +7,17 @@ import io.github.mazilin.nautile.domain.model.UserSettings
 import io.github.mazilin.nautile.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** 启动读取状态（T-071/P-03）：加载中、就绪、读取失败回落待办。 */
+sealed interface StartupState {
+    data object Loading : StartupState
+    data class Ready(val settings: UserSettings) : StartupState
+    data object Failed : StartupState
+}
 
 /** 设置页状态（S1-T10）：只用既有 SettingsRepository，不新增设置键。 */
 class SettingsViewModel(
@@ -23,6 +31,12 @@ class SettingsViewModel(
     val loaded: StateFlow<Boolean> = settingsRepository.settings
         .map { true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** 启动态：读取失败时不伪造设置，由界面回落待办并提示（P-03）。 */
+    val startup: StateFlow<StartupState> = settingsRepository.settings
+        .map<UserSettings, StartupState> { StartupState.Ready(it) }
+        .catch { emit(StartupState.Failed) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, StartupState.Loading)
 
     /**
      * 写入默认页，同时把 lastPage 对齐到新默认页。

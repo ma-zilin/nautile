@@ -2,6 +2,8 @@ package io.github.mazilin.nautile.ui.screen.todo
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -28,10 +30,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.domain.model.Priority
 
@@ -65,10 +72,39 @@ fun TaskDetailSheet(
                 .fillMaxHeight(0.6f),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         ) {
+            val scrollState = rememberScrollState()
+            var contentPull by remember { mutableFloatStateOf(0f) }
+            val contentConnection = remember(closeThreshold) {
+                object : NestedScrollConnection {
+                    override fun onPostScroll(
+                        consumed: Offset,
+                        available: Offset,
+                        source: NestedScrollSource,
+                    ): Offset {
+                        // 内容已到顶仍继续下拉时累计；无效字段由父层阻止关闭。
+                        if (source != NestedScrollSource.UserInput ||
+                            available.y <= 0f ||
+                            scrollState.canScrollBackward
+                        ) {
+                            return Offset.Zero
+                        }
+                        contentPull += available.y
+                        return Offset(0f, available.y)
+                    }
+
+                    override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                        if (contentPull > closeThreshold) onCloseRequested()
+                        contentPull = 0f
+                        return Velocity.Zero
+                    }
+                }
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .verticalScroll(scrollState)
+                    .nestedScroll(contentConnection),
             ) {
                 Box(
                     modifier = Modifier
@@ -139,7 +175,7 @@ fun TaskDetailSheet(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(8.dp))
                 TextButton(
                     onClick = onCloseRequested,
                     modifier = Modifier.align(Alignment.End),
