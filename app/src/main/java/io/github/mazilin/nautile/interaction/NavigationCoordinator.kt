@@ -42,6 +42,22 @@ class NavigationCoordinator {
 
     val currentFullScreenPage: FullScreenPage? get() = _fullScreenStack.value.lastOrNull()
 
+    private var initialTabApplied = false
+
+    /**
+     * 启动时按设置恢复一级页面（AC-N-14、FR-N-20）。
+     *
+     * 只生效一次，避免设置 Flow 后续发射覆盖用户当前选择；首次启动无 lastPage 时由调用方
+     * 传入 defaultPage。全屏子页栈非空时不改动当前页面。
+     */
+    fun applyInitialTab(tab: AppTab) {
+        if (initialTabApplied) return
+        initialTabApplied = true
+        if (_fullScreenStack.value.isEmpty()) {
+            _activeTab.value = tab
+        }
+    }
+
     fun selectTab(tab: AppTab) {
         if (_fullScreenStack.value.isNotEmpty()) return
         _activeTab.value = tab

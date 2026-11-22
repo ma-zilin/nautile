@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -16,6 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.mazilin.nautile.di.AppContainer
+import io.github.mazilin.nautile.domain.model.AppPage
 import io.github.mazilin.nautile.interaction.AppTab
 import io.github.mazilin.nautile.interaction.FullScreenPage
 import io.github.mazilin.nautile.interaction.Overlay
@@ -77,7 +80,23 @@ class MainActivity : ComponentActivity() {
                 val projectDetailState by todoViewModel.projectDetail.collectAsStateWithLifecycle()
                 val newTaskState by todoViewModel.newTask.collectAsStateWithLifecycle()
                 val activeTab by container.navigationCoordinator.activeTab.collectAsStateWithLifecycle()
+                val settingsLoaded by settingsViewModel.loaded.collectAsStateWithLifecycle()
+                var startupApplied by remember { mutableStateOf(false) }
                 var scrollNavigationVisible by remember { mutableStateOf(true) }
+
+                // AC-N-14：等 DataStore 首次发射后再渲染，避免先闪默认待办再跳页。
+                LaunchedEffect(settingsLoaded, settings) {
+                    if (settingsLoaded) {
+                        val startupPage = settings.lastPage ?: settings.defaultPage
+                        container.navigationCoordinator.applyInitialTab(startupPage.toTab())
+                        startupApplied = true
+                    }
+                }
+                // 切换一级页时记录 lastPage；首次恢复不重复写入用户可见行为。
+                LaunchedEffect(activeTab, startupApplied) {
+                    if (startupApplied) settingsViewModel.recordLastPage(activeTab.toPage())
+                }
+                if (!settingsLoaded || !startupApplied) return@NautileTheme
 
                 val requestCloseDetail: () -> Unit = {
                     if (todoViewModel.requestDetailLeave()) {
@@ -254,4 +273,20 @@ class MainActivity : ComponentActivity() {
         WindowInsetsControllerCompat(window, window.decorView)
             .hide(WindowInsetsCompat.Type.ime())
     }
+}
+
+/** 启动映射：设置中的一级页面与底部导航 tab 一一对应（AC-N-14）。 */
+private fun AppPage.toTab(): AppTab = when (this) {
+    AppPage.TODO -> AppTab.TODO
+    AppPage.SCHEDULE -> AppTab.SCHEDULE
+    AppPage.LOG -> AppTab.LOG
+    AppPage.AI -> AppTab.AI
+}
+
+/** 记录 lastPage 时把当前 tab 转回设置中的页面标识。 */
+private fun AppTab.toPage(): AppPage = when (this) {
+    AppTab.TODO -> AppPage.TODO
+    AppTab.SCHEDULE -> AppPage.SCHEDULE
+    AppTab.LOG -> AppPage.LOG
+    AppTab.AI -> AppPage.AI
 }
