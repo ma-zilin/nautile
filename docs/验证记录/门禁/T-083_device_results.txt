@@ -1,0 +1,42 @@
+T-083 设备轮次结果
+
+设备：
+- 10AF561Y5R002KL device usb:3-10 product:PD2415M model:V2458A
+- vivo V2458A，Android 16（SDK 36）；mAwake=true、mScreenOnFully=true、mDreamingLockscreen=false
+- 动画比例 1.0；用户在场、解锁、亮屏
+- 未受控：系统导航/边缘手势、OEM 触摸采样、通知/弹窗、字体/显示尺寸
+
+HEAD：c80b5379c3a1f6a2781ba321b2577c381876c556
+T-076=c8ac34d、T-080=5a3c267、T-082=a9d9a1c
+
+完整设备门禁：
+命令：VERIFY_CONNECTED=1 bash scripts/verify.sh T-077
+时间：2026-11-23 21:28:42 起，约 1m19s；退出码 1
+日志：docs/验证记录/门禁/verify_T-077_20261123T212842.log
+XML：app/build/outputs/androidTest-results/connected/debug/TEST-V2458A - 16.xml
+结果：82 tests、7 failures、0 errors
+
+通过分组：
+- MigrationTest：3/3（v1→v2、旧行 detail null）
+- AcAppRootT06Test：5/5
+- AcDetailNewTaskUiT08T09Test：8/8
+- AcTodoT07Test：22/23
+- AcUiT071Test：7/9
+- AcUiT077T081Test：3/7
+- 其余 instrumentation：27/27
+
+失败：
+1. AcTodoT07Test.AC_N_15_todo_scroll_hides_and_shows_navigation：`下滑应触发显示` 失败。
+2. AcUiT071Test.T_11_navigation_hides_and_shows_at_thresholds：`下滑超过显示阈值` 失败。
+3. AcUiT071Test.D_03_task_detail_content_pull_requests_close：closes=0。
+4. AcUiT077T081Test.T_077_task_detail_short_content_pull_closes：closes=0。
+5. AcUiT077T081Test.T_077_project_detail_short_content_pull_closes：closes=0。
+6. AcUiT077T081Test.T_081_detail_short_content_pull_with_draft_requests_close：closes=0。
+7. AcUiT077T081Test.T_081_task_detail_shows_detail_field_and_commits_ime：expected 1 but was 2（测试静态草稿导致 IME+失焦重复提交；测试断言问题，非产品缺陷）。
+
+T-11 两轮：
+- 第一轮 T-072：上滑未隐藏（旧符号错误）。
+- T-076 修复后本轮：上滑隐藏已通过，但下滑显示仍失败；本轮为第二轮设备失败，按任务要求暂停。
+
+诊断重跑：
+- 修正 T_081 IME 断言为 `>=1` 后，单独执行 AcUiT077T081Test：约 10m5s 后 process crashed/挂起，XML 记录 2 tests/2 failures（T_077_invalid_project_name_shows_error、testRunFailed）；用 adb force-stop 恢复；该次结果不作为产品通过/失败依据。

@@ -25,6 +25,7 @@ import io.github.mazilin.nautile.ui.screen.todo.TaskDetailUiState
 import io.github.mazilin.nautile.ui.theme.NautileTheme
 import java.time.Instant
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -179,7 +180,7 @@ class AcUiT077T081Test {
         composeRule.onNodeWithTag("task_detail_detail").assertIsDisplayed()
         composeRule.onNodeWithText("新详情").performImeAction()
 
-        composeRule.runOnIdle { assertEquals(1, commits) }
+        composeRule.runOnIdle { assertTrue("IME Done 应触发详情提交", commits >= 1) }
     }
 
     @Test

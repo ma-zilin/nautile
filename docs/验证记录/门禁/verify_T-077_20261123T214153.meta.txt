@@ -1,0 +1,8 @@
+task=T-077
+time=2026-11-23T21:42:16+08:00
+head=c80b5379c3a1f6a2781ba321b2577c381876c556
+dirty_entries=7
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_T-077_20261123T214153.log
