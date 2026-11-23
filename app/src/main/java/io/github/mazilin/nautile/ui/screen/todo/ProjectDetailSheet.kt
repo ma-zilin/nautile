@@ -2,6 +2,8 @@ package io.github.mazilin.nautile.ui.screen.todo
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,13 +38,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.domain.model.TaskId
+import kotlin.math.abs
 
 /**
  * 项目半屏详情（S1-T08、T-071/D-02/D-03、AC-D-06、FR-V-08）。
@@ -65,9 +70,6 @@ fun ProjectDetailSheet(
     var dragTotal by remember { mutableFloatStateOf(0f) }
     val scrollState = rememberScrollState()
     var contentPull by remember { mutableFloatStateOf(0f) }
-    // 短内容没有滚动余量，nestedScroll 拿不到事件；仅在完全不可滚动时叠加纵向
-    // 拖拽层（T-059/T-076 同法），松手超过阈值仍经父层 canLeave 检查。
-    var shortPull by remember { mutableFloatStateOf(0f) }
     val contentConnection = remember(closeThreshold) {
         object : NestedScrollConnection {
             override fun onPostScroll(
@@ -96,7 +98,39 @@ fun ProjectDetailSheet(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.32f)),
+            .background(Color.Black.copy(alpha = 0.32f))
+            // T-084：祖先层 Initial pass 观察下拉，不与 verticalScroll 竞争；
+            // 仅内容不可滚动且向下超过 64dp 时请求关闭，不消费事件、不遮挡子任务点击。
+            .pointerInput(closeThreshold) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(
+                        requireUnconsumed = false,
+                        pass = PointerEventPass.Initial,
+                    )
+                    var totalDown = 0f
+                    var started = false
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!scrollState.canScrollBackward && !scrollState.canScrollForward) {
+                            val dy = change.positionChange().y
+                            if (!started) {
+                                if (abs(dy) < viewConfiguration.touchSlop) {
+                                    if (!change.pressed) break
+                                    continue
+                                }
+                                started = true
+                            }
+                            if (dy > 0f) totalDown += dy
+                        }
+                        if (!change.pressed) {
+                            if (totalDown > closeThreshold) onCloseRequested()
+                            totalDown = 0f
+                            break
+                        }
+                    }
+                }
+            },
     ) {
         Surface(
             modifier = Modifier
@@ -109,23 +143,6 @@ fun ProjectDetailSheet(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
-                    .pointerInput(closeThreshold) {
-                        detectVerticalDragGestures(
-                            onVerticalDrag = { change, dragAmount ->
-                                val notScrollable =
-                                    !scrollState.canScrollBackward && !scrollState.canScrollForward
-                                if (notScrollable && dragAmount > 0f) {
-                                    change.consume()
-                                    shortPull += dragAmount
-                                }
-                            },
-                            onDragEnd = {
-                                if (shortPull > closeThreshold) onCloseRequested()
-                                shortPull = 0f
-                            },
-                            onDragCancel = { shortPull = 0f },
-                        )
-                    }
                     .verticalScroll(scrollState)
                     .nestedScroll(contentConnection),
             ) {

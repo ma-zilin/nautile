@@ -2,6 +2,8 @@ package io.github.mazilin.nautile.ui.screen.todo
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -39,7 +41,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -53,6 +57,7 @@ import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.interaction.GestureArbiter
+import kotlin.math.abs
 
 /**
  * 待办页 P-02（S1-T07）。
@@ -225,6 +230,42 @@ fun TodoScreen(
                         blockedByRow = false
                     },
                 )
+            }
+            // T-11 第三轮：下滑显示不依赖列表消费（从标题/顶部起手时列表拿不到滚动事件）。
+            // 仅“导航已隐藏且向下拖超过 16dp”时补发显示；不消费事件、不干扰滚动/边界拉动。
+            .pointerInput(showThresholdPx) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(
+                        requireUnconsumed = false,
+                        pass = PointerEventPass.Initial,
+                    )
+                    var totalDown = 0f
+                    var started = false
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!navigationVisible) {
+                            val dy = change.positionChange().y
+                            if (!started) {
+                                if (abs(dy) < viewConfiguration.touchSlop) {
+                                    if (!change.pressed) break
+                                    continue
+                                }
+                                started = true
+                            }
+                            if (dy > 0f) totalDown += dy
+                        }
+                        if (!change.pressed) {
+                            if (!navigationVisible && !pullActive && totalDown > showThresholdPx) {
+                                navigationVisible = true
+                                navigationAccumulator = 0f
+                                onNavigationVisibilityChanged(true)
+                            }
+                            totalDown = 0f
+                            break
+                        }
+                    }
+                }
             },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
