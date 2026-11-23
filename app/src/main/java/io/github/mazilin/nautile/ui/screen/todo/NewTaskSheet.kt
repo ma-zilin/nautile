@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.domain.model.GtdPosition
@@ -45,6 +46,7 @@ fun NewTaskSheet(
     onKindChanged: (NewTaskKind) -> Unit = {},
     onTargetChanged: (GtdPosition) -> Unit = {},
     onTitleChanged: (String) -> Unit = {},
+    onDetailChanged: (String) -> Unit = {},
     onProjectNameChanged: (String) -> Unit = {},
     onCreate: () -> Unit = {},
     onCreateProject: () -> Unit = {},
@@ -126,6 +128,17 @@ fun NewTaskSheet(
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                             keyboardActions = KeyboardActions(onDone = { onCreate() }),
                             modifier = Modifier.fillMaxWidth(),
+                        )
+                        // 固定第二行：详情小字行，始终显示，不提供展开/隐藏（FR-D-03）。
+                        OutlinedTextField(
+                            value = state.detail,
+                            onValueChange = onDetailChanged,
+                            label = { Text("详情（可选）") },
+                            textStyle = MaterialTheme.typography.bodySmall,
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("new_task_detail"),
                         )
                     }
 

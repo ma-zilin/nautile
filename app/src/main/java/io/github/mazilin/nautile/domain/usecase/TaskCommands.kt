@@ -35,6 +35,7 @@ enum class TaskCommandError {
 /** 详情字段编辑即保存的字段更新（FR-D-01、AC-D-06）。 */
 sealed interface TaskFieldUpdate {
     data class Title(val title: String) : TaskFieldUpdate
+    data class Detail(val detail: String?) : TaskFieldUpdate
     data class Priority(val priority: io.github.mazilin.nautile.domain.model.Priority) : TaskFieldUpdate
     data class DueDate(val dueDate: LocalDate?) : TaskFieldUpdate
     data class DueTime(val dueTime: LocalTime?) : TaskFieldUpdate
@@ -57,6 +58,7 @@ class TaskCommands(
         title: String,
         position: GtdPosition,
         projectId: ProjectId? = null,
+        detail: String? = null,
     ): TaskCommandResult {
         TaskRules.validateTitle(title)?.let { return TaskCommandResult.Invalid(map(it)) }
         if (!TaskRules.canMoveTo(position)) {
@@ -78,6 +80,7 @@ class TaskCommands(
             position = position,
             createdAt = now,
             updatedAt = now,
+            detail = normalizeDetail(detail),
         )
         val id = tasks.insert(draft)
         return TaskCommandResult.Success(draft.copy(id = id))
@@ -92,6 +95,8 @@ class TaskCommands(
                 }
                 task.copy(title = update.title)
             }
+
+            is TaskFieldUpdate.Detail -> task.copy(detail = normalizeDetail(update.detail))
 
             is TaskFieldUpdate.Priority -> task.copy(priority = update.priority)
             is TaskFieldUpdate.DueDate -> task.copy(dueDate = update.dueDate)
@@ -183,4 +188,8 @@ class TaskCommands(
             TaskRuleViolation.ALREADY_CLOSED -> TaskCommandError.ALREADY_CLOSED
             TaskRuleViolation.NOT_CLOSED -> TaskCommandError.NOT_CLOSED
         }
+
+    /** 详情空白归一为 null；非空白保留原文（FR-D-03、T-079 §1.1）。 */
+    private fun normalizeDetail(raw: String?): String? =
+        raw?.takeIf { it.isNotBlank() }
 }

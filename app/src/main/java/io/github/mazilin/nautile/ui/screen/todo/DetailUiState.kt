@@ -8,12 +8,16 @@ import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.domain.model.ProjectStatus
 
-/** 待重试的任务命令描述；不保存 Composable、仓库或 suspend lambda（T50-01）。 */
+/**
+ * 待重试的任务命令描述；不保存 Composable、仓库或 suspend lambda（T50-01）。
+ * [detail] 用于项目重开确认后的重试，避免丢失新建时的详情（T-080）。
+ */
 sealed interface PendingTaskCommand {
     data class Create(
         val title: String,
         val position: GtdPosition,
         val projectId: ProjectId?,
+        val detail: String? = null,
     ) : PendingTaskCommand
 
     data class MoveToGtd(
@@ -41,9 +45,12 @@ data class TaskDetailUiState(
     val error: String?,
     val leaveBlocked: Boolean,
     val canReopen: Boolean,
+    val detailDraft: String? = null,
 ) {
     val titleValue: String get() = titleDraft ?: task.title
-    val canLeave: Boolean get() = !titleInvalid && titleDraft == null
+    val detailValue: String get() = detailDraft ?: task.detail.orEmpty()
+    val canLeave: Boolean
+        get() = !titleInvalid && titleDraft == null && detailDraft == null
 }
 
 /** 项目半屏详情状态（AC-D-06、FR-V-08）。 */

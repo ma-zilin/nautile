@@ -239,6 +239,8 @@ class MainActivity : ComponentActivity() {
                                     onCommitTitle = todoViewModel::commitTaskTitle,
                                     onReopen = { todoViewModel.reopenTask(detail.task.id) },
                                     onCloseRequested = requestCloseDetail,
+                                    onDetailChanged = todoViewModel::onTaskDetailChanged,
+                                    onCommitDetail = todoViewModel::commitTaskDetail,
                                 )
                             }
 
@@ -271,6 +273,7 @@ class MainActivity : ComponentActivity() {
                                     onKindChanged = todoViewModel::onNewTaskKindChanged,
                                     onTargetChanged = todoViewModel::onNewTaskTargetChanged,
                                     onTitleChanged = todoViewModel::onNewTaskTitleChanged,
+                                    onDetailChanged = todoViewModel::onNewTaskDetailChanged,
                                     onProjectNameChanged = todoViewModel::onNewProjectNameChanged,
                                     onCreate = {
                                         todoViewModel.createNewTask { closeNewTaskPanel() }

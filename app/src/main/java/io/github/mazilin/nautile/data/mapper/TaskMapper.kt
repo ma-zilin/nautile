@@ -30,6 +30,7 @@ object TaskMapper {
         closedOn = entity.closedOn?.let { LocalDate.parse(it) },
         createdAt = Instant.ofEpochMilli(entity.createdAt),
         updatedAt = Instant.ofEpochMilli(entity.updatedAt),
+        detail = entity.detail,
     )
 
     fun toEntity(task: Task): TaskEntity = TaskEntity(
@@ -46,5 +47,6 @@ object TaskMapper {
         closedOn = task.closedOn?.toString(),
         createdAt = task.createdAt.toEpochMilli(),
         updatedAt = task.updatedAt.toEpochMilli(),
+        detail = task.detail,
     )
 }

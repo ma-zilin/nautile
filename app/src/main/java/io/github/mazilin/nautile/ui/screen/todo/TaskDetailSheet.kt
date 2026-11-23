@@ -37,6 +37,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -55,6 +56,8 @@ fun TaskDetailSheet(
     onCommitTitle: () -> Unit,
     onReopen: () -> Unit,
     onCloseRequested: () -> Unit,
+    onDetailChanged: (String) -> Unit = {},
+    onCommitDetail: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val closeThreshold = with(density) { 64.dp.toPx() }
@@ -173,6 +176,23 @@ fun TaskDetailSheet(
                         .onFocusChanged { focus ->
                             if (!focus.isFocused && state.titleDraft != null) onCommitTitle()
                         },
+                )
+                // 详情紧跟标题：多行自由文本，编辑即保存（FR-D-03、AC-D-09）。
+                OutlinedTextField(
+                    value = state.detailValue,
+                    onValueChange = onDetailChanged,
+                    label = { Text("详情（可选）") },
+                    minLines = 1,
+                    maxLines = 4,
+                    textStyle = MaterialTheme.typography.bodySmall,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { onCommitDetail() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focus ->
+                            if (!focus.isFocused && state.detailDraft != null) onCommitDetail()
+                        }
+                        .testTag("task_detail_detail"),
                 )
                 Text("GTD 位置：${state.task.position.title}")
                 Text("优先级：${priorityLabel(state.task.priority)}")

@@ -47,6 +47,7 @@ data class NewTaskUiState(
     val saving: Boolean = false,
     val error: String? = null,
     val attempted: Boolean = false,
+    val detail: String = "",
 ) {
     val canLeave: Boolean get() = !(attempted && invalid)
 

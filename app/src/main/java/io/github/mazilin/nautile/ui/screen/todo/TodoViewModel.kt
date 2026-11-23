@@ -43,6 +43,13 @@ private data class ProjectDetailBase(
     val nameDraft: String?,
 )
 
+private data class TaskDetailBase(
+    val id: TaskId?,
+    val tasks: List<Task>,
+    val titleDraft: String?,
+    val detailDraft: String?,
+)
+
 /**
  * 待办页状态与命令（S1-T07/T08）。
  *
@@ -68,6 +75,7 @@ class TodoViewModel(
 
     private val taskDetailId = MutableStateFlow<TaskId?>(null)
     private val taskTitleDraft = MutableStateFlow<String?>(null)
+    private val taskDetailDraft = MutableStateFlow<String?>(null)
     private val taskTitleInvalid = MutableStateFlow(false)
     private val taskDetailExtras = MutableStateFlow(DetailExtras())
 
@@ -99,23 +107,31 @@ class TodoViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodoUiState())
 
     /** 任务详情：字段草稿与保存状态由本类持有。 */
-    val taskDetail: StateFlow<TaskDetailUiState?> = combine(
+    private val taskDetailBase = combine(
         taskDetailId,
         allTasks,
         taskTitleDraft,
+        taskDetailDraft,
+    ) { id, tasks, titleDraft, detailDraft ->
+        TaskDetailBase(id, tasks, titleDraft, detailDraft)
+    }
+
+    val taskDetail: StateFlow<TaskDetailUiState?> = combine(
+        taskDetailBase,
         taskTitleInvalid,
         taskDetailExtras,
-    ) { id, tasks, draft, invalid, extras ->
-        val task = id?.let { taskId -> tasks.firstOrNull { it.id == taskId } }
+    ) { base, invalid, extras ->
+        val task = base.id?.let { taskId -> base.tasks.firstOrNull { it.id == taskId } }
         task?.let {
             TaskDetailUiState(
                 task = it,
-                titleDraft = draft,
+                titleDraft = base.titleDraft,
                 titleInvalid = invalid,
                 saving = extras.saving,
                 error = extras.error,
                 leaveBlocked = extras.leaveBlocked,
                 canReopen = it.closedOutcome != null,
+                detailDraft = base.detailDraft,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -206,6 +222,7 @@ class TodoViewModel(
 
     fun openTaskDetail(taskId: TaskId) {
         taskTitleDraft.value = null
+        taskDetailDraft.value = null
         taskTitleInvalid.value = false
         taskDetailExtras.value = DetailExtras()
         taskDetailId.value = taskId
@@ -221,6 +238,7 @@ class TodoViewModel(
     fun closeDetail() {
         taskDetailId.value = null
         taskTitleDraft.value = null
+        taskDetailDraft.value = null
         taskTitleInvalid.value = false
         taskDetailExtras.value = DetailExtras()
         projectDetailId.value = null
@@ -233,6 +251,38 @@ class TodoViewModel(
         taskTitleDraft.value = text
         taskTitleInvalid.value = TaskRules.validateTitle(text) != null
         taskDetailExtras.update { it.copy(error = null, leaveBlocked = false) }
+    }
+
+    /** 详情编辑即保存；空串由命令层归一为 null（FR-D-03）。 */
+    fun onTaskDetailChanged(text: String) {
+        taskDetailDraft.value = text
+        taskDetailExtras.update { it.copy(error = null, leaveBlocked = false) }
+    }
+
+    fun commitTaskDetail() {
+        val taskId = taskDetailId.value ?: return
+        val draft = taskDetailDraft.value ?: return
+        viewModelScope.launch {
+            taskDetailExtras.update { it.copy(saving = true) }
+            when (val result = taskCommands.updateField(taskId, TaskFieldUpdate.Detail(draft))) {
+                is TaskCommandResult.Success -> {
+                    taskDetailDraft.value = null
+                    taskDetailExtras.value = DetailExtras()
+                }
+
+                is TaskCommandResult.Invalid -> {
+                    taskDetailExtras.update { it.copy(saving = false, error = taskErrorText(result.error)) }
+                }
+
+                is TaskCommandResult.NotFound -> {
+                    taskDetailExtras.update { it.copy(saving = false, error = "任务不存在") }
+                }
+
+                else -> {
+                    taskDetailExtras.update { it.copy(saving = false, error = "保存失败，请重试") }
+                }
+            }
+        }
     }
 
     /** 字段结束即保存；失败保留草稿并显示错误，不进入“已保存”状态。 */
@@ -316,6 +366,12 @@ class TodoViewModel(
             taskDetailExtras.update { it.copy(leaveBlocked = true, error = "正在保存，请稍候再关闭") }
             return false
         }
+        val taskDetailDraftValue = taskDetailDraft.value
+        if (taskId != null && taskDetailDraftValue != null) {
+            commitTaskDetail()
+            taskDetailExtras.update { it.copy(leaveBlocked = true, error = "正在保存，请稍候再关闭") }
+            return false
+        }
         val projectId = projectDetailId.value
         val projectDraft = projectNameDraft.value
         if (projectId != null && projectDraft != null) {
@@ -382,6 +438,10 @@ class TodoViewModel(
         }
     }
 
+    fun onNewTaskDetailChanged(text: String) {
+        newTaskState.update { current -> current?.copy(detail = text) }
+    }
+
     fun onNewProjectNameChanged(text: String) {
         newTaskState.update { current ->
             current?.copy(
@@ -434,7 +494,12 @@ class TodoViewModel(
         }
         viewModelScope.launch {
             newTaskState.update { it?.copy(saving = true, error = null) }
-            when (val result = taskCommands.create(current.title, current.targetPosition, null)) {
+            when (val result = taskCommands.create(
+                current.title,
+                current.targetPosition,
+                null,
+                current.detail,
+            )) {
                 is TaskCommandResult.Success -> {
                     newTaskState.value = null
                     onCreated()
@@ -502,8 +567,13 @@ class TodoViewModel(
         runTaskCommand(PendingTaskCommand.Reopen(taskId))
     }
 
-    fun createTask(title: String, position: GtdPosition, projectId: ProjectId?) {
-        runTaskCommand(PendingTaskCommand.Create(title, position, projectId))
+    fun createTask(
+        title: String,
+        position: GtdPosition,
+        projectId: ProjectId?,
+        detail: String? = null,
+    ) {
+        runTaskCommand(PendingTaskCommand.Create(title, position, projectId, detail))
     }
 
     fun moveTaskToGtd(taskId: TaskId, target: GtdPosition) {
@@ -561,7 +631,7 @@ class TodoViewModel(
 
     private suspend fun execute(command: PendingTaskCommand): TaskCommandResult = when (command) {
         is PendingTaskCommand.Create ->
-            taskCommands.create(command.title, command.position, command.projectId)
+            taskCommands.create(command.title, command.position, command.projectId, command.detail)
 
         is PendingTaskCommand.MoveToGtd -> taskCommands.moveToGtd(command.taskId, command.target)
         is PendingTaskCommand.Reopen -> taskCommands.reopen(command.taskId)

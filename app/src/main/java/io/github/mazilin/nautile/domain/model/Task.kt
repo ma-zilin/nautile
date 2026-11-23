@@ -16,6 +16,7 @@ value class TaskId(val value: Long)
  *
  * @property positionBeforeClose 结项前位置，仅用于重新打开；未结项时为 null（BR-80）
  * @property closedOn 结项发生的本地日期，统计按它归档（D-05a）
+ * @property detail 可选详情；null 表示未填写/空（FR-D-03、AC-D-09）
  */
 data class Task(
     val id: TaskId,
@@ -31,4 +32,5 @@ data class Task(
     val closedOn: LocalDate? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val detail: String? = null,
 )

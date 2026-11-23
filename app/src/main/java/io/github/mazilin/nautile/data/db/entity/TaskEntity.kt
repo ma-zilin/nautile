@@ -28,6 +28,8 @@ data class TaskEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
     val title: String,
+    /** 可选详情，TEXT 可空；旧版本迁移行保持 null（FR-D-03、AC-D-09）。 */
+    val detail: String? = null,
     @ColumnInfo(name = "project_id")
     val projectId: Long? = null,
     val position: String,
