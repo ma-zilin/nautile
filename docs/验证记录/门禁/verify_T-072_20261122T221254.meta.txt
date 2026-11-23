@@ -1,0 +1,8 @@
+task=T-072
+time=2026-11-22T22:13:14+08:00
+head=03701717d210a8f952766905878e8727fd0b47e5
+dirty_entries=7
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_T-072_20261122T221254.log

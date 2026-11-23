@@ -231,7 +231,7 @@ class AcDetailNewTaskUiT08T09Test {
             }
         }
 
-        composeRule.onNodeWithText("新建待办").assertIsDisplayed()
+        composeRule.onNodeWithText("新建").assertIsDisplayed()
         composeRule.onNodeWithText("清单：收件箱").assertIsDisplayed()
         composeRule.onNodeWithText("创建").performClick()
         composeRule.onNodeWithText("取消").performClick()
@@ -262,7 +262,7 @@ class AcDetailNewTaskUiT08T09Test {
             }
         }
 
-        composeRule.onNodeWithText("新建待办").assertIsDisplayed()
+        composeRule.onNodeWithText("新建").assertIsDisplayed()
         composeRule.onAllNodesWithText("标题不能为空").onFirst().assertIsDisplayed()
     }
 

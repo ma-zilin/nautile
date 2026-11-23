@@ -1,0 +1,35 @@
+T-072 设备执行证据摘要
+
+设备：
+- 序列号：10AF561Y5R002KL
+- adb：10AF561Y5R002KL device usb:3-10 product:PD2415M model:V2458A device:PD2415
+- vivo V2458A，Android 16（SDK 36）；执行时亮屏、解锁、用户在场；动画比例均为 1.0
+- 未受控：系统导航/边缘手势、OEM 触摸采样、通知/弹窗、字体/显示尺寸
+
+HEAD：03701717d210a8f952766905878e8727fd0b47e5
+T-070=8917a3a、T-071=ea33a7e、T-075=e2613d1、T-067=a27021c
+
+有效设备门禁（最终）：
+命令：VERIFY_CONNECTED=1 bash scripts/verify.sh T-072
+时间：2026-11-22 22:18:41 起，退出码 1
+日志：docs/验证记录/门禁/verify_T-072_20261122T221841.log
+XML：app/build/outputs/androidTest-results/connected/debug/TEST-V2458A - 16.xml
+结果：74 tests、3 failures、0 errors
+- AcAppRootT06Test：5/5
+- AcTodoT07Test：22/23；失败 AC_N_15_todo_scroll_hides_and_shows_navigation（上滑未隐藏）
+- AcDetailNewTaskUiT08T09Test：8/8
+- AcUiT071Test：7/9；失败 T_11_navigation_hides_and_shows_at_thresholds、D_03_task_detail_content_pull_requests_close
+- MigrationTest：2/2
+- 其余 instrumentation：27/27
+
+早前设备运行：
+- 22:14:56：74 tests、4 failures；额外一例 T_07_blank_project_stays_with_error 为测试断言重复节点（项目名称错误同时有 supportingText 与 error），属测试代码错误；已改为 onAllNodesWithText(...).onFirst()，原日志保留。
+- 22:18:41 为修正后的有效结果，仍有 T-11/D-03 两个产品/行为失败。
+
+失败定位：
+- T-11：TodoScreen.kt 的导航累计使用 `navigationAccumulator += consumed.y`，隐藏条件写成 `navigationAccumulator > hideThresholdPx`；上滑 consumed.y 为负，条件不成立；AC-N-15 两个测试均失败。
+- D-03：TaskDetailSheet 内容短时嵌套滚动无余量，顶部内容下拉不触发 onCloseRequested；设备实际 closes=0，拖柄路径另行保留。
+
+测试口径调整：
+- AcTodoT07Test 的 AC_G_04_title_button_opens_gtd_selector 改为 AC_G_04_independent_gtd_entry_opens_gtd_selector，点击 testTag gtd_entry；旧断言“点击收件箱标题”不再适用（T-02 独立入口）。
+- AcDetailNewTaskUiT08T09Test 的“新建待办”文案改为“新建”；旧断言保留于本记录。

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -78,7 +79,7 @@ class AcTodoT07Test {
     }
 
     @Test
-    fun AC_G_04_title_button_opens_gtd_selector() {
+    fun AC_G_04_independent_gtd_entry_opens_gtd_selector() {
         var opened = false
         composeRule.setContent {
             NautileTheme {
@@ -89,7 +90,7 @@ class AcTodoT07Test {
             }
         }
 
-        composeRule.onNodeWithText("收件箱").performClick()
+        composeRule.onNodeWithTag("gtd_entry").performClick()
 
         composeRule.runOnIdle { assertTrue(opened) }
     }
