@@ -65,6 +65,9 @@ fun ProjectDetailSheet(
     var dragTotal by remember { mutableFloatStateOf(0f) }
     val scrollState = rememberScrollState()
     var contentPull by remember { mutableFloatStateOf(0f) }
+    // 短内容没有滚动余量，nestedScroll 拿不到事件；仅在完全不可滚动时叠加纵向
+    // 拖拽层（T-059/T-076 同法），松手超过阈值仍经父层 canLeave 检查。
+    var shortPull by remember { mutableFloatStateOf(0f) }
     val contentConnection = remember(closeThreshold) {
         object : NestedScrollConnection {
             override fun onPostScroll(
@@ -106,6 +109,23 @@ fun ProjectDetailSheet(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
+                    .pointerInput(closeThreshold) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                val notScrollable =
+                                    !scrollState.canScrollBackward && !scrollState.canScrollForward
+                                if (notScrollable && dragAmount > 0f) {
+                                    change.consume()
+                                    shortPull += dragAmount
+                                }
+                            },
+                            onDragEnd = {
+                                if (shortPull > closeThreshold) onCloseRequested()
+                                shortPull = 0f
+                            },
+                            onDragCancel = { shortPull = 0f },
+                        )
+                    }
                     .verticalScroll(scrollState)
                     .nestedScroll(contentConnection),
             ) {
