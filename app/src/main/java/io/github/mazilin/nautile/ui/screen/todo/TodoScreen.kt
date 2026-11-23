@@ -138,15 +138,31 @@ fun TodoScreen(
             ): Offset {
                 if (source != NestedScrollSource.UserInput) return Offset.Zero
                 if (navigationUpdatesEnabled && consumed.y != 0f && !pullActive) {
-                    navigationAccumulator += consumed.y
-                    if (navigationVisible && navigationAccumulator > hideThresholdPx) {
-                        navigationVisible = false
-                        navigationAccumulator = 0f
-                        onNavigationVisibilityChanged(false)
-                    } else if (!navigationVisible && navigationAccumulator < -showThresholdPx) {
-                        navigationVisible = true
-                        navigationAccumulator = 0f
-                        onNavigationVisibilityChanged(true)
+                    if (navigationVisible) {
+                        // 上滑（consumed.y 为负）累计绝对值，超过 24dp 隐藏。
+                        if (consumed.y < 0f) {
+                            navigationAccumulator += -consumed.y
+                            if (navigationAccumulator > hideThresholdPx) {
+                                navigationVisible = false
+                                navigationAccumulator = 0f
+                                onNavigationVisibilityChanged(false)
+                            }
+                        } else {
+                            // 方向反转：重置累计，避免抖动。
+                            navigationAccumulator = 0f
+                        }
+                    } else {
+                        // 隐藏后下滑超过 16dp 显示；上滑反向则重置。
+                        if (consumed.y > 0f) {
+                            navigationAccumulator += consumed.y
+                            if (navigationAccumulator > showThresholdPx) {
+                                navigationVisible = true
+                                navigationAccumulator = 0f
+                                onNavigationVisibilityChanged(true)
+                            }
+                        } else {
+                            navigationAccumulator = 0f
+                        }
                     }
                 }
                 if (available.y == 0f) return Offset.Zero
