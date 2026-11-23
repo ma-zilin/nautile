@@ -1,0 +1,19 @@
+T-077 / T-081 设备执行状态
+
+HEAD：8167d3f47e2e0b1b7b9e351c75fb13de263a2886
+T-076=c8ac34d、T-080=5a3c267、T-082=a9d9a1c
+
+adb devices -l：
+10AF561Y5R002KL  no permissions (missing udev rules? user is in the plugdev group); see [http://developer.android.com/tools/device.html] usb:3-10 transport_id:1
+
+结论：设备状态不是 `device`，按任务要求停止设备部分。
+- 未执行 VERIFY_CONNECTED=1 bash scripts/verify.sh T-077。
+- 未执行 T-077/T-081 Compose 用例、MigrationTest、T-06—T-10 既有 Compose 回归与图标桌面外观检查。
+- 不使用模拟器或替身冒充设备；JVM 与 androidTest 编译结果另见两份报告。
+- 用户在场条件无法用于设备运行，因为系统未授权。
+
+未自动化/未执行项：
+- T-11 导航阈值真机复测、T-076 短内容下拉、T-082 项目详情下拉。
+- 详情字段编辑/失焦/IME、重启后详情保持、新建两行观感。
+- 迁移 v1→v2 的真机执行与旧行数据核对。
+- 手感、动画、OEM 返回、键盘体验、桌面图标外观。
