@@ -22,6 +22,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -116,5 +117,20 @@ class AcTaskDetailT081Test {
 
         assertEquals("", detail?.detailValue)
         assertNull(taskRepository.get(id)?.detail)
+    }
+
+    @Test
+    fun T_088_invalid_field_blocks_leave_and_prompts() = runTest {
+        val id = insertTask(detail = "旧详情")
+        viewModel.openTaskDetail(id)
+        viewModel.onTaskTitleChanged("   ")
+
+        val allowed = viewModel.requestDetailLeave()
+        val detail = viewModel.taskDetail.first()
+
+        assertFalse("无效标题应阻止离开", allowed)
+        assertTrue("应标记离开被阻止", detail?.leaveBlocked == true)
+        assertEquals("请先修正无效标题", detail?.error)
+        assertEquals("旧详情", taskRepository.get(id)?.detail)
     }
 }

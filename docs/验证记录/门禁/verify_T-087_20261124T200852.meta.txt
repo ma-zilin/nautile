@@ -1,0 +1,8 @@
+task=T-087
+time=2026-11-24T20:10:42+08:00
+head=5e98eb8163da825d96cda45de1e1b0ab2b9d8be0
+dirty_entries=8
+connected_requested=1
+androidtest_compile=executed
+result=FAIL
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_T-087_20261124T200852.log
