@@ -281,8 +281,13 @@ class AcUiT071Test {
             }
         }
 
-        composeRule.onNodeWithText("任务详情").performTouchInput {
-            swipeDown(startY = center.y, endY = height * 0.85f)
+        // T-085 测试口径修正（验证职责）：旧手势是在“任务详情”文字节点上
+        // swipeDown(startY = center.y, endY = height * 0.85f)，位移约 10dp，
+        // 小于 64dp 关闭阈值，几何上不可能触发关闭（T-083 失败原因之一）。
+        // 改为从全屏遮罩起手、纵向拖动约 70% 屏高（远超 64dp），覆盖 T-084 祖先观察路径；
+        // 64dp 阈值与 closes == 1 断言保持不变。
+        composeRule.onRoot().performTouchInput {
+            swipeDown(startY = height * 0.2f, endY = height * 0.9f)
         }
 
         composeRule.runOnIdle { assertEquals("内容到顶继续下拉应请求关闭", 1, closes) }

@@ -1,0 +1,8 @@
+task=T-085
+time=2026-11-23T22:25:22+08:00
+head=82a2f3d8d5cb2c59692af0bccf77778f28a02e94
+dirty_entries=3
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_T-085_20261123T222503.log

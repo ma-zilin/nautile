@@ -1,11 +1,19 @@
 package io.github.mazilin.nautile.verification
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -181,6 +189,50 @@ class AcUiT077T081Test {
         composeRule.onNodeWithText("新详情").performImeAction()
 
         composeRule.runOnIdle { assertTrue("IME Done 应触发详情提交", commits >= 1) }
+    }
+
+    @Test
+    fun T_081_title_and_detail_commit_when_focus_moves_between_fields() {
+        val titleCommits = mutableListOf<String?>()
+        val detailCommits = mutableListOf<String?>()
+        composeRule.setContent {
+            NautileTheme {
+                var titleDraft by remember { mutableStateOf<String?>(null) }
+                var detailDraft by remember { mutableStateOf<String?>(null) }
+                TaskDetailSheet(
+                    state = TaskDetailUiState(
+                        task = task(detail = "旧详情"),
+                        titleDraft = titleDraft,
+                        titleInvalid = false,
+                        saving = false,
+                        error = null,
+                        leaveBlocked = false,
+                        canReopen = false,
+                        detailDraft = detailDraft,
+                    ),
+                    onTitleChanged = { titleDraft = it },
+                    onCommitTitle = { titleCommits += titleDraft },
+                    onReopen = {},
+                    onCloseRequested = {},
+                    onDetailChanged = { detailDraft = it },
+                    onCommitDetail = { detailCommits += detailDraft },
+                )
+            }
+        }
+
+        // 标题获得焦点并输入，再切到详情字段：标题失焦应提交（T-081、FR-D-03）。
+        val titleField = {
+            composeRule.onNode(hasSetTextAction() and hasText("任务", substring = true))
+        }
+        titleField().performClick()
+        titleField().performTextInput("改")
+        composeRule.onNodeWithTag("task_detail_detail").performClick()
+        composeRule.runOnIdle { assertTrue("标题失焦应提交草稿", titleCommits.isNotEmpty()) }
+
+        // 详情获得焦点并输入，再切回标题：详情失焦应提交。
+        composeRule.onNodeWithTag("task_detail_detail").performTextInput("新详情")
+        titleField().performClick()
+        composeRule.runOnIdle { assertTrue("详情失焦应提交草稿", detailCommits.isNotEmpty()) }
     }
 
     @Test
