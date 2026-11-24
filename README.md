@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/status-scaffold%20stage-lightgrey.svg" alt="Status: scaffold stage">
+  <img src="https://img.shields.io/badge/status-S1%20implementation-blue.svg" alt="Status: S1 implementation">
 </p>
 
 ## Overview
@@ -15,11 +15,24 @@ Nautile is a personal planning, time-tracking and review app. It keeps todos, sc
 
 ## Status
 
-Scaffold stage: the Android project builds debug APKs, and a signed release APK when an external signing configuration is present; it installs and cold-starts on a vivo X200s running Android 16. It uses compileSdk 37, targetSdk 36 and minSdk 31. Room and KSP are enabled (Room 2.8.5, KSP 2.3.14), and database version 1 defines the `tasks` and `projects` tables with the schema exported under `app/schemas/`. DAO and migration tests have not been run on a device. The only screen is a placeholder todo page, and no first-release (S1) business UI is implemented yet.
+First release (S1) implementation in progress. The project builds a debug APK and, when the external signing file exists, a signed release APK. Room 2.8.5 + KSP 2.3.14 are enabled; database version is 2 with `tasks` and `projects`, the nullable task `detail` column, and schemas `1.json`/`2.json` committed under `app/schemas/`.
+
+Implemented S1 slice:
+
+- four-tab shell (todo, schedule, log, AI), settings entry on each primary page;
+- todo page with independent GTD entry, half-screen GTD selector, left/right swipe complete/abandon with project confirmation, boundary pull between positions, closed rows without swipe;
+- task and project half-screen details: edit-as-you-go title/name and task detail, invalid-field blocking, task reopen, project reopen confirmation with one retry;
+- new bottom panel with todo/project choice, optional detail line, target-position picker when adding from the ended list;
+- settings root and default-page subpage, predictive-back switch, startup default/last primary page mapping;
+- Room v1→v2 migration (`ALTER TABLE tasks ADD COLUMN detail TEXT`) registered in the app container.
+
+Device instrumentation for the recorded suite passed on a vivo V2458A (Android 16), including the third-round T-11/D-03 fixes and migration v1→v2; see `docs/验证记录/T-085_第三轮复测_2026-11-24.md`. Acceptance decisions still belong to the user; manual AC items are listed under Known limitations.
+
+Schedule, log, AI, tags, reminders, statistics and import are not implemented.
 
 ## Planned Features
 
-None of these are implemented yet. They describe the first-release scope and are not acceptance results.
+The first-release scope is listed below. Only the S1 todo/settings subset described under Status is implemented; the rest is planned and is not an acceptance result.
 
 **Plan and organize**
 
@@ -70,13 +83,22 @@ These are outside the first-release scope and are not implemented yet.
 - Dynamic Island / system capsule timing: OriginOS is supported first; it shows only the category and elapsed-time summary, a tap returns to the log page, and timing cannot be switched or ended inside the island.
 - Richer statistics and advanced charts.
 
+## Known limitations (S1)
+
+- AC-N-21 predictive-back preview composes an independent read-only instance of the lower page. It is not a snapshot of the exact previous state (the todo backdrop starts at the top of its list), and the visual result still needs manual review.
+- Whole-process restart UI restoration is not automated. Database close/reopen persistence is covered by tests, not by an app kill/relaunch test.
+- E-05a (edge/GTD/item gestures) and E-05b (predictive preview) device manual checks have not been executed.
+- OEM behavior (vivo/OriginOS), gesture feel, notification/permission popups and edge-back conflicts are only observable manually.
+- S1 has no checkbox UI, tags, reminders, statistics, schedule/log/AI modules or import. Closed rows use swipe-disabled plus a "closed" label.
+- AC-D-07 covers todo creation only (not schedule creation). Manual-review ACs are not acceptance results in this README.
+
 ## Screenshots
 
-There are no screenshots yet. The current build opens a placeholder todo page; screenshots of the todo list, calendar, log and AI page will be added as those features are implemented.
+No screenshots are committed yet. The current build opens the S1 todo page with details, new-item panel and settings; screenshots will be added when the visual review is complete.
 
 ## Getting Started
 
-Nautile can be built and installed, but no business workflow is available yet. The sections below cover the current scaffold.
+Nautile builds and runs the S1 todo/settings slice. Schedule, log, AI and the remaining first-release features are not available yet.
 
 ### Prerequisites
 
@@ -84,7 +106,12 @@ Android 12 (API 31) or later. The project uses compileSdk 37, targetSdk 36, JDK 
 
 ### Installation
 
-Build a debug APK with `./gradlew assembleDebug`; the output is `app/build/outputs/apk/debug/app-debug.apk`. Install it with `adb install -r app/build/outputs/apk/debug/app-debug.apk`. Release builds need a signing properties file outside the repository; when it is absent, the release variant is skipped.
+Build with `./gradlew assembleDebug` (or `./gradlew assembleRelease` when the external signing file exists):
+
+- debug: `app/build/outputs/apk/debug/app-debug.apk`
+- release: `app/build/outputs/apk/release/app-release.apk`
+
+Install the debug APK with `adb install -r app/build/outputs/apk/debug/app-debug.apk`. Release builds read signing properties from outside the repository; when they are absent, the release variant is skipped.
 
 ### Configuration
 
@@ -96,11 +123,11 @@ DEEPSEEK_API_KEY=<your-key>
 
 ### Database
 
-Storage uses Room and KSP (Room 2.8.5, KSP 2.3.14). Database version 1 defines the `tasks` and `projects` tables, and the exported schema is committed under `app/schemas/`. DAO and migration tests have not been run on a device.
+Storage uses Room and KSP (Room 2.8.5, KSP 2.3.14). Database version 2 defines `tasks` and `projects`, with a nullable `tasks.detail` column added by migration 1→2 (`ALTER TABLE tasks ADD COLUMN detail TEXT`). Both schemas (`1.json`, `2.json`) are committed under `app/schemas/`. Migration and DAO tests run on JVM and on a device (see the verification records).
 
 ## Usage
 
-The current build only opens a placeholder todo page. Usage workflows will be documented once the first-release features exist.
+The implemented S1 workflow: open the todo page, switch GTD positions with the left GTD entry or boundary pull, swipe rows left/right to complete or abandon, tap a task or project for the half-screen detail (edit fields as you go), use the bottom add button to create a todo or project, and open settings from the top-right entry. Predictions, default page and last page are stored in DataStore.
 
 ## Documentation
 
@@ -109,7 +136,7 @@ The current build only opens a placeholder todo page. Usage workflows will be do
 | [docs/作业要求.md](docs/作业要求.md) | Course requirements and grading criteria (Chinese) |
 | [docs/需求分析指导.md](docs/需求分析指导.md) | Requirements analysis guide and standards (advisory, no added grading criteria; Chinese) |
 | [docs/产品构想.md](docs/产品构想.md) | Product vision, decisions and first-release scope (Chinese) |
-| [docs/需求基线.md](docs/需求基线.md) | Requirements baseline v2.9: scope and acceptance criteria (Chinese) |
+| [docs/需求基线.md](docs/需求基线.md) | Requirements baseline v2.13: scope and acceptance criteria (Chinese) |
 | [docs/开发架构设计.md](docs/开发架构设计.md) | Development workflow, roles, verification and evidence rules (Chinese) |
 
 `docs/任务进度.md` and `docs/项目初始化工作纪要.md` are internal process records and are not listed here.

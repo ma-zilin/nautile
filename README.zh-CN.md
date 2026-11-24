@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="许可证：MIT"></a>
-  <img src="https://img.shields.io/badge/status-scaffold%20stage-lightgrey.svg" alt="状态：脚手架阶段">
+  <img src="https://img.shields.io/badge/status-S1%20implementation-blue.svg" alt="状态：S1 实现中">
 </p>
 
 ## 概览
@@ -15,11 +15,24 @@ Nautile 是一款面向个人的计划、时间记录与复盘应用，把待办
 
 ## 当前状态
 
-脚手架阶段：Android 工程可构建 debug APK，存在仓库外签名配置时可构建签名的 release APK；已在 vivo X200s（Android 16）上安装并冷启动。工程使用 compileSdk 37、targetSdk 36、minSdk 31。Room/KSP 已启用（Room 2.8.5、KSP 2.3.14），数据库 version 1 包含 `tasks` 与 `projects` 两张表，schema 已导出到 `app/schemas/`。DAO 与迁移测试尚未在真机执行。目前只有空壳待办页，尚未实现首版（S1）业务 UI。
+首版（S1）实现进行中：工程可构建 debug APK，存在仓库外签名配置时可构建签名的 release APK。工程使用 compileSdk 37、targetSdk 36、minSdk 31。Room/KSP 已启用（Room 2.8.5、KSP 2.3.14），数据库 version 2，包含 `tasks` 与 `projects` 两张表、可空的 `tasks.detail` 列，schema `1.json`/`2.json` 已提交到 `app/schemas/`。
 
-## 计划中的功能（首版范围，尚未实现）
+已实现的 S1 切片：
 
-以下内容均为首版范围，尚未实现，也不构成验收结果。
+- 四 tab 外壳（待办、日程、日志、AI），各一级页面顶部有设置入口；
+- 待办页：独立 GTD 入口、半屏 GTD 选择器、左右滑动完成/放弃（项目先确认）、位置边界拉动、已结项行不响应滑动；
+- 任务与项目半屏详情：标题/名称与任务详情编辑即保存、无效字段阻止离开、任务重开、项目重开确认并只重试一次；
+- 底部新建面板：待办/项目选择、可选一行详情、在已结束清单新建时的目标位置选择；
+- 设置根页与默认页子页、预测性返回开关、启动默认页与上次一级页面映射；
+- Room v1→v2 迁移（`ALTER TABLE tasks ADD COLUMN detail TEXT`）已在应用容器中注册。
+
+记录的设备插桩套件在 vivo V2458A（Android 16）上通过，含第三轮 T-11/D-03 修复与 v1→v2 迁移；见 `docs/验证记录/T-085_第三轮复测_2026-11-24.md`。验收结论仍由用户作出；人工 AC 项列在“已知限制（S1）”。
+
+日程、日志、AI、标签、提醒、统计与导入尚未实现。
+
+## 计划中的功能（首版范围）
+
+以下为首版范围。仅“当前状态”中描述的 S1 待办/设置子集已实现，其余为计划内容，不构成验收结果。
 
 **计划与组织**
 
@@ -70,13 +83,22 @@ Nautile 是一款面向个人的计划、时间记录与复盘应用，把待办
 - 灵动岛／系统胶囊计时显示：优先适配 OriginOS；只显示分类与已用时长摘要，点击回到日志页，不在岛内切换或结束计时。
 - 更丰富的统计维度与高级图表。
 
+## 已知限制（S1）
+
+- AC-N-21 的预测性返回预览组合的是下层页面的一份独立只读实例，不是上一页精确状态的快照（待办背景从列表顶部开始）；视觉结果仍需人工评审。
+- 整进程重启后的 UI 恢复未自动化；数据库关闭重开后的持久化有测试覆盖，但没有应用被杀后重启的 UI 测试。
+- E-05a（边缘/GTD/条目手势）与 E-05b（预测预览）的设备人工检查尚未执行。
+- OEM 行为（vivo/OriginOS）、手势手感、通知/权限弹窗与边缘返回冲突只能人工观察。
+- S1 没有复选框 UI、标签、提醒、统计、日程/日志/AI 模块与导入；已结项行用禁用滑动加“已结项”标签表达。
+- AC-D-07 只覆盖待办创建（不含日程创建）。需要人工评审的 AC 在本 README 中不构成验收结果。
+
 ## 界面截图
 
-暂无截图。当前版本只打开空壳待办页；待办列表、日历、日志与 AI 页面的界面将在实现后补充。
+暂未提交截图。当前构建可打开 S1 待办页、详情、新建面板与设置；视觉评审完成后补充截图。
 
 ## 快速开始
 
-Nautile 已可构建和安装，但还没有可用的业务流程。以下为当前脚手架的环境与构建方式。
+Nautile 可构建并运行 S1 待办/设置切片；日程、日志、AI 与其余首版功能尚不可用。
 
 ### 环境要求
 
@@ -84,7 +106,12 @@ Android 12（API 31）及以上。工程使用 compileSdk 37、targetSdk 36、JD
 
 ### 安装
 
-执行 `./gradlew assembleDebug` 构建 debug APK，输出位于 `app/build/outputs/apk/debug/app-debug.apk`；使用 `adb install -r app/build/outputs/apk/debug/app-debug.apk` 安装。release 构建需要仓库外的签名配置文件，缺少时跳过 release 变体。
+执行 `./gradlew assembleDebug` 构建 debug APK（存在仓库外签名文件时可用 `./gradlew assembleRelease`）：
+
+- debug：`app/build/outputs/apk/debug/app-debug.apk`
+- release：`app/build/outputs/apk/release/app-release.apk`
+
+使用 `adb install -r app/build/outputs/apk/debug/app-debug.apk` 安装。release 构建从仓库外读取签名配置，缺少时跳过 release 变体。
 
 ### 配置
 
@@ -96,11 +123,11 @@ DEEPSEEK_API_KEY=<在此填写>
 
 ### 数据库
 
-存储使用 Room 与 KSP（Room 2.8.5、KSP 2.3.14）。数据库 version 1 包含 `tasks` 与 `projects` 两张表，schema 已导出并提交到 `app/schemas/`。DAO 与迁移测试尚未在真机执行。
+存储使用 Room 与 KSP（Room 2.8.5、KSP 2.3.14）。数据库 version 2 定义 `tasks` 与 `projects`，可空的 `tasks.detail` 列由 1→2 迁移添加（`ALTER TABLE tasks ADD COLUMN detail TEXT`）。两个 schema（`1.json`、`2.json`）已提交到 `app/schemas/`。迁移与 DAO 测试在 JVM 与设备上执行（见验证记录）。
 
 ## 使用
 
-当前版本只打开空壳待办页。主要使用流程将在首版功能实现后补充。
+已实现的 S1 流程：打开待办页，用左侧 GTD 入口或边界拉动切换清单，左右滑动条目完成或放弃，点按任务或项目打开半屏详情（逐字段编辑即保存），用底部新建按钮创建待办或项目，从右上角入口打开设置。预测开关、默认页与上次页面存储在 DataStore。
 
 ## 文档
 
@@ -109,7 +136,7 @@ DEEPSEEK_API_KEY=<在此填写>
 | [docs/作业要求.md](docs/作业要求.md) | 课程作业要求与评分标准（中文） |
 | [docs/需求分析指导.md](docs/需求分析指导.md) | 需求分析指导书与标准（指导性，不新增评分项）（中文） |
 | [docs/产品构想.md](docs/产品构想.md) | 产品定位、业务决定与首版目标范围（中文） |
-| [docs/需求基线.md](docs/需求基线.md) | v2.9 需求基线：范围与验收标准（中文） |
+| [docs/需求基线.md](docs/需求基线.md) | v2.13 需求基线：范围与验收标准（中文） |
 | [docs/开发架构设计.md](docs/开发架构设计.md) | 开发流程、角色分工、验证与取证规则（中文） |
 
 `docs/任务进度.md` 与 `docs/项目初始化工作纪要.md` 属于内部过程记录，不在此列出。
