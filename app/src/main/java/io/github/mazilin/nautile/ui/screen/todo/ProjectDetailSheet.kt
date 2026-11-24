@@ -28,12 +28,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -41,6 +43,9 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
@@ -69,6 +74,13 @@ fun ProjectDetailSheet(
     val closeThreshold = with(density) { 64.dp.toPx() }
     var dragTotal by remember { mutableFloatStateOf(0f) }
     val scrollState = rememberScrollState()
+
+    // T-088：输入框聚焦或手势起点落在输入框内时，不触发遮罩/内容的下拉关闭。
+    val nameFocused = remember { mutableStateOf(false) }
+    val nameBounds = remember { mutableStateOf<Rect?>(null) }
+    val boxOrigin = remember { mutableStateOf(Offset.Zero) }
+    val gestureFromInput = remember { mutableStateOf(false) }
+
     var contentPull by remember { mutableFloatStateOf(0f) }
     val contentConnection = remember(closeThreshold) {
         object : NestedScrollConnection {
@@ -77,7 +89,9 @@ fun ProjectDetailSheet(
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                if (source != NestedScrollSource.UserInput ||
+                // T-088：输入框起手/聚焦的手势不累计，避免输入框内拖动误关。
+                if (gestureFromInput.value ||
+                    source != NestedScrollSource.UserInput ||
                     available.y <= 0f ||
                     scrollState.canScrollBackward
                 ) {
@@ -88,7 +102,9 @@ fun ProjectDetailSheet(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (contentPull > closeThreshold) onCloseRequested()
+                if (!gestureFromInput.value && contentPull > closeThreshold) {
+                    onCloseRequested()
+                }
                 contentPull = 0f
                 return Velocity.Zero
             }
@@ -99,20 +115,27 @@ fun ProjectDetailSheet(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.32f))
+            .onGloballyPositioned { boxOrigin.value = it.positionInRoot() }
             // T-084：祖先层 Initial pass 观察下拉，不与 verticalScroll 竞争；
             // 仅内容不可滚动且向下超过 64dp 时请求关闭，不消费事件、不遮挡子任务点击。
+            // T-088：输入框聚焦或起点在输入框内时整段手势不参与下拉关闭。
             .pointerInput(closeThreshold) {
                 awaitEachGesture {
                     val down = awaitFirstDown(
                         requireUnconsumed = false,
                         pass = PointerEventPass.Initial,
                     )
+                    gestureFromInput.value = nameFocused.value ||
+                        nameBounds.value?.contains(down.position + boxOrigin.value) == true
                     var totalDown = 0f
                     var started = false
                     while (true) {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!scrollState.canScrollBackward && !scrollState.canScrollForward) {
+                        if (!gestureFromInput.value &&
+                            !scrollState.canScrollBackward &&
+                            !scrollState.canScrollForward
+                        ) {
                             val dy = change.positionChange().y
                             if (!started) {
                                 if (abs(dy) < viewConfiguration.touchSlop) {
@@ -124,7 +147,9 @@ fun ProjectDetailSheet(
                             if (dy > 0f) totalDown += dy
                         }
                         if (!change.pressed) {
-                            if (totalDown > closeThreshold) onCloseRequested()
+                            if (!gestureFromInput.value && totalDown > closeThreshold) {
+                                onCloseRequested()
+                            }
                             totalDown = 0f
                             break
                         }
@@ -189,7 +214,9 @@ fun ProjectDetailSheet(
                     keyboardActions = KeyboardActions(onDone = { onCommitName() }),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .onGloballyPositioned { nameBounds.value = it.boundsInRoot() }
                         .onFocusChanged { focus ->
+                            nameFocused.value = focus.isFocused
                             if (!focus.isFocused && state.nameDraft != null) onCommitName()
                         },
                 )
