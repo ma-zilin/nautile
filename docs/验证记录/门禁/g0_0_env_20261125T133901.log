@@ -1,0 +1,187 @@
+=== G0.0 环境闸门（模拟器，非真机） ===
+created_at=2026-11-25 13:38:08 CST
+pwd=/home/wordwoods/Projects/Tride
+git_head=be9ead6cfbf82f39b375e76c219d2eee6bc4b9b3
+
+--- [1] adb devices -l ---
+List of devices attached
+emulator-5554          device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64xa transport_id:1
+
+exit=0
+
+--- [2] device props ---
+sys.boot_completed=1
+ro.build.version.sdk=36
+ro.product.cpu.abi=x86_64
+ro.product.model=sdk_gphone64_x86_64
+ro.kernel.qemu=1
+ro.build.version.release=16
+exit=0
+
+--- [2b] avd name / kvm / emulator process ---
+nautile_api36
+OK
+avd_exit=0
+crw-rw----+ 1 root kvm 10, 232 Nov 25 13:20 /dev/kvm
+
+  78452       17:56 /home/wordwoods/.local/share/android-sdk/emulator/qemu/linux-x86_64/qemu-system-x86_64-headless -avd nautile_api36 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -no-metrics
+  78457       17:56 /home/wordwoods/.local/share/android-sdk/emulator/crashpad_handler --no-rate-limit --database=/tmp/android-wordwoods/emu-crash-37.3.10.db --url=https://clients2.google.com/cr/report --annotation=prod=AndroidEmulator --annotation=ver=37.3.10-16970787 --initial-client-fd=21 --shared-client-connection
+  78557       17:56 /home/wordwoods/.local/share/android-sdk/emulator/netsimd --host-dns=127.0.0.53
+
+--- [2c] git status before smoke ---
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/emulator_boot_20261125T132329.png"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g0_0_env_20261125T133901.log"
+dirty_count=2
+
+--- [3] smoke test (timeout 900s) ---
+cmd=./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.mazilin.nautile.TodoScreenSmokeTest --rerun-tasks
+start=2026-11-25 13:38:16
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:processDebugNavigationResources
+> Task :app:parseDebugLocalResources
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugRFile
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:compileDebugNavigationResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:mergeDebugResources
+> Task :app:generateDebugAndroidTestResources
+> Task :app:packageDebugAndroidTestResources
+> Task :app:processDebugAndroidTestNavigationResources
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:javaPreCompileDebugAndroidTest
+> Task :app:parseDebugAndroidTestLocalResources
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:generateDebugAndroidTestRFile
+> Task :app:generateDebugGlobalSynthetics
+> Task :app:desugarDebugFileDependencies
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeLibDexDebug
+> Task :app:mergeDebugNativeLibs
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so. Run with --info option to learn more.
+
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeDebugAndroidTestAssets
+> Task :app:compressDebugAndroidTestAssets
+> Task :app:generateDebugAndroidTestGlobalSynthetics
+> Task :app:checkDebugAndroidTestDuplicateClasses
+> Task :app:desugarDebugAndroidTestFileDependencies
+> Task :app:mergeLibDexDebugAndroidTest
+> Task :app:checkDebugAndroidTestAarMetadata
+> Task :app:mapDebugAndroidTestSourceSetPaths
+> Task :app:compileDebugAndroidTestNavigationResources
+> Task :app:mergeDebugAndroidTestManifest
+> Task :app:processDebugAndroidTestManifest
+> Task :app:mergeDebugAndroidTestJniLibFolders
+> Task :app:mergeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :app:mergeDebugAndroidTestResources
+> Task :app:processDebugManifestForPackage
+> Task :app:stripDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebugAndroidTest
+> Task :app:writeDebugAndroidTestSigningConfigVersions
+> Task :app:processDebugAndroidTestResources
+> Task :app:processDebugResources
+> Task :app:mergeExtDexDebugAndroidTest
+> Task :app:kspDebugKotlin
+> Task :app:mergeExtDexDebug
+
+> Task :app:compileDebugKotlin
+w: file:///home/wordwoods/Projects/Tride/app/src/main/java/io/github/mazilin/nautile/MainActivity.kt:291:29 'when' is exhaustive so 'else' is redundant here.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:compressDebugJavaRes
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:mergeDebugJavaResource
+> Task :app:dexBuilderDebug
+> Task :app:kspDebugAndroidTestKotlin
+> Task :app:mergeProjectDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+
+> Task :app:compileDebugAndroidTestKotlin
+w: file:///home/wordwoods/Projects/Tride/app/src/androidTest/java/io/github/mazilin/nautile/TodoScreenSmokeTest.kt:17:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/app/src/androidTest/java/io/github/mazilin/nautile/ui/AppRootTest.kt:38:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcAppRootT06Test.kt:36:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcDetailNewTaskUiT08T09Test.kt:47:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcDetailPullT088Test.kt:43:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSettingsEntryP1Test.kt:45:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcTodoT07Test.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcUiT071Test.kt:54:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcUiT077T081Test.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+
+> Task :app:compileDebugAndroidTestJavaWithJavac NO-SOURCE
+> Task :app:compressDebugAndroidTestJavaRes
+> Task :app:mergeDebugAndroidTestJavaResource
+> Task :app:dexBuilderDebugAndroidTest
+> Task :app:mergeProjectDexDebugAndroidTest
+> Task :app:packageDebugAndroidTest
+> Task :app:createDebugAndroidTestApkListingFileRedirect
+
+> Task :app:connectedDebugAndroidTest
+Running tests on devices: nautile_api36(AVD) - 16
+
+[Incubating] Problems report is available at: file:///home/wordwoods/Projects/Tride/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 10s
+70 actionable tasks: 70 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html
+end=2026-11-25 13:38:26
+gradle_exit=0
+smoke_wall_seconds=10
+
+--- [4] 结果 XML 与退出码 ---
+xml=app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="1" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-25T05:38:25" hostname="localhost">
+  <testsuite name="io.github.mazilin.nautile.TodoScreenSmokeTest" tests="1" failures="0" errors="0" skipped="0" time="0.770" timestamp="2026-11-25T05:38:25" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="placeholder_is_displayed" classname="io.github.mazilin.nautile.TodoScreenSmokeTest" time="0.770" />
+  </testsuite>
+</testsuites>
+
+test-result-exit-code.txt=0
+xml_mtime=2026-11-25 13:38:26
+
+--- [4b] KVM 使用核实（只读，不触碰模拟器进程） ---
+6
+lrwx------ 1 wordwoods wordwoods 64 Nov 25 13:39 49 -> /dev/kvm
+lrwx------ 1 wordwoods wordwoods 64 Nov 25 13:39 50 -> anon_inode:kvm-vm
+lrwx------ 1 wordwoods wordwoods 64 Nov 25 13:39 75 -> anon_inode:kvm-vcpu:0
+lrwx------ 1 wordwoods wordwoods 64 Nov 25 13:39 76 -> anon_inode:kvm-vcpu:1
+lrwx------ 1 wordwoods wordwoods 64 Nov 25 13:39 77 -> anon_inode:kvm-vcpu:2
+lrwx------ 1 wordwoods wordwoods 64 Nov 25 13:39 78 -> anon_inode:kvm-vcpu:3
+
+--- [5] smoke 后 git 状态 ---
+be9ead6cfbf82f39b375e76c219d2eee6bc4b9b3
+ M "docs/\351\234\200\346\261\202\345\237\272\347\272\277.md"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/emulator_boot_20261125T132329.png"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g0_0_env_20261125T133901.log"
+dirty_count=3
+
+模拟器（非真机）：AVD nautile_api36 / emulator-5554 / android-36 google_apis x86_64
+
+--- [5b] 工作区异常记录（非本次操作） ---
+observed_at=2026-11-25 13:40:05
+docs/需求基线.md 在 13:38:08 采集时为干净；13:39:21 起出现 M（v2.13→v2.14），13:39:35 大小 141568→142270 仍变动=并发会话在改写
+git diff --stat:
+ ...51\234\200\346\261\202\345\237\272\347\272\277.md" | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
+
+=== 判决：PASS（设备在线 + 冒烟 PASS + 证据完整，模拟器非真机）；工作区第 5 项存在外部并发改动，已单列待确认 ===

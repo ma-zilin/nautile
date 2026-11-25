@@ -1,0 +1,45 @@
+gate=G0.0 环境闸门（模拟器，非真机）
+created_at=2026-11-25 13:38:08–13:39:51 CST
+head=be9ead6cfbf82f39b375e76c219d2eee6bc4b9b3
+head_expected=be9ead6cfbf82f39b375e76c219d2eee6bc4b9b3
+head_match=yes
+dirty=3
+dirty_pre_smoke=2
+dirty_pre_smoke_note=13:38:08 时 git status --porcelain 2 条：未跟踪 png（G-start 排除项）+ 本证据 log（本次授权写入）
+dirty_after_smoke=3
+dirty_after_smoke_note=13:39:21/13:39:35 出现 M docs/需求基线.md（v2.13→v2.14，我在 13:38:08 采集时不存在，非本次操作产生；文件仍在被并发会话改写，13:39:21 141568B→13:39:35 142270B）；另有未跟踪 png 与本 log
+device=emulator-5554
+device_state=device
+device_line=emulator-5554 device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64xa transport_id:1
+avd=nautile_api36
+sdk=36
+release=16
+abi=x86_64
+boot_completed=1
+kernel_qemu=1
+accel=kvm
+accel_evidence=/proc/78452/fd 下有 /dev/kvm、anon_inode:kvm-vm、kvm-vcpu:0..3；qemu-system-x86_64-headless 进程 78452
+emulator_version=37.3.10 (build_id 16970787)
+system_image=system-images;android-36;google_apis;x86_64
+smoke_class=io.github.mazilin.nautile.TodoScreenSmokeTest
+smoke_cmd=./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.mazilin.nautile.TodoScreenSmokeTest --rerun-tasks
+smoke_exit_code=0
+smoke_gradle=BUILD SUCCESSFUL in 10s / 70 actionable tasks: 70 executed（--rerun-tasks，非 UP-TO-DATE 跳过）
+smoke_tests=1
+smoke_failures=0
+smoke_errors=0
+smoke_skipped=0
+smoke_case=placeholder_is_displayed time=0.770s
+smoke_seconds=10
+smoke_seconds_note=shell 墙钟 13:38:16→13:38:26；suite time 报 0.000 但 testcase time 0.770s，用例确已执行
+smoke_xml=app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml
+smoke_xml_timestamp=2026-11-25T05:38:25Z (=13:38:25 CST)
+test_result_exit_code=0
+business_code_changed_by_verifier=no
+commit_created=no
+emulator_restarted_or_stopped_by_verifier=no
+log=docs/验证记录/门禁/g0_0_env_20261125T133901.log
+result=PASS
+result_note=环境闸门三项判据（设备在线 / 冒烟 PASS / 证据完整含“模拟器（非真机）”标注）全部满足；第 5 项工作区核对发现并发外部改动，单列为工作区异常，不影响闸门判决
+worktree_anomaly=docs/需求基线.md 被并发会话改为 v2.14（非本次操作，需确认归属）
+not_executed=未跑全量 connectedAndroidTest；未做真机验证；未重启/新建/关闭模拟器；未验证 UI 观感与手势体验（人工项）
