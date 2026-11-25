@@ -1,0 +1,8 @@
+task=PILOT-P1
+time=2026-11-25T13:04:04+08:00
+head=76146b850a056ccc4ffe9906ecdf2a8827c3c8a5
+dirty_entries=2
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_PILOT-P1_20261125T130300.log

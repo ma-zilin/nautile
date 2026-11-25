@@ -1,0 +1,648 @@
+===== Tride 模拟器环境安装取证日志 =====
+开始时间: 2026-11-25 13:12:24 CST
+主机: Legion
+工作目录: /home/wordwoods/Projects/Tride
+SDK=/home/wordwoods/.local/share/android-sdk
+
+===== [2026-11-25 13:12:24] CMD: uname -a
+Linux Legion 7.0.0-43-generic #43~24.04.1-Ubuntu SMP PREEMPT_DYNAMIC Sat Oct 31 06:52:47 UTC 2 x86_64 x86_64 x86_64 GNU/Linux
+----- exit=0
+===== [2026-11-25 13:12:24] CMD: uname -m
+x86_64
+----- exit=0
+===== [2026-11-25 13:12:24] CMD: id
+uid=1000(wordwoods) gid=1000(wordwoods) groups=1000(wordwoods),4(adm),20(dialout),24(cdrom),27(sudo),30(dip),46(plugdev),100(users),114(lpadmin),983(docker),984(ollama)
+----- exit=0
+===== [2026-11-25 13:12:24] CMD: java -version
+openjdk version "21.0.13.1" 2026-11-17
+OpenJDK Runtime Environment (build 21.0.13.1+2-1-24.04.1-Ubuntu)
+OpenJDK 64-Bit Server VM (build 21.0.13.1+2-1-24.04.1-Ubuntu, mixed mode, sharing)
+----- exit=0
+===== [2026-11-25 13:12:24] CMD: df -h /home
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p8  188G  138G   40G  78% /
+----- exit=0
+===== [2026-11-25 13:12:24] CMD: free -g
+               total        used        free      shared  buff/cache   available
+Mem:              30          14          11           0           5          16
+Swap:              7           0           7
+----- exit=0
+===== [2026-11-25 13:12:24] CMD: ls -l /dev/kvm
+crw-rw----+ 1 root kvm 10, 232 Nov 25 12:54 /dev/kvm
+----- exit=0
+===== [2026-11-25 13:12:24] CMD: getfacl /dev/kvm
+getfacl: Removing leading '/' from absolute path names
+# file: dev/kvm
+# owner: root
+# group: kvm
+user::rw-
+user:wordwoods:rw-
+group::rw-
+mask::rw-
+other::---
+
+----- exit=0
+===== [2026-11-25 13:12:24] CMD: grep kvm /proc/misc
+232 kvm
+----- exit=0
+===== [2026-11-25 13:12:24] CMD: /home/wordwoods/.local/share/android-sdk/cmdline-tools/latest/bin/sdkmanager --version
+WARNING: The SDK Manager CLI tool (sdkmanager) is deprecated. Android CLI will be used instead.
+The 'android' binary can also be found in the cmdline-tools directory, and 'android sdk' is the replacement for 'sdkmanager'.
+To learn more about the Android CLI and how to use it, see the documentation (https://d.android.com/tools/agents/android-cli)
+
+1.1.16919734 (Android CLI)
+----- exit=0
+===== [2026-11-25 13:12:25] CMD: /home/wordwoods/.local/share/android-sdk/cmdline-tools/latest/bin/sdkmanager --list_installed
+WARNING: The SDK Manager CLI tool (sdkmanager) is deprecated. Android CLI will be used instead.
+The 'android' binary can also be found in the cmdline-tools directory, and 'android sdk' is the replacement for 'sdkmanager'.
+To learn more about the Android CLI and how to use it, see the documentation (https://d.android.com/tools/agents/android-cli)
+
+Installed packages:
+  build-tools/36.0.0             36.0.0                      Android SDK Build-Tools 36             
+  cmdline-tools/latest           unknown   ->        23.0.0  Android SDK Command-line Tools (latest)
+  platform-tools                 37.0.1    ->        37.0.3  Android SDK Platform-Tools             
+  platforms/android-37.0         2.0.0                       Android SDK Platform 37.0              
+----- exit=0
+===== [2026-11-25 13:12:26] CMD: ls -1 /home/wordwoods/.local/share/android-sdk
+build-tools
+cmdline-tools
+licenses
+platforms
+platform-tools
+----- exit=0
+预检记录完成: 2026-11-25 13:12:26
+===== [2026-11-25 13:12:32] CMD: yes | sdkmanager --licenses  (沙箱内首次尝试)
+WARNING: The SDK Manager CLI tool (sdkmanager) is deprecated. Android CLI will be used instead.
+The 'android' binary can also be found in the cmdline-tools directory, and 'android sdk' is the replacement for 'sdkmanager'.
+To learn more about the Android CLI and how to use it, see the documentation (https://d.android.com/tools/agents/android-cli)
+
+Warning: The --licenses option is no longer needed.
+----- exit=
+===== [2026-11-25 13:12:35] CMD: ls -l $SDK/licenses && cat $SDK/licenses/android-sdk-license
+total 4
+-rw-rw-r-- 1 wordwoods wordwoods 41 Nov 15 16:21 android-sdk-license
+----- exit=0
+
+24333f8a63b6825ea9c5514f83c2829b004d1fee----- exit=0
+===== [2026-11-25 13:12:40] CMD: sdkmanager --list | grep 可用镜像/emulator
+  emulator                                                                                37.3.10                                Android Emulator                                                                
+  platform-tools                                                                          37.0.1               ->        37.0.3  Android SDK Platform-Tools                                                      
+  platform-tools                                                                          37.0.3                                 Android SDK Platform-Tools                                                      
+----- exit=0
+===== [2026-11-25 13:12:45] CMD: sdkmanager --list | grep 可用镜像/emulator
+  emulator                                                                                37.3.10                                Android Emulator                                                                
+  platform-tools                                                                          37.0.1               ->        37.0.3  Android SDK Platform-Tools                                                      
+  platform-tools                                                                          37.0.3                                 Android SDK Platform-Tools                                                      
+----- exit=0
+===== [2026-11-25 13:13:14] CMD: sdkmanager 'emulator' 'platform-tools' 'system-images;android-36;google_apis;x86_64'
+WARNING: The SDK Manager CLI tool (sdkmanager) is deprecated. Android CLI will be used instead.
+The 'android' binary can also be found in the cmdline-tools directory, and 'android sdk' is the replacement for 'sdkmanager'.
+To learn more about the Android CLI and how to use it, see the documentation (https://d.android.com/tools/agents/android-cli)
+
+https://dl.google.com/android/repository/platform-tools_r37.0.3-linux.zip...
+https://dl.google.com/android/repository/emulator-linux_x64-16970787.zip...
+https://dl.google.com/android/repository/sys-img/google_apis/x86_64-36_r07.zip...
+Unzipping platform-tools......
+Unzipping emulator......
+Unzipping system-images/android-36/google_apis/x86_64......
+----- exit=0 elapsed=352s
+===== [2026-11-25 13:19:10] CMD: sdkmanager 'emulator' 'platform-tools' 'system-images;android-36;google_apis;x86_64'
+WARNING: The SDK Manager CLI tool (sdkmanager) is deprecated. Android CLI will be used instead.
+The 'android' binary can also be found in the cmdline-tools directory, and 'android sdk' is the replacement for 'sdkmanager'.
+To learn more about the Android CLI and how to use it, see the documentation (https://d.android.com/tools/agents/android-cli)
+
+----- exit=0 elapsed=2s
+===== [2026-11-25 13:19:18] CMD: ls -1 /home/wordwoods/.local/share/android-sdk/system-images/android-36/google_apis/x86_64
+advancedFeatures.ini
+build.prop
+data
+encryptionkey.img
+kernel_cmdline.txt
+kernel-ranchu
+NOTICE.txt
+package.xml
+ramdisk.img
+source.properties
+system.img
+vendor.img
+VerifiedBootParams.textproto
+----- exit=0
+===== [2026-11-25 13:19:18] CMD: /home/wordwoods/.local/share/android-sdk/cmdline-tools/latest/bin/sdkmanager --list_installed
+WARNING: The SDK Manager CLI tool (sdkmanager) is deprecated. Android CLI will be used instead.
+The 'android' binary can also be found in the cmdline-tools directory, and 'android sdk' is the replacement for 'sdkmanager'.
+To learn more about the Android CLI and how to use it, see the documentation (https://d.android.com/tools/agents/android-cli)
+
+Installed packages:
+  build-tools/36.0.0                                  36.0.0                      Android SDK Build-Tools 36                
+  cmdline-tools/latest                                unknown   ->        23.0.0  Android SDK Command-line Tools (latest)   
+  emulator                                            37.3.10                     Android Emulator                          
+  platform-tools                                      37.0.3                      Android SDK Platform-Tools                
+  platforms/android-37.0                              2.0.0                       Android SDK Platform 37.0                 
+  system-images/android-36/google_apis/x86_64         7.0.0                       Google APIs Intel x86_64 Atom System Image
+----- exit=0
+accel:
+12
+Could not open /dev/kvm : Permission denied
+accel
+----- exit=12
+===== [2026-11-25 13:19:24] CMD: ls -1 /home/wordwoods/.local/share/android-sdk/system-images/android-36/google_apis/x86_64
+advancedFeatures.ini
+build.prop
+data
+encryptionkey.img
+kernel_cmdline.txt
+kernel-ranchu
+NOTICE.txt
+package.xml
+ramdisk.img
+source.properties
+system.img
+vendor.img
+VerifiedBootParams.textproto
+----- exit=0
+===== [2026-11-25 13:19:24] CMD: /home/wordwoods/.local/share/android-sdk/cmdline-tools/latest/bin/sdkmanager --list_installed
+WARNING: The SDK Manager CLI tool (sdkmanager) is deprecated. Android CLI will be used instead.
+The 'android' binary can also be found in the cmdline-tools directory, and 'android sdk' is the replacement for 'sdkmanager'.
+To learn more about the Android CLI and how to use it, see the documentation (https://d.android.com/tools/agents/android-cli)
+
+Installed packages:
+  build-tools/36.0.0                                  36.0.0                      Android SDK Build-Tools 36                
+  cmdline-tools/latest                                unknown   ->        23.0.0  Android SDK Command-line Tools (latest)   
+  emulator                                            37.3.10                     Android Emulator                          
+  platform-tools                                      37.0.3                      Android SDK Platform-Tools                
+  platforms/android-37.0                              2.0.0                       Android SDK Platform 37.0                 
+  system-images/android-36/google_apis/x86_64         7.0.0                       Google APIs Intel x86_64 Atom System Image
+----- exit=0
+accel:
+0
+KVM (version 12) is installed and usable.
+accel
+----- exit=0
+===== [2026-11-25 13:19:29] CMD: echo no | avdmanager create avd -n nautile_api36 -k system-images;android-36;google_apis;x86_64 -d pixel_6 --force
+Auto-selecting single ABI x86_64
+----- exit=0
+===== [2026-11-25 13:19:30] CMD: avdmanager list avd
+Available Android Virtual Devices:
+    Name: nautile_api36
+  Device: pixel_6 (Google)
+    Path: /home/wordwoods/.android/avd/nautile_api36.avd
+  Target: Google APIs (Google Inc.)
+          Based on: Android 16.0 ("Baklava") Tag/ABI: google_apis/x86_64
+  Sdcard: 512 MB
+----- exit=0
+===== [2026-11-25 13:19:36] CMD: echo no | avdmanager create avd -n nautile_api36 -k system-images;android-36;google_apis;x86_64 -d pixel_6 --force
+Auto-selecting single ABI x86_64
+----- exit=0
+===== [2026-11-25 13:19:37] CMD: avdmanager list avd
+Available Android Virtual Devices:
+    Name: nautile_api36
+  Device: pixel_6 (Google)
+    Path: /home/wordwoods/.android/avd/nautile_api36.avd
+  Target: Google APIs (Google Inc.)
+          Based on: Android 16.0 ("Baklava") Tag/ABI: google_apis/x86_64
+  Sdcard: 512 MB
+----- exit=0
+===== [2026-11-25 13:19:42] CMD: grep 关键项 ~/.android/avd/nautile_api36.avd/config.ini
+PlayStore.enabled=no
+abi.type=x86_64
+disk.dataPartition.size=10G
+hw.cpu.arch=x86_64
+hw.gpu.mode=auto
+hw.lcd.density=420
+hw.lcd.height=2400
+hw.lcd.width=1080
+hw.ramSize=2G
+image.sysdir.1=system-images/android-36/google_apis/x86_64/
+tag.id=google_apis
+tag.ids=google_apis
+----- exit=0
+===== [2026-11-25 13:20:00] CMD: nohup emulator -avd nautile_api36 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -no-metrics > /tmp/nautile_emulator.log 2>&1 &
+----- 启动命令 PID=78315
+===== [2026-11-25 13:20:11] CMD: nohup emulator -avd nautile_api36 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -no-metrics > /tmp/nautile_emulator.log 2>&1 &
+----- 启动命令 PID=78452
+===== [2026-11-25 13:20:28] CMD: adb wait-for-device
+----- exit=0 (wait-for-device 返回)
+===== [2026-11-25 13:20:37] boot_completed=1 耗时 9s（自 wait 脚本启动计）
+===== [2026-11-25 13:20:42] CMD: ps -o pid,lstart,etime -p 78452
+    PID                  STARTED     ELAPSED CMD
+  78452 Wed Nov 25 13:20:11 2026       00:30 /home/wordwoods/.local/share/android-sdk/emulator/qemu/linux-x86_64/qemu-system-x86_64-headless -avd nautile_api36 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -no-metrics
+===== [2026-11-25 13:20:42] CMD: adb devices -l
+List of devices attached
+emulator-5554          device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64xa transport_id:1
+
+===== [2026-11-25 13:20:42] CMD: getprop 关键属性
+sys.boot_completed=1
+ro.build.version.sdk=36
+ro.product.cpu.abi=x86_64
+ro.build.version.release=16
+ro.kernel.qemu=1
+ro.build.version.incremental=13894323
+ro.product.model=sdk_gphone64_x86_64
+ro.product.device=emu64xa
+ro.boot.qemu.avd_name=nautile_api36
+dev.bootcomplete=1
+===== [2026-11-25 13:20:42] CMD: adb shell getprop | grep -E 'qemu|goldfish|ranchu'
+[init.svc.android-hardware-media-c2-goldfish-hal-1-0]: [running]
+[init.svc.goldfish-logcat]: [running]
+[init.svc.qemu-device-state]: [stopped]
+[init.svc.qemu-props]: [running]
+[init.svc.qemu-props-bootcomplete]: [stopped]
+[init.svc.ranchu-adb-setup]: [stopped]
+[init.svc.ranchu-net]: [stopped]
+[init.svc.ranchu-setup]: [stopped]
+[qemu.sf.lcd_density]: [420]
+[ro.boot.hardware]: [ranchu]
+[ro.boot.hardware.vulkan]: [ranchu]
+[ro.boot.qemu]: [1]
+[ro.boot.qemu.adb.pubkey]: [QAAAAGfiy2yp5qnmiKkAXHYlhnzpyehw2JxjKo0mSoRm1o2uRbAek0B6sAXSyjUFQ/CzRdli3nEcpWtAu/yExgx9qyaCNDd6fPANexA/7dcbK79iI5GKK/olXFwG9R2Cc18EPKnvNvAS/B89kOose3JS7UBjfMfluk8ZKArv0gkZHpHlQCJ9qCeFZZRcbI0obrRMRCW/XrLyvqRCebQk6Du2AC6aJdRVT3iNV9tt8HxWnnTETH7leX8V8rqdkqofMKE8wD2xioptzHbu62K+yF31YuNwThsFEBAdRNzm0nc+ml72SnNK1Hz8vS3CkNhUOHcP4dxJzqDIM8YDf/DewvlAodDG6tC0UMKxQ0+ZJ6mT4tuzC/K7iIP0eROIV5zm+hfjsd0FenAWA2ZpDfrNCJGaCLtGCvD9kYGmSrubveS5aj8mrxrJZPKD/CnSBJe4t5sywYLs3dQDUzmbnLi5wwY2sZBrZWFNlvVzOXgjiXyr4rdlYrMt1MyyyN4nerbg1S5pLyMjISMSfaaY+Nt/pW7OTNWqI3FcchsGCXjG+Mf1w7DGkTmE2ZhZnM1rUCOvZ9gCmbnzEBYiKcKDYOaPQBRsj6aaF1J49ZLt26s0eP3tQJB4YMSzAx/7ENSvX/uzbVJhTkekoPCxkIJsB6ZPgNgYjaM/JRm8RZRdIJJQXukcmnKxk0rvJwEAAQA= wordwoods@unknown]
+[ro.boot.qemu.avd_name]: [nautile_api36]
+[ro.boot.qemu.camera_hq_edge_processing]: [0]
+[ro.boot.qemu.camera_protocol_ver]: [1]
+[ro.boot.qemu.cpuvulkan.version]: [4206592]
+[ro.boot.qemu.gltransport.drawFlushInterval]: [800]
+[ro.boot.qemu.gltransport.name]: [pipe]
+[ro.boot.qemu.hwcodec.avcdec]: [2]
+===== [2026-11-25 13:20:56] CMD: adb shell settings put global window_animation_scale 0
+----- exit=0
+===== [2026-11-25 13:20:57] CMD: adb shell settings put global transition_animation_scale 0
+----- exit=0
+===== [2026-11-25 13:20:57] CMD: adb shell settings put global animator_duration_scale 0
+----- exit=0
+===== [2026-11-25 13:20:57] CMD: 读回三项动画缩放
+window_animation_scale=0
+transition_animation_scale=0
+animator_duration_scale=0
+===== [2026-11-25 13:20:57] CMD: wc -l /tmp/nautile_emulator.log
+170 /tmp/nautile_emulator.log
+
+################ 汇总 ################
+完成时间: 2026-11-25 13:21:14 CST
+镜像: system-images;android-36;google_apis;x86_64 (rev 7.0.0, Android 16 / API 36)
+emulator: Android emulator version 37.3.10.0 (build_id 16970787) (CL:N/A)
+accel-check: KVM (version 12) is installed and usable. (exit=0)
+AVD: nautile_api36 / device pixel_6 (Google) / 1080x2400 @420dpi / ram 2G(运行时提升至 2560MB) / data 10G
+模拟器进程: PID=78452 (qemu-system-x86_64-headless)
+进程启动时间: Wed Nov 25 13:20:11 2026
+boot_completed=1 观测时间: 2026-11-25 13:20:37 → 自进程启动约 26s；wait 脚本自身计时 9s
+设备: emulator-5554	device
+adb shell getprop 结果: sdk=36 abi=x86_64 release=16 ro.kernel.qemu=1 model=sdk_gphone64_x86_64
+降噪: window/transition/animator_duration_scale 均=0
+模拟器保持运行，未关闭。
+
+################ 附: 模拟器启动日志 /tmp/nautile_emulator.log (170 行) ################
+INFO         | Android emulator version 37.3.10.0 (build_id 16970787) (CL:N/A)
+INFO         | Graphics backend: gfxstream
+INFO         | Found systemPath /home/wordwoods/.local/share/android-sdk/system-images/android-36/google_apis/x86_64/
+INFO         | Guest usage of host flag 'VulkanVirtualQueue' will be ignored.
+INFO         | Increasing RAM size to 2560MB
+INFO         | Guest GLES Driver: Auto (ext controls)
+INFO         | emuglConfig_init: vulkan_mode_selected:swiftshader gles_mode_selected:swiftshader
+INFO         | Checking system compatibility:
+INFO         |   Checking: hasSufficientDiskSpace
+INFO         |      Ok: Disk space requirements to run avd: `nautile_api36` are met
+INFO         |   Checking: hasSufficientHwGpu
+INFO         |      Ok: Hardware GPU compatibility checks are not required
+INFO         |   Checking: hasSufficientSystem
+INFO         |      Ok: System requirements to run avd: `nautile_api36` are met
+WARNING      | Feature QuickbootFileBacked is disabled due to stability issues, if you really want that, the environment variable ANDROID_EMU_FORCE_QUICKBOOT_FILE_BACKED need to set to 1
+INFO         | Storing crashdata in: /tmp/android-wordwoods/emu-crash-37.3.10.db, detection is enabled for process: 78452
+INFO         | Initializing gfxstream backend
+INFO         | startOpenglesRendererImpl: gpu info
+INFO         | 
+INFO         | initIcdPaths: ICD set to 'swiftshader', using Swiftshader ICD
+INFO         | Setting ICD filenames for the loader = /home/wordwoods/.local/share/android-sdk/emulator/lib64/vulkan/vk_swiftshader_icd.json
+INFO         | SharedLibrary::open for [/home/wordwoods/.local/share/android-sdk/emulator/qemu/linux-x86_64/lib64/vulkan/libvulkan.so]
+INFO         | SharedLibrary::open for [/home/wordwoods/.local/share/android-sdk/emulator/qemu/linux-x86_64/lib64/vulkan/libvulkan.so.1]
+INFO         | SharedLibrary::open for [/home/wordwoods/.local/share/android-sdk/emulator/lib64/vulkan/libvulkan.so]
+INFO         | Added library: /home/wordwoods/.local/share/android-sdk/emulator/lib64/vulkan/libvulkan.so
+INFO         | Selecting Vulkan device: SwiftShader Device (Subzero), Version: 1.3.0
+INFO         | Using Vulkan externalMemoryMode: OpaqueFd for VkEmulation
+INFO         | Format VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16 does not support YCbCr sampler conversion
+INFO         | SharedLibrary::open for [libX11]
+INFO         | SharedLibrary::open for [libX11-xcb]
+WARNING      | Could not open libX11-xcb.so, try libX11-xcb.so.1
+INFO         | SharedLibrary::open for [libX11-xcb.so.1]
+INFO         | queryConfigs: Host EGL config 0x10 was not added
+INFO         | queryConfigs: Host EGL config 0x11 was not added
+INFO         | queryConfigs: Host EGL config 0x12 was not added
+INFO         | queryConfigs: Host EGL config 0x13 was not added
+INFO         | queryConfigs: Host EGL config 0x14 was not added
+INFO         | queryConfigs: Host EGL config 0x15 was not added
+INFO         | queryConfigs: Host EGL config 0x17 was not added
+INFO         | queryConfigs: Host EGL config 0x18 was not added
+INFO         | queryConfigs: Host EGL config 0x19 was not added
+INFO         | queryConfigs: Host EGL config 0x1a was not added
+INFO         | queryConfigs: Host EGL config 0x1b was not added
+INFO         | queryConfigs: Host EGL config 0x1c was not added
+INFO         | queryConfigs: Host EGL config 0x1d was not added
+INFO         | queryConfigs: Host EGL config 0x1e was not added
+INFO         | queryConfigs: Host EGL config 0x1f was not added
+INFO         | queryConfigs: Host EGL config 0x21 was not added
+INFO         | queryConfigs: Host EGL config 0x22 was not added
+INFO         | queryConfigs: Host EGL config 0x23 was not added
+INFO         | queryConfigs: Host EGL config 0x24 was not added
+INFO         | queryConfigs: Host EGL config 0x25 was not added
+INFO         | queryConfigs: Host EGL config 0x26 was not added
+INFO         | queryConfigs: Host EGL config 0x27 was not added
+INFO         | queryConfigs: Host EGL config 0x28 was not added
+INFO         | queryConfigs: Host EGL config 0x29 was not added
+INFO         | queryConfigs: Host EGL config 0x2a was not added
+INFO         | queryConfigs: Host EGL config 0x2b was not added
+INFO         | queryConfigs: Host EGL config 0x2c was not added
+INFO         | queryConfigs: Host EGL config 0x2d was not added
+INFO         | queryConfigs: Host EGL config 0x2e was not added
+INFO         | queryConfigs: Host EGL config 0x2f was not added
+INFO         | queryConfigs: Host EGL config 0x30 was not added
+INFO         | queryConfigs: Host EGL config 0x31 was not added
+INFO         | queryConfigs: Host EGL config 0x32 was not added
+INFO         | queryConfigs: Host EGL config 0x33 was not added
+INFO         | queryConfigs: Host EGL config 0x35 was not added
+INFO         | queryConfigs: Host EGL config 0x36 was not added
+INFO         | queryConfigs: Host EGL config 0x37 was not added
+INFO         | queryConfigs: Host EGL config 0x38 was not added
+INFO         | queryConfigs: Host EGL config 0x39 was not added
+INFO         | queryConfigs: Host EGL config 0x3a was not added
+INFO         | queryConfigs: Host EGL config 0x3b was not added
+INFO         | queryConfigs: Host EGL config 0x3c was not added
+INFO         | queryConfigs: Host EGL config 0x3d was not added
+INFO         | queryConfigs: Host EGL config 0x3f was not added
+INFO         | queryConfigs: Host EGL config 0x40 was not added
+INFO         | queryConfigs: Host EGL config 0x41 was not added
+INFO         | queryConfigs: Host EGL config 0x42 was not added
+INFO         | queryConfigs: Host EGL config 0x43 was not added
+INFO         | queryConfigs: Host EGL config 0x44 was not added
+INFO         | queryConfigs: Host EGL config 0x45 was not added
+INFO         | queryConfigs: Host EGL config 0x46 was not added
+INFO         | queryConfigs: Host EGL config 0x47 was not added
+INFO         | queryConfigs: Host EGL config 0x48 was not added
+INFO         | queryConfigs: Host EGL config 0x49 was not added
+INFO         | queryConfigs: Host EGL config 0x4a was not added
+INFO         | queryConfigs: Host EGL config 0x4b was not added
+INFO         | queryConfigs: Host EGL config 0x1 was not added
+INFO         | queryConfigs: Host EGL config 0x2 was not added
+INFO         | queryConfigs: Host EGL config 0x3 was not added
+INFO         | queryConfigs: Host EGL config 0x5 was not added
+INFO         | queryConfigs: Host EGL config 0x6 was not added
+INFO         | queryConfigs: Host EGL config 0x7 was not added
+INFO         | queryConfigs: Host EGL config 0x8 was not added
+INFO         | queryConfigs: Host EGL config 0xa was not added
+INFO         | queryConfigs: Host EGL config 0xb was not added
+INFO         | queryConfigs: Host EGL config 0xc was not added
+INFO         | queryConfigs: Host EGL config 0xd was not added
+INFO         | queryConfigs: Host EGL config 0xe was not added
+INFO         | queryConfigs: Host EGL config 0xf was not added
+INFO         | Initializing VkEmulation features:
+INFO         |     glInteropSupported: false
+INFO         |     useDeferredCommands: true
+INFO         |     createResourceWithRequirements: true
+INFO         |     useVulkanComposition: false
+INFO         |     useVulkanNativeSwapchain: false
+INFO         |     enable guestRenderDoc: false
+INFO         |     enable Ycbcr emulation: false
+INFO         |     guestVulkanOnly: false
+INFO         |     useDedicatedAllocations: false
+INFO         |     guestVulkanMaxApiVersion: 1.3.0
+INFO         |     enableProtectedMemoryEmulation: false
+INFO         |     VulkanDisableShaderFloatControls2: disabled ((vk_util::extensionSupported(mDeviceInfo.extensions, VK_KHR_SHADER_FLOAT_CONTROLS_2_EXTENSION_NAME) || mDeviceInfo.physdevProps.apiVersion >= VK_API_VERSION_1_4) && mDeviceInfo.physdevProps.vendorID == 0x1010)
+INFO         | Graphics Adapter Vendor Google (Google Inc.)
+INFO         | Graphics Adapter Android Emulator OpenGL ES Translator (Google SwiftShader)
+INFO         | Graphics API Version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+INFO         | Graphics API Extensions GL_OES_EGL_sync GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_depth24 GL_OES_depth32 GL_OES_element_index_uint GL_OES_texture_float GL_OES_texture_float_linear GL_OES_compressed_paletted_texture GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth_texture GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_packed_depth_stencil GL_OES_vertex_half_float GL_OES_standard_derivatives GL_OES_texture_npot GL_OES_rgb8_rgba8 GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_texture_format_BGRA8888 GL_APPLE_texture_format_BGRA8888 
+INFO         | Graphics Device Extensions N/A
+INFO         | Disabling sparse binding feature support
+INFO         | Sending adb public key [QAAAAGfiy2yp5qnmiKkAXHYlhnzpyehw2JxjKo0mSoRm1o2uRbAek0B6sAXSyjUFQ/CzRdli3nEcpWtAu/yExgx9qyaCNDd6fPANexA/7dcbK79iI5GKK/olXFwG9R2Cc18EPKnvNvAS/B89kOose3JS7UBjfMfluk8ZKArv0gkZHpHlQCJ9qCeFZZRcbI0obrRMRCW/XrLyvqRCebQk6Du2AC6aJdRVT3iNV9tt8HxWnnTETH7leX8V8rqdkqofMKE8wD2xioptzHbu62K+yF31YuNwThsFEBAdRNzm0nc+ml72SnNK1Hz8vS3CkNhUOHcP4dxJzqDIM8YDf/DewvlAodDG6tC0UMKxQ0+ZJ6mT4tuzC/K7iIP0eROIV5zm+hfjsd0FenAWA2ZpDfrNCJGaCLtGCvD9kYGmSrubveS5aj8mrxrJZPKD/CnSBJe4t5sywYLs3dQDUzmbnLi5wwY2sZBrZWFNlvVzOXgjiXyr4rdlYrMt1MyyyN4nerbg1S5pLyMjISMSfaaY+Nt/pW7OTNWqI3FcchsGCXjG+Mf1w7DGkTmE2ZhZnM1rUCOvZ9gCmbnzEBYiKcKDYOaPQBRsj6aaF1J49ZLt26s0eP3tQJB4YMSzAx/7ENSvX/uzbVJhTkekoPCxkIJsB6ZPgNgYjaM/JRm8RZRdIJJQXukcmnKxk0rvJwEAAQA= wordwoods@unknown]
+INFO         | Userspace boot properties:
+INFO         |   androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:06.0
+INFO         |   androidboot.dalvik.vm.heapsize=576m
+INFO         |   androidboot.debug.hwui.renderer=skiagl
+INFO         |   androidboot.debug.sf.nobootanimation=1
+INFO         |   androidboot.hardware=ranchu
+INFO         |   androidboot.hardware.gltransport=pipe
+INFO         |   androidboot.hardware.vulkan=ranchu
+INFO         |   androidboot.logcat=*:V
+INFO         |   androidboot.opengles.version=196608
+INFO         |   androidboot.qemu=1
+INFO         |   androidboot.qemu.adb.pubkey=QAAAAGfiy2yp5qnmiKkAXHYlhnzpyehw2JxjKo0mSoRm1o2uRbAek0B6sAXSyjUFQ/CzRdli3nEcpWtAu/yExgx9qyaCNDd6fPANexA/7dcbK79iI5GKK/olXFwG9R2Cc18EPKnvNvAS/B89kOose3JS7UBjfMfluk8ZKArv0gkZHpHlQCJ9qCeFZZRcbI0obrRMRCW/XrLyvqRCebQk6Du2AC6aJdRVT3iNV9tt8HxWnnTETH7leX8V8rqdkqofMKE8wD2xioptzHbu62K+yF31YuNwThsFEBAdRNzm0nc+ml72SnNK1Hz8vS3CkNhUOHcP4dxJzqDIM8YDf/DewvlAodDG6tC0UMKxQ0+ZJ6mT4tuzC/K7iIP0eROIV5zm+hfjsd0FenAWA2ZpDfrNCJGaCLtGCvD9kYGmSrubveS5aj8mrxrJZPKD/CnSBJe4t5sywYLs3dQDUzmbnLi5wwY2sZBrZWFNlvVzOXgjiXyr4rdlYrMt1MyyyN4nerbg1S5pLyMjISMSfaaY+Nt/pW7OTNWqI3FcchsGCXjG+Mf1w7DGkTmE2ZhZnM1rUCOvZ9gCmbnzEBYiKcKDYOaPQBRsj6aaF1J49ZLt26s0eP3tQJB4YMSzAx/7ENSvX/uzbVJhTkekoPCxkIJsB6ZPgNgYjaM/JRm8RZRdIJJQXukcmnKxk0rvJwEAAQA= wordwoods@unknown
+INFO         |   androidboot.qemu.avd_name=nautile_api36
+INFO         |   androidboot.qemu.camera_hq_edge_processing=0
+INFO         |   androidboot.qemu.camera_protocol_ver=1
+INFO         |   androidboot.qemu.cpuvulkan.version=4206592
+INFO         |   androidboot.qemu.gltransport.drawFlushInterval=800
+INFO         |   androidboot.qemu.gltransport.name=pipe
+INFO         |   androidboot.qemu.hwcodec.avcdec=2
+INFO         |   androidboot.qemu.hwcodec.hevcdec=2
+INFO         |   androidboot.qemu.hwcodec.vpxdec=2
+INFO         |   androidboot.qemu.settings.system.screen_off_timeout=2147483647
+INFO         |   androidboot.qemu.skin=1080x2400
+INFO         |   androidboot.qemu.virtiowifi=1
+INFO         |   androidboot.qemu.vsync=60
+INFO         |   androidboot.serialno=EMULATOR37X3X10X0
+INFO         |   androidboot.vbmeta.digest=7466b5c28e6a3e1427b22ed2c317c6c7066294bde838d4d5243cce5d37992bd5
+INFO         |   androidboot.vbmeta.hash_alg=sha256
+INFO         |   androidboot.vbmeta.size=6848
+INFO         |   androidboot.veritymode=enforcing
+WARNING: cannnot unmap ptr 0x75e9ff401000 as it is in the protected range from 0x75e95f400000 to 0x75e9ff600000
+INFO         | Monitoring duration of emulator setup.
+WARNING      | The emulator now requires a signed jwt token for gRPC access! Use the -grpc flag if you really want an open unprotected grpc port
+INFO         | Using security allow list from: /home/wordwoods/.local/share/android-sdk/emulator/lib/emulator_access.json
+INFO         | The active JSON Web Key Sets can be found here: /run/user/1000/avd/running/78452/jwks/93f5b716-407f-4a37-87f2-ceccfe20d7a5/active.jwk
+INFO         | Scanning /run/user/1000/avd/running/78452/jwks/93f5b716-407f-4a37-87f2-ceccfe20d7a5 for jwk keys.
+INFO         | Started GRPC server at 127.0.0.1:8554, security: Local, auth: +token
+INFO         | Advertising in: /run/user/1000/avd/running/pid_78452.ini
+INFO         | Activated packet streamer for bluetooth emulation
+INFO         | Activated packet streamer for uwb emulation
+INFO         | Successfully initialized netsim WiFi
+INFO         | Setting display: 0 configuration to: 1080x2400, dpi: 420x420 
+INFO         | setDisplayActiveConfig: id:0, 1080x2400
+INFO         | emulatorSetupEnvironment: Environment scene is not required
+USER_INFO    | Emulator is performing a full startup. This may take upto two minutes, or more.
+WARNING      | Failed to process .ini file /home/wordwoods/.android/emu-update-last-check.ini for reading.
+WARNING      | Failed to process .ini file /home/wordwoods/.android/emu-update-last-check.ini for reading.
+INFO         | Boot completed in 24557 ms
+INFO         | Increasing screen off timeout, logcat buffer size to 2M.
+
+################ 汇总 ################
+完成时间: 2026-11-25 13:21:20 CST
+镜像: system-images;android-36;google_apis;x86_64 (rev 7.0.0, Android 16 / API 36)
+emulator: Android emulator version 37.3.10.0 (build_id 16970787) (CL:N/A)
+accel-check: KVM (version 12) is installed and usable. (exit=0)
+AVD: nautile_api36 / device pixel_6 (Google) / 1080x2400 @420dpi / ram 2G(运行时提升至 2560MB) / data 10G
+模拟器进程: PID=78452 (qemu-system-x86_64-headless)
+进程启动时间: Wed Nov 25 13:20:11 2026
+boot_completed=1 观测时间: 2026-11-25 13:20:37 → 自进程启动约 26s；wait 脚本自身计时 9s
+设备: emulator-5554	device
+adb shell getprop 结果: sdk=36 abi=x86_64 release=16 ro.kernel.qemu=1 model=sdk_gphone64_x86_64
+降噪: window/transition/animator_duration_scale 均=0
+模拟器保持运行，未关闭。
+
+################ 附: 模拟器启动日志 /tmp/nautile_emulator.log (170 行) ################
+INFO         | Android emulator version 37.3.10.0 (build_id 16970787) (CL:N/A)
+INFO         | Graphics backend: gfxstream
+INFO         | Found systemPath /home/wordwoods/.local/share/android-sdk/system-images/android-36/google_apis/x86_64/
+INFO         | Guest usage of host flag 'VulkanVirtualQueue' will be ignored.
+INFO         | Increasing RAM size to 2560MB
+INFO         | Guest GLES Driver: Auto (ext controls)
+INFO         | emuglConfig_init: vulkan_mode_selected:swiftshader gles_mode_selected:swiftshader
+INFO         | Checking system compatibility:
+INFO         |   Checking: hasSufficientDiskSpace
+INFO         |      Ok: Disk space requirements to run avd: `nautile_api36` are met
+INFO         |   Checking: hasSufficientHwGpu
+INFO         |      Ok: Hardware GPU compatibility checks are not required
+INFO         |   Checking: hasSufficientSystem
+INFO         |      Ok: System requirements to run avd: `nautile_api36` are met
+WARNING      | Feature QuickbootFileBacked is disabled due to stability issues, if you really want that, the environment variable ANDROID_EMU_FORCE_QUICKBOOT_FILE_BACKED need to set to 1
+INFO         | Storing crashdata in: /tmp/android-wordwoods/emu-crash-37.3.10.db, detection is enabled for process: 78452
+INFO         | Initializing gfxstream backend
+INFO         | startOpenglesRendererImpl: gpu info
+INFO         | 
+INFO         | initIcdPaths: ICD set to 'swiftshader', using Swiftshader ICD
+INFO         | Setting ICD filenames for the loader = /home/wordwoods/.local/share/android-sdk/emulator/lib64/vulkan/vk_swiftshader_icd.json
+INFO         | SharedLibrary::open for [/home/wordwoods/.local/share/android-sdk/emulator/qemu/linux-x86_64/lib64/vulkan/libvulkan.so]
+INFO         | SharedLibrary::open for [/home/wordwoods/.local/share/android-sdk/emulator/qemu/linux-x86_64/lib64/vulkan/libvulkan.so.1]
+INFO         | SharedLibrary::open for [/home/wordwoods/.local/share/android-sdk/emulator/lib64/vulkan/libvulkan.so]
+INFO         | Added library: /home/wordwoods/.local/share/android-sdk/emulator/lib64/vulkan/libvulkan.so
+INFO         | Selecting Vulkan device: SwiftShader Device (Subzero), Version: 1.3.0
+INFO         | Using Vulkan externalMemoryMode: OpaqueFd for VkEmulation
+INFO         | Format VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16 does not support YCbCr sampler conversion
+INFO         | SharedLibrary::open for [libX11]
+INFO         | SharedLibrary::open for [libX11-xcb]
+WARNING      | Could not open libX11-xcb.so, try libX11-xcb.so.1
+INFO         | SharedLibrary::open for [libX11-xcb.so.1]
+INFO         | queryConfigs: Host EGL config 0x10 was not added
+INFO         | queryConfigs: Host EGL config 0x11 was not added
+INFO         | queryConfigs: Host EGL config 0x12 was not added
+INFO         | queryConfigs: Host EGL config 0x13 was not added
+INFO         | queryConfigs: Host EGL config 0x14 was not added
+INFO         | queryConfigs: Host EGL config 0x15 was not added
+INFO         | queryConfigs: Host EGL config 0x17 was not added
+INFO         | queryConfigs: Host EGL config 0x18 was not added
+INFO         | queryConfigs: Host EGL config 0x19 was not added
+INFO         | queryConfigs: Host EGL config 0x1a was not added
+INFO         | queryConfigs: Host EGL config 0x1b was not added
+INFO         | queryConfigs: Host EGL config 0x1c was not added
+INFO         | queryConfigs: Host EGL config 0x1d was not added
+INFO         | queryConfigs: Host EGL config 0x1e was not added
+INFO         | queryConfigs: Host EGL config 0x1f was not added
+INFO         | queryConfigs: Host EGL config 0x21 was not added
+INFO         | queryConfigs: Host EGL config 0x22 was not added
+INFO         | queryConfigs: Host EGL config 0x23 was not added
+INFO         | queryConfigs: Host EGL config 0x24 was not added
+INFO         | queryConfigs: Host EGL config 0x25 was not added
+INFO         | queryConfigs: Host EGL config 0x26 was not added
+INFO         | queryConfigs: Host EGL config 0x27 was not added
+INFO         | queryConfigs: Host EGL config 0x28 was not added
+INFO         | queryConfigs: Host EGL config 0x29 was not added
+INFO         | queryConfigs: Host EGL config 0x2a was not added
+INFO         | queryConfigs: Host EGL config 0x2b was not added
+INFO         | queryConfigs: Host EGL config 0x2c was not added
+INFO         | queryConfigs: Host EGL config 0x2d was not added
+INFO         | queryConfigs: Host EGL config 0x2e was not added
+INFO         | queryConfigs: Host EGL config 0x2f was not added
+INFO         | queryConfigs: Host EGL config 0x30 was not added
+INFO         | queryConfigs: Host EGL config 0x31 was not added
+INFO         | queryConfigs: Host EGL config 0x32 was not added
+INFO         | queryConfigs: Host EGL config 0x33 was not added
+INFO         | queryConfigs: Host EGL config 0x35 was not added
+INFO         | queryConfigs: Host EGL config 0x36 was not added
+INFO         | queryConfigs: Host EGL config 0x37 was not added
+INFO         | queryConfigs: Host EGL config 0x38 was not added
+INFO         | queryConfigs: Host EGL config 0x39 was not added
+INFO         | queryConfigs: Host EGL config 0x3a was not added
+INFO         | queryConfigs: Host EGL config 0x3b was not added
+INFO         | queryConfigs: Host EGL config 0x3c was not added
+INFO         | queryConfigs: Host EGL config 0x3d was not added
+INFO         | queryConfigs: Host EGL config 0x3f was not added
+INFO         | queryConfigs: Host EGL config 0x40 was not added
+INFO         | queryConfigs: Host EGL config 0x41 was not added
+INFO         | queryConfigs: Host EGL config 0x42 was not added
+INFO         | queryConfigs: Host EGL config 0x43 was not added
+INFO         | queryConfigs: Host EGL config 0x44 was not added
+INFO         | queryConfigs: Host EGL config 0x45 was not added
+INFO         | queryConfigs: Host EGL config 0x46 was not added
+INFO         | queryConfigs: Host EGL config 0x47 was not added
+INFO         | queryConfigs: Host EGL config 0x48 was not added
+INFO         | queryConfigs: Host EGL config 0x49 was not added
+INFO         | queryConfigs: Host EGL config 0x4a was not added
+INFO         | queryConfigs: Host EGL config 0x4b was not added
+INFO         | queryConfigs: Host EGL config 0x1 was not added
+INFO         | queryConfigs: Host EGL config 0x2 was not added
+INFO         | queryConfigs: Host EGL config 0x3 was not added
+INFO         | queryConfigs: Host EGL config 0x5 was not added
+INFO         | queryConfigs: Host EGL config 0x6 was not added
+INFO         | queryConfigs: Host EGL config 0x7 was not added
+INFO         | queryConfigs: Host EGL config 0x8 was not added
+INFO         | queryConfigs: Host EGL config 0xa was not added
+INFO         | queryConfigs: Host EGL config 0xb was not added
+INFO         | queryConfigs: Host EGL config 0xc was not added
+INFO         | queryConfigs: Host EGL config 0xd was not added
+INFO         | queryConfigs: Host EGL config 0xe was not added
+INFO         | queryConfigs: Host EGL config 0xf was not added
+INFO         | Initializing VkEmulation features:
+INFO         |     glInteropSupported: false
+INFO         |     useDeferredCommands: true
+INFO         |     createResourceWithRequirements: true
+INFO         |     useVulkanComposition: false
+INFO         |     useVulkanNativeSwapchain: false
+INFO         |     enable guestRenderDoc: false
+INFO         |     enable Ycbcr emulation: false
+INFO         |     guestVulkanOnly: false
+INFO         |     useDedicatedAllocations: false
+INFO         |     guestVulkanMaxApiVersion: 1.3.0
+INFO         |     enableProtectedMemoryEmulation: false
+INFO         |     VulkanDisableShaderFloatControls2: disabled ((vk_util::extensionSupported(mDeviceInfo.extensions, VK_KHR_SHADER_FLOAT_CONTROLS_2_EXTENSION_NAME) || mDeviceInfo.physdevProps.apiVersion >= VK_API_VERSION_1_4) && mDeviceInfo.physdevProps.vendorID == 0x1010)
+INFO         | Graphics Adapter Vendor Google (Google Inc.)
+INFO         | Graphics Adapter Android Emulator OpenGL ES Translator (Google SwiftShader)
+INFO         | Graphics API Version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+INFO         | Graphics API Extensions GL_OES_EGL_sync GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_depth24 GL_OES_depth32 GL_OES_element_index_uint GL_OES_texture_float GL_OES_texture_float_linear GL_OES_compressed_paletted_texture GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth_texture GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_packed_depth_stencil GL_OES_vertex_half_float GL_OES_standard_derivatives GL_OES_texture_npot GL_OES_rgb8_rgba8 GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_texture_format_BGRA8888 GL_APPLE_texture_format_BGRA8888 
+INFO         | Graphics Device Extensions N/A
+INFO         | Disabling sparse binding feature support
+INFO         | Sending adb public key [QAAAAGfiy2yp5qnmiKkAXHYlhnzpyehw2JxjKo0mSoRm1o2uRbAek0B6sAXSyjUFQ/CzRdli3nEcpWtAu/yExgx9qyaCNDd6fPANexA/7dcbK79iI5GKK/olXFwG9R2Cc18EPKnvNvAS/B89kOose3JS7UBjfMfluk8ZKArv0gkZHpHlQCJ9qCeFZZRcbI0obrRMRCW/XrLyvqRCebQk6Du2AC6aJdRVT3iNV9tt8HxWnnTETH7leX8V8rqdkqofMKE8wD2xioptzHbu62K+yF31YuNwThsFEBAdRNzm0nc+ml72SnNK1Hz8vS3CkNhUOHcP4dxJzqDIM8YDf/DewvlAodDG6tC0UMKxQ0+ZJ6mT4tuzC/K7iIP0eROIV5zm+hfjsd0FenAWA2ZpDfrNCJGaCLtGCvD9kYGmSrubveS5aj8mrxrJZPKD/CnSBJe4t5sywYLs3dQDUzmbnLi5wwY2sZBrZWFNlvVzOXgjiXyr4rdlYrMt1MyyyN4nerbg1S5pLyMjISMSfaaY+Nt/pW7OTNWqI3FcchsGCXjG+Mf1w7DGkTmE2ZhZnM1rUCOvZ9gCmbnzEBYiKcKDYOaPQBRsj6aaF1J49ZLt26s0eP3tQJB4YMSzAx/7ENSvX/uzbVJhTkekoPCxkIJsB6ZPgNgYjaM/JRm8RZRdIJJQXukcmnKxk0rvJwEAAQA= wordwoods@unknown]
+INFO         | Userspace boot properties:
+INFO         |   androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:06.0
+INFO         |   androidboot.dalvik.vm.heapsize=576m
+INFO         |   androidboot.debug.hwui.renderer=skiagl
+INFO         |   androidboot.debug.sf.nobootanimation=1
+INFO         |   androidboot.hardware=ranchu
+INFO         |   androidboot.hardware.gltransport=pipe
+INFO         |   androidboot.hardware.vulkan=ranchu
+INFO         |   androidboot.logcat=*:V
+INFO         |   androidboot.opengles.version=196608
+INFO         |   androidboot.qemu=1
+INFO         |   androidboot.qemu.adb.pubkey=QAAAAGfiy2yp5qnmiKkAXHYlhnzpyehw2JxjKo0mSoRm1o2uRbAek0B6sAXSyjUFQ/CzRdli3nEcpWtAu/yExgx9qyaCNDd6fPANexA/7dcbK79iI5GKK/olXFwG9R2Cc18EPKnvNvAS/B89kOose3JS7UBjfMfluk8ZKArv0gkZHpHlQCJ9qCeFZZRcbI0obrRMRCW/XrLyvqRCebQk6Du2AC6aJdRVT3iNV9tt8HxWnnTETH7leX8V8rqdkqofMKE8wD2xioptzHbu62K+yF31YuNwThsFEBAdRNzm0nc+ml72SnNK1Hz8vS3CkNhUOHcP4dxJzqDIM8YDf/DewvlAodDG6tC0UMKxQ0+ZJ6mT4tuzC/K7iIP0eROIV5zm+hfjsd0FenAWA2ZpDfrNCJGaCLtGCvD9kYGmSrubveS5aj8mrxrJZPKD/CnSBJe4t5sywYLs3dQDUzmbnLi5wwY2sZBrZWFNlvVzOXgjiXyr4rdlYrMt1MyyyN4nerbg1S5pLyMjISMSfaaY+Nt/pW7OTNWqI3FcchsGCXjG+Mf1w7DGkTmE2ZhZnM1rUCOvZ9gCmbnzEBYiKcKDYOaPQBRsj6aaF1J49ZLt26s0eP3tQJB4YMSzAx/7ENSvX/uzbVJhTkekoPCxkIJsB6ZPgNgYjaM/JRm8RZRdIJJQXukcmnKxk0rvJwEAAQA= wordwoods@unknown
+INFO         |   androidboot.qemu.avd_name=nautile_api36
+INFO         |   androidboot.qemu.camera_hq_edge_processing=0
+INFO         |   androidboot.qemu.camera_protocol_ver=1
+INFO         |   androidboot.qemu.cpuvulkan.version=4206592
+INFO         |   androidboot.qemu.gltransport.drawFlushInterval=800
+INFO         |   androidboot.qemu.gltransport.name=pipe
+INFO         |   androidboot.qemu.hwcodec.avcdec=2
+INFO         |   androidboot.qemu.hwcodec.hevcdec=2
+INFO         |   androidboot.qemu.hwcodec.vpxdec=2
+INFO         |   androidboot.qemu.settings.system.screen_off_timeout=2147483647
+INFO         |   androidboot.qemu.skin=1080x2400
+INFO         |   androidboot.qemu.virtiowifi=1
+INFO         |   androidboot.qemu.vsync=60
+INFO         |   androidboot.serialno=EMULATOR37X3X10X0
+INFO         |   androidboot.vbmeta.digest=7466b5c28e6a3e1427b22ed2c317c6c7066294bde838d4d5243cce5d37992bd5
+INFO         |   androidboot.vbmeta.hash_alg=sha256
+INFO         |   androidboot.vbmeta.size=6848
+INFO         |   androidboot.veritymode=enforcing
+WARNING: cannnot unmap ptr 0x75e9ff401000 as it is in the protected range from 0x75e95f400000 to 0x75e9ff600000
+INFO         | Monitoring duration of emulator setup.
+WARNING      | The emulator now requires a signed jwt token for gRPC access! Use the -grpc flag if you really want an open unprotected grpc port
+INFO         | Using security allow list from: /home/wordwoods/.local/share/android-sdk/emulator/lib/emulator_access.json
+INFO         | The active JSON Web Key Sets can be found here: /run/user/1000/avd/running/78452/jwks/93f5b716-407f-4a37-87f2-ceccfe20d7a5/active.jwk
+INFO         | Scanning /run/user/1000/avd/running/78452/jwks/93f5b716-407f-4a37-87f2-ceccfe20d7a5 for jwk keys.
+INFO         | Started GRPC server at 127.0.0.1:8554, security: Local, auth: +token
+INFO         | Advertising in: /run/user/1000/avd/running/pid_78452.ini
+INFO         | Activated packet streamer for bluetooth emulation
+INFO         | Activated packet streamer for uwb emulation
+INFO         | Successfully initialized netsim WiFi
+INFO         | Setting display: 0 configuration to: 1080x2400, dpi: 420x420 
+INFO         | setDisplayActiveConfig: id:0, 1080x2400
+INFO         | emulatorSetupEnvironment: Environment scene is not required
+USER_INFO    | Emulator is performing a full startup. This may take upto two minutes, or more.
+WARNING      | Failed to process .ini file /home/wordwoods/.android/emu-update-last-check.ini for reading.
+WARNING      | Failed to process .ini file /home/wordwoods/.android/emu-update-last-check.ini for reading.
+INFO         | Boot completed in 24557 ms
+INFO         | Increasing screen off timeout, logcat buffer size to 2M.

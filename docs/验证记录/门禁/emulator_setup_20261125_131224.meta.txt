@@ -1,0 +1,14 @@
+head=76146b850a056ccc4ffe9906ecdf2a8827c3c8a5
+dirty=9
+dirty_pre_existing=8
+image=system-images;android-36;google_apis;x86_64
+avd=nautile_api36
+boot_seconds=25
+boot_seconds_note=emulator 日志自报 "Boot completed in 24557 ms"；墙钟自 qemu 进程启动(13:20:11)到观测 boot_completed=1(13:20:37)约 26s；wait 脚本自身计时 9s
+sdk=36
+accel=kvm
+result=SUCCESS
+log=docs/验证记录/门禁/emulator_setup_20261125_131224.log
+emulator_pid=78452
+emulator_log=/tmp/nautile_emulator.log
+created_at=2026-11-25 13:21:24 CST

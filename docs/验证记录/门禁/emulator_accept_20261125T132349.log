@@ -1,0 +1,162 @@
+# Android 模拟器配置验收记录
+
+- 检查对象：Android 模拟器环境（供后续 goal 复用），非业务功能验收
+- 仓库版本：HEAD=76146b8 (docs: plan next milestone scoping after S1 (T-089))，未提交
+- 角色：独立验证 Agent；只写 docs/验证记录/门禁/ 证据与截图，未改业务代码/测试/构建配置，未提交
+- 执行时间：2026-11-25 13:20 ~ 13:23 CST
+- 环境：Linux，SDK=/home/wordwoods/.local/share/android-sdk
+- 复用说明：使用开发 Agent 已启动的模拟器实例（未关闭），未新增安装组件
+
+## 1. 设备与属性（含 AVD）
+
+命令：`adb devices -l`
+退出码 0，输出：
+```
+List of devices attached
+emulator-5554          device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64xa transport_id:1
+```
+
+命令（逐项）：`adb -s emulator-5554 shell getprop <prop>`
+```
+sys.boot_completed            = 1
+ro.build.version.sdk          = 36
+ro.build.version.release      = 16
+ro.product.cpu.abi            = x86_64
+ro.kernel.qemu                = 1
+ro.build.version.incremental  = 13894323
+ro.product.model              = sdk_gphone64_x86_64
+```
+各条退出码均为 0。
+
+命令（动画三项）：`adb -s emulator-5554 shell settings get global <key>`
+```
+window_animation_scale     = 0
+transition_animation_scale = 0
+animator_duration_scale    = 0
+```
+各条退出码均为 0。
+
+命令：`avdmanager list avd`（退出码 0）
+```
+Available Android Virtual Devices:
+    Name: nautile_api36
+  Device: pixel_6 (Google)
+    Path: /home/wordwoods/.android/avd/nautile_api36.avd
+  Target: Google APIs (Google Inc.)
+          Based on: Android 16.0 ("Baklava") Tag/ABI: google_apis/x86_64
+```
+
+命令：`cat ~/.android/avd/nautile_api36.avd/config.ini`（退出码 0）关键项：
+```
+hw.device.name=pixel_6
+hw.lcd.width=1080
+hw.lcd.height=2400
+hw.lcd.density=420
+hw.ramSize=2G
+disk.dataPartition.size=10G
+abi.type=x86_64
+image.sysdir.1=system-images/android-36/google_apis/x86_64/
+target=android-36
+```
+
+已安装 SDK 包：`sdkmanager --list_installed`（退出码 0）：
+```
+emulator                                    37.3.10
+platform-tools                              37.0.3
+platforms/android-37.0                      2.0.0
+system-images/android-36/google_apis/x86_64 7.0.0
+```
+adb 客户端：`Android Debug Bridge version 1.0.41 / Version 37.0.3-16887417`
+
+## 2. 加速复核
+
+命令：`"$SDK/emulator/emulator" -accel-check`，退出码 0，原样输出：
+```
+accel:
+0
+KVM (version 12) is installed and usable.
+accel
+```
+`emulator -version`：Android emulator version 37.3.10.0 (build_id 16970787)
+
+运行中进程：PID 78452
+`qemu-system-x86_64-headless -avd nautile_api36 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -no-metrics`（无 -accel off）
+
+## 3. 构建 JVM
+
+命令：`./gradlew --version`，退出码 0：
+```
+Gradle 9.6.0
+Launcher JVM:  21.0.13.1 (Ubuntu 21.0.13.1+2-1-24.04.1-Ubuntu)
+Daemon JVM:    /home/wordwoods/.local/share/jdks/jdk-17.0.21+9 (from org.gradle.java.home)
+```
+`~/.gradle/gradle.properties` 中 `org.gradle.java.home=/home/wordwoods/.local/share/jdks/jdk-17.0.21+9`，Daemon JVM 为 17，符合。
+
+## 4. 冒烟测试
+
+任务名核对：`./gradlew connectedDebugAndroidTest --dry-run`（退出码 0）可解析，映射到 `:app:connectedDebugAndroidTest`，与任务书根任务名一致；本次显式使用 `:app:` 形式执行同一任务，不构成偏差。
+
+执行命令：
+```
+./gradlew :app:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=io.github.mazilin.nautile.TodoScreenSmokeTest \
+  --rerun-tasks --console=plain
+```
+- 退出码：0
+- Gradle 结果：`BUILD SUCCESSFUL in 9s`，`70 actionable tasks: 70 executed`（--rerun-tasks 生效，非 up-to-date 跳过）
+- 运行设备行：`Running tests on devices: nautile_api36(AVD) - 16`
+- 墙钟耗时：9s（shell 前后 `date +%s` 差值：1795584190 → 1795584199）
+- 完整日志：docs/验证记录/门禁/emulator_accept_20261125T132349_smoke_gradle.log
+
+结果 XML：`app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml`
+```
+<testsuites tests="1" failures="0" errors="0" skipped="0" time="0.000" ...>
+  <testsuite name="io.github.mazilin.nautile.TodoScreenSmokeTest" tests="1" failures="0" errors="0" skipped="0" time="0.668" ...>
+    <property name="device" value="emulator-5554" />
+    <testcase name="placeholder_is_displayed" classname="io.github.mazilin.nautile.TodoScreenSmokeTest" time="0.668" />
+```
+- tests=1，failures=0，errors=0，skipped=0，用例执行耗时 0.668s
+- test-result-exit-code.txt 内容为 `0`
+- 未修改 TodoScreenSmokeTest 或任何既有测试/业务代码；@BeforeClass 预热逻辑保持原样
+
+## 5. 截图
+
+命令：`adb -s emulator-5554 exec-out screencap -p > docs/验证记录/门禁/emulator_boot_20261125T132329.png`，退出码 0
+- 路径：docs/验证记录/门禁/emulator_boot_20261125T132329.png
+- 大小：1376948 字节（非 0）
+- `file` 结果：PNG image data, 1080 x 2400, 8-bit/color RGBA, non-interlaced
+- 内容目视：已进入系统桌面（Wed, Nov 25，13:23），非黑屏/开机动画
+
+## 6. 越界改动核对
+
+命令：`git status --porcelain`（共 11 条），`git diff --stat`：
+```
+ M app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/TodoScreen.kt | 5 ++++-  (4 insertions, 1 deletion)
+```
+分类：
+- 本任务新增证据（3 项）：docs/验证记录/门禁/emulator_boot_20261125T132329.png（本次截图）、emulator_accept_20261125T132349.log、emulator_accept_20261125T132349.meta.txt、emulator_accept_20261125T132349_smoke_gradle.log（共 4 个文件，见下方状态核对时点的计数）
+- 开发 Agent 本任务证据（2 项）：docs/验证记录/门禁/emulator_setup_20261125_131224.log / .meta.txt
+- 上一轮试跑遗留（6 项）：TodoScreen.kt(M，仅给“设置”按钮加 testTag("settings_entry"))、app/src/androidTest/.../verification/AcSettingsEntryP1Test.kt、verify_PILOT-P1_20261125T130300/130445/130516 的 .log/.meta.txt
+- 构建文件（build.gradle.kts、libs.versions.toml、settings.gradle.kts、gradle.properties）改动：无（grep 结果 none）
+- 提交：无（HEAD 仍为 76146b8）
+- 未新增 Gradle 依赖
+
+## 7. 退出判据逐条
+
+1. emulator 37.3.10 与 system-images;android-36;google_apis;x86_64 7.0.0 已安装；AVD nautile_api36 存在且配置项与回报一致 → PASS
+2. headless 启动的实例 adb 在线，sys.boot_completed=1，ro.kernel.qemu=1 → PASS（复用的是开发已启动实例，本次未重启；启动方式由 /tmp/nautile_emulator.log 与进程命令行核实）
+3. ro.build.version.sdk=36，release=16，无降级 → PASS
+4. TodoScreenSmokeTest：退出码 0，tests=1，failures=0，errors=0，用例 0.668s，墙钟 9s → PASS
+5. 证据完整（setup + accept 日志/meta + 截图 + Gradle 日志），无业务代码新增改动（仅上一轮遗留 M）、无提交、无新增依赖 → PASS
+
+## 8. 未执行 / 未自动化 / 限制
+
+- 未重启模拟器：headless 启动参数与启动过程取自开发证据与运行进程命令行，本次未独立重放启动命令（避免影响后续 goal 复用与现场）。
+- 未做真机验证；本次对象为模拟器，不涉及真机结论。
+- Gradle 耗时 9s 包含增量编译；用例本体耗时以 XML 0.668s 为准。
+- 未执行全量 connectedAndroidTest，只按任务书单类冒烟。
+- 模拟器保持运行，PID 78452，serial emulator-5554。
+
+## 结论
+
+result=PASS（5 条退出判据全部满足，依据见上）

@@ -288,7 +288,10 @@ fun TodoScreen(
                     Text("待办", style = MaterialTheme.typography.titleLarge)
                     Text(state.position.title, style = MaterialTheme.typography.labelMedium)
                 }
-                TextButton(onClick = onOpenSettings) {
+                TextButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.testTag("settings_entry"),
+                ) {
                     Text("设置")
                 }
             }
