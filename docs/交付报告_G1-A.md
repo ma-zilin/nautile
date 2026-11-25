@@ -39,16 +39,16 @@
 | `2a47b22` | docs: complete G1-A2 gate evidence | G1-A2 通过轮门禁日志与 meta |
 | 最终交付提交 | 包含本报告的提交 | 按授权计划含本报告、A3-R2 代码修正（GtdSelector/TodoScreen）、两处测试定位更新、A3/A3-R2 证据与任务进度登记；hash 以 gitee/github `refs/heads/main` 顶端为准 |
 
-- 说明：截至 `2a47b22`，每轮提交后两端 `ls-remote refs/heads/main` 与本地 HEAD 一致；写入本报告前实查 gitee、github 两端均为 `2a47b22`。最终提交尚未产生，本报告不预写其 hash。
-- 当前工作区状态：HEAD=`2a47b22`；已修改 4 个文件（2 业务 + 2 测试），A3/A3-R2 证据与截图未跟踪；尚未提交。
+- 说明：最终交付提交为包含本报告的提交；两端远端 main 顶端与本地 HEAD 一致（已用 `git ls-remote` 核对），hash 以远端 main 顶端为准。
+- 当前工作区状态：HEAD 与两端远端 main 一致；已跟踪文件无改动；仅剩未跟踪截图（按规则不提交）；本报告本次状态修订未提交。
 
 ## 4. 改动清单
 
 - 生产代码（新增/修改）：`ui/theme/Theme.kt`（改）、`NautileMotion.kt`（新）、`NautileSpacing.kt`（新）；`ui/designsystem/` 5 个文件（新：BottomSheet/Buttons/ListRow/StateViews/TopBar）；`res/drawable/ic_*.xml` 16 个（新）；`ui/screen/todo/{TodoScreen,GtdSelector,NewTaskSheet,TaskDetailSheet,ProjectDetailSheet,TodoUiState}.kt`（改）；`ui/AppRoot.kt`（改）；`MainActivity.kt`（改）。
 - 测试：新增 `AcGtdHeaderT090Test.kt`；修改 `AcSettingsEntryP1Test.kt`、`AcUiT071Test.kt`（G0.2 授权：设置文本→图标/tag）；修改 `AcTodoT07Test.kt` 与 `AcGtdHeaderT090Test.kt`（A3-R2 授权：关闭定位改 contentDescription）。
 - 脚本：`scripts/check_ui_tokens.sh`（新，8 条规则；规则 7 只查构建/依赖文件；扫描 theme、designsystem、AppRoot.kt、todo）。
-- 文档：`docs/需求基线.md` v2.14、`docs/需求变更记录.md`（4.23/C-33）、`docs/任务进度.md`（G0—G1-A2 已登记；G1-A3 条目尚未写入）、本报告。
-- 未提交：`docs/验证记录/门禁/` 下 A3/A3-R2 截图与日志（截图按规则不提交）、`.plans/`、当前 4 个已修改源文件（待最终提交）。
+- 文档：`docs/需求基线.md` v2.14、`docs/需求变更记录.md`（4.23/C-33）、`docs/任务进度.md`（G0—G1-A3/A3-R2 已登记；最终提交含 G1-A3 修正与证据）、本报告。
+- 未提交：`docs/验证记录/门禁/` 下 A3/A3-R2 截图（按规则不提交）、`.plans/`；本报告本次状态修订未提交。
 
 ## 5. 待办页“规格→实现→测试证据”对照
 
@@ -138,4 +138,4 @@
 - 在 G1-A 范围内（待办模块 + 设计层 + 模拟器验证），G0.0—G1-A3 各闸门按本报告证据 PASS；A3-R2 两项指定偏差已消除。
 - 未进入 G1-B/G2，未打 tag；真机、性能、200% 字体、搜索命中与跨页头部等缺口见第 8、9 节；偏差与风险见第 10 节。
 - 本报告不宣称课程验收或最终交付完成；是否验收由我依据原始证据决定。
-- 待核对：① 最终提交尚未产生，其 hash 与远端 main 顶端需提交后回填；② `docs/任务进度.md` 尚未登记 G1-A3/A3-R2，若最终提交未包含该登记需补正；③ 深色亮度 251→21 为我的记录，未在门禁日志中复核。
+- 待核对：① 最终交付提交为包含本报告的提交；两端远端 main 顶端与本地 HEAD 一致（已用 `git ls-remote` 核对）；② `docs/任务进度.md` 已登记 G1-A3/A3-R2 与最终提交；③ 深色亮度 251→21 为记录值，门禁日志未复核。
