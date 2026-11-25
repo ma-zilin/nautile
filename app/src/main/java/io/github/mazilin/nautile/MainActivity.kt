@@ -314,6 +314,16 @@ class MainActivity : ComponentActivity() {
                                 onCommitDetail = todoViewModel::commitTaskDetail,
                                 visible = taskDetailState != null,
                                 onExitFinished = { lastTaskDetail = null },
+                                projects = newTaskProjects,
+                                onPriorityChanged = todoViewModel::onTaskPriorityChanged,
+                                onDueDateChanged = todoViewModel::onTaskDueDateChanged,
+                                onDueTimeChanged = todoViewModel::onTaskDueTimeChanged,
+                                onProjectChanged = todoViewModel::onTaskProjectChanged,
+                                onGtdChanged = todoViewModel::moveTaskToGtdFromDetail,
+                                onProjectDraftChanged = todoViewModel::onTaskProjectDraftChanged,
+                                onCreateProjectForTask =
+                                    todoViewModel::createProjectForTaskDetail,
+                                onClearDetail = todoViewModel::clearTaskDetail,
                             )
                         }
                     }

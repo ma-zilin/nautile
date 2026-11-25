@@ -34,11 +34,15 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** 详情面板的临时状态（保存中/错误/阻止离开提示），不持久化。 */
+/** 详情面板的临时状态（保存中/错误/阻止离开提示/属性草稿），不持久化。 */
 private data class DetailExtras(
     val saving: Boolean = false,
     val error: String? = null,
     val leaveBlocked: Boolean = false,
+    /** 详情项目菜单“新建项目”的名称草稿与错误（CMP-34）。 */
+    val projectDraftName: String = "",
+    val projectDraftError: String? = null,
+    val creatingProject: Boolean = false,
 )
 
 private data class ProjectDetailBase(
@@ -51,6 +55,7 @@ private data class ProjectDetailBase(
 private data class TaskDetailBase(
     val id: TaskId?,
     val tasks: List<Task>,
+    val projects: List<Project>,
     val titleDraft: String?,
     val detailDraft: String?,
 )
@@ -120,10 +125,11 @@ class TodoViewModel(
     private val taskDetailBase = combine(
         taskDetailId,
         allTasks,
+        allProjects,
         taskTitleDraft,
         taskDetailDraft,
-    ) { id, tasks, titleDraft, detailDraft ->
-        TaskDetailBase(id, tasks, titleDraft, detailDraft)
+    ) { id, tasks, projects, titleDraft, detailDraft ->
+        TaskDetailBase(id, tasks, projects, titleDraft, detailDraft)
     }
 
     val taskDetail: StateFlow<TaskDetailUiState?> = combine(
@@ -142,6 +148,12 @@ class TodoViewModel(
                 leaveBlocked = extras.leaveBlocked,
                 canReopen = it.closedOutcome != null,
                 detailDraft = base.detailDraft,
+                projectName = it.projectId?.let { id ->
+                    base.projects.firstOrNull { project -> project.id == id }?.name
+                },
+                projectDraftName = extras.projectDraftName,
+                projectDraftError = extras.projectDraftError,
+                creatingProject = extras.creatingProject,
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -320,6 +332,139 @@ class TodoViewModel(
                 else -> {
                     taskDetailExtras.update { it.copy(saving = false, error = "保存失败，请重试") }
                 }
+            }
+        }
+    }
+
+    // ---- 详情属性编辑（G7、CMP-30—CMP-37）：选择/清除即写库 ----
+
+    /** 优先级四档；选择“无”即清除（CMP-33），不改其他字段。 */
+    fun onTaskPriorityChanged(priority: Priority) {
+        val taskId = taskDetailId.value ?: return
+        if (allTasks.value.firstOrNull { it.id == taskId }?.priority == priority) return
+        runTaskCommand(PendingTaskCommand.UpdateField(taskId, TaskFieldUpdate.Priority(priority)))
+    }
+
+    /** 日期清除时一并清除时刻，避免出现孤立时刻（CMP-32）。 */
+    fun onTaskDueDateChanged(date: LocalDate?) {
+        val taskId = taskDetailId.value ?: return
+        val task = allTasks.value.firstOrNull { it.id == taskId } ?: return
+        if (date == task.dueDate && (date != null || task.dueTime == null)) return
+        viewModelScope.launch {
+            taskDetailExtras.update { it.copy(saving = true, error = null) }
+            // 先清时刻再清日期：即使日期写入失败，也不会留下“无日期有时刻”的非法状态。
+            if (date == null && task.dueTime != null) {
+                val timeResult = taskCommands.updateField(taskId, TaskFieldUpdate.DueTime(null))
+                if (timeResult !is TaskCommandResult.Success) {
+                    reportTaskFieldResult(timeResult)
+                    return@launch
+                }
+            }
+            reportTaskFieldResult(taskCommands.updateField(taskId, TaskFieldUpdate.DueDate(date)))
+        }
+    }
+
+    /** 时刻必须依附日期；无日期时忽略写入，避免非法中间值（CMP-32）。 */
+    fun onTaskDueTimeChanged(time: LocalTime?) {
+        val taskId = taskDetailId.value ?: return
+        val task = allTasks.value.firstOrNull { it.id == taskId } ?: return
+        if (task.dueDate == null || task.dueTime == time) return
+        viewModelScope.launch {
+            taskDetailExtras.update { it.copy(saving = true, error = null) }
+            reportTaskFieldResult(taskCommands.updateField(taskId, TaskFieldUpdate.DueTime(time)))
+        }
+    }
+
+    /** 项目选择只写 projectId；已结项项目沿用重开确认守卫（CMP-34）。 */
+    fun onTaskProjectChanged(projectId: ProjectId?) {
+        val taskId = taskDetailId.value ?: return
+        if (allTasks.value.firstOrNull { it.id == taskId }?.projectId == projectId) return
+        runTaskCommand(PendingTaskCommand.UpdateField(taskId, TaskFieldUpdate.Project(projectId)))
+    }
+
+    /** 详情内切换 GTD 清单；ENDED 与已结项任务校验沿用 moveToGtd（CMP-35）。 */
+    fun moveTaskToGtdFromDetail(target: GtdPosition) {
+        val taskId = taskDetailId.value ?: return
+        if (allTasks.value.firstOrNull { it.id == taskId }?.position == target) return
+        moveTaskToGtd(taskId, target)
+    }
+
+    /** 清空详情写 null（CMP-36）；先丢弃未提交草稿，避免离开时把旧文本写回。 */
+    fun clearTaskDetail() {
+        val taskId = taskDetailId.value ?: return
+        taskDetailDraft.value = null
+        viewModelScope.launch {
+            taskDetailExtras.update { it.copy(saving = true, error = null) }
+            reportTaskFieldResult(taskCommands.updateField(taskId, TaskFieldUpdate.Detail(null)))
+        }
+    }
+
+    fun onTaskProjectDraftChanged(text: String) {
+        taskDetailExtras.update { it.copy(projectDraftName = text, projectDraftError = null) }
+    }
+
+    /** 详情项目菜单内“新建项目”：成功后回填为当前项目并写入任务（CMP-34）。 */
+    fun createProjectForTaskDetail() {
+        val taskId = taskDetailId.value ?: return
+        val current = taskDetailExtras.value
+        if (current.creatingProject) return
+        if (ProjectRules.validateName(current.projectDraftName) != null) {
+            taskDetailExtras.update { it.copy(projectDraftError = "项目名称不能为空") }
+            return
+        }
+        viewModelScope.launch {
+            taskDetailExtras.update {
+                it.copy(creatingProject = true, projectDraftError = null, error = null)
+            }
+            when (val created = projectCommands.create(current.projectDraftName)) {
+                is ProjectCommandResult.Success -> {
+                    // 新项目必然是活跃状态，这里只做回填写入，不触发重开守卫。
+                    when (val result = taskCommands.updateField(
+                        taskId,
+                        TaskFieldUpdate.Project(created.project.id),
+                    )) {
+                        is TaskCommandResult.Success -> taskDetailExtras.value = DetailExtras()
+                        is TaskCommandResult.NotFound -> taskDetailExtras.update {
+                            it.copy(creatingProject = false, error = "任务不存在")
+                        }
+                        else -> taskDetailExtras.update {
+                            it.copy(creatingProject = false, projectDraftError = "回填项目失败，请重试")
+                        }
+                    }
+                }
+
+                is ProjectCommandResult.Invalid -> taskDetailExtras.update {
+                    it.copy(creatingProject = false, projectDraftError = "项目名称不能为空")
+                }
+
+                else -> taskDetailExtras.update {
+                    it.copy(creatingProject = false, projectDraftError = "创建失败，请重试")
+                }
+            }
+        }
+    }
+
+    /** 详情属性写入结果：失败保留原值并显示错误，不进入“已保存”。 */
+    private fun reportTaskFieldResult(result: TaskCommandResult) {
+        when (result) {
+            is TaskCommandResult.Success -> taskDetailExtras.update {
+                it.copy(saving = false, error = null)
+            }
+
+            is TaskCommandResult.Invalid -> taskDetailExtras.update {
+                it.copy(saving = false, error = taskErrorText(result.error))
+            }
+
+            is TaskCommandResult.NotFound -> taskDetailExtras.update {
+                it.copy(saving = false, error = "任务不存在")
+            }
+
+            is TaskCommandResult.NeedsProjectReopen -> taskDetailExtras.update {
+                it.copy(saving = false, error = "项目已结项，请重新打开项目")
+            }
+
+            TaskCommandResult.Deleted -> taskDetailExtras.update {
+                it.copy(saving = false, error = "任务不存在")
             }
         }
     }
@@ -713,6 +858,8 @@ class TodoViewModel(
 
         is PendingTaskCommand.MoveToGtd -> taskCommands.moveToGtd(command.taskId, command.target)
         is PendingTaskCommand.Reopen -> taskCommands.reopen(command.taskId)
+        is PendingTaskCommand.UpdateField ->
+            taskCommands.updateField(command.taskId, command.update)
     }
 
     private fun setDetailSaving(saving: Boolean) {

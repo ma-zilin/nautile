@@ -1,0 +1,35 @@
+task=G7
+role=independent-verifier
+time=2026-11-25T20:25:03+08:00
+head=e457f6426fb5da0bfcae1f40167704083c6db679
+worktree=dirty (G7 implementation uncommitted; 5 modified production files by developer)
+requirements=docs/需求基线.md v2.14; .plans/设计/01_视觉与动效标准.md §13 CMP-30—CMP-37
+acceptance=AC-D-06, AC-D-07, AC-D-08, AC-D-09, AC-T-13, AC-M-01
+device=emulator-5554 / nautile_api36(AVD) - Android 16 / API 36 (emulator, not real device)
+static_cmd=bash scripts/check_ui_tokens.sh
+static_result=PASS (20 files, 0 hits, exit 0)
+verify_cmd=bash scripts/verify.sh G7
+verify_result=PASS (assembleDebug/assembleDebugAndroidTest/testDebugUnitTest/lintDebug all EXIT=0; JVM 178/0; schema v3 EXIT=0)
+verify_log=docs/验证记录/门禁/verify_G7_20261125T201324.log
+verify_final_cmd=bash scripts/verify.sh G7-FINAL
+verify_final_result=PASS (four steps EXIT=0; JVM 178/0; schema v3; androidTest compile includes new G7 tests)
+verify_final_log=docs/验证记录/门禁/verify_G7-FINAL_20261125T202134.log
+g7_targeted_result=PASS (12 tests, 0 failures, 0 errors, 0 skipped; BUILD SUCCESSFUL)
+g7_targeted_log=docs/验证记录/门禁/g7_targeted_20261125T202000.log
+g7_targeted_red_logs=docs/验证记录/门禁/g7_targeted_20261125T201642.log (test locator/visibility fix);docs/验证记录/门禁/g7_targeted_20261125T201824.log (disabled field SetText semantics fix)
+connected_cmd=./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_result=168 tests, 0 failures, 0 errors, 0 skipped (86s)
+connected_log=docs/验证记录/门禁/g7_connected_20261125T202316.log
+screenshots_cmd=adb shell am instrument -w -r -e class io.github.mazilin.nautile.verification.G7DetailScreenshotTest io.github.mazilin.nautile.test/androidx.test.runner.AndroidJUnitRunner
+screenshots_result=OK (5 tests), exit 0
+screenshots_log=docs/验证记录/门禁/g7_screenshots_20261125T202241.log
+screenshots=docs/验证记录/门禁/g7_detail_toolbar_initial.png;docs/验证记录/门禁/g7_detail_priority_menu.png;docs/验证记录/门禁/g7_detail_date_panel.png;docs/验证记录/门禁/g7_detail_menu.png;docs/验证记录/门禁/g7_detail_summary_state.png
+screenshots_check=file: PNG 1080x2400 RGBA; all non-empty (55K-86K)
+new_tests=app/src/androidTest/java/io/github/mazilin/nautile/verification/G7DetailAttributeUiTest.kt;app/src/androidTest/java/io/github/mazilin/nautile/verification/G7DetailScreenshotTest.kt
+production_code_modified_by_verifier=none
+build_or_dependency_modified_by_verifier=none
+existing_assertions_changed=none (full connected 168/0)
+design_check=shared TaskAttributeControls; edit-saves; ENDED disabled; summaries; 48dp; UI tokens 0 hits; NewTask regression via G6 tests + 1 new test
+result=PASS
+observations=Repository exceptions are not caught by field-update path (TaskCommands concrete, no result-failure injection); closed projects absent from project menu, reopen guard exercised via closed-project task + GTD switch; detail new-project creation not separately tested; dark mode/200% font/IME/real device not automated; no mutation sampling (task forbids editing production code)
+log=docs/验证记录/门禁/g7_20261125T202503.log

@@ -1,0 +1,158 @@
+G7 闸门独立验证证据（详情页属性编辑）
+====================================
+
+时间：2026-11-25T20:25:03+08:00
+角色：独立验证 Agent（只写测试/证据，不改业务代码/构建/依赖）
+设备：emulator-5554 / nautile_api36(AVD) - Android 16 / API 36（模拟器，非真机）
+代码基线：HEAD e457f6426fb5da0bfcae1f40167704083c6db679（G7 实现未提交，工作区 dirty）
+需求依据：docs/需求基线.md v2.14；.plans/设计/01_视觉与动效标准.md §13（CMP-30—CMP-37）；
+验收挂点 AC-D-06/07/08/09、AC-T-13、AC-M-01。
+
+一、检查对象
+------------
+实现（未提交，开发 Agent 交付，验证方未修改）：
+- app/src/main/java/.../ui/screen/todo/TaskAttributeControls.kt（新增：五属性工具栏、锚定菜单、
+  日期面板、摘要与语义，供新建/详情共用）
+- app/src/main/java/.../ui/screen/todo/TaskDetailSheet.kt（接入同一套属性控件，编辑即保存）
+- app/src/main/java/.../ui/screen/todo/NewTaskSheet.kt（改引用共用控件，行为不变）
+- app/src/main/java/.../ui/screen/todo/TodoViewModel.kt（onTaskPriorityChanged/onTaskDueDateChanged/
+  onTaskDueTimeChanged/onTaskProjectChanged/moveTaskToGtdFromDetail/clearTaskDetail/
+  createProjectForTaskDetail；复用 updateField/moveToGtd 与项目重开守卫）
+- app/src/main/java/.../ui/screen/todo/DetailUiState.kt、MainActivity.kt（状态与接线）
+
+本角色仅新增（androidTest）：
+- app/src/androidTest/java/.../verification/G7DetailAttributeUiTest.kt（12 例）
+- app/src/androidTest/java/.../verification/G7DetailScreenshotTest.kt（5 例，截图）
+
+未修改既有断言；全量 connected 168 例通过说明既有断言未因详情布局失效。
+生产代码、构建脚本、依赖均未改动（git status 的 5 个 M 文件均为开发提交的未提交实现）。
+
+二、静态检查
+------------
+命令：bash scripts/check_ui_tokens.sh
+结果：RESULT: PASS；检查文件数 20；命中总数 0；退出码 0。
+核对：新控件无 Color(0x)/Color.Black/White/Red、RoundedCornerShape(<数字>)、
+tween/spring/durationMillis、0.32f、Text 文本图标、固定比例分栏、material-icons-extended、
+无限动画 API；颜色走 MaterialTheme.colorScheme 与语义角色，间距走 NautileSpacing。
+
+三、刚性门禁（四步 --rerun-tasks）
+----------------------------------
+命令：bash scripts/verify.sh G7
+结果：GATE RESULT: PASS（verify_G7_20261125T201324.log）
+  assembleDebug EXIT=0
+  assembleDebugAndroidTest(compile-only) EXIT=0
+  testDebugUnitTest EXIT=0
+  lintDebug EXIT=0
+  JVM：suites=32 tests=178 failures=0 errors=0 skipped=0
+  schema：EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）
+
+说明：该轮在新增测试落盘前执行，只覆盖开发实现与既有测试；新增测试后再跑最终门禁：
+命令：bash scripts/verify.sh G7-FINAL
+结果：GATE RESULT: PASS（verify_G7-FINAL_20261125T202134.log）
+  assembleDebug / assembleDebugAndroidTest / testDebugUnitTest / lintDebug 均 EXIT=0
+  JVM：suites=32 tests=178 failures=0 errors=0 skipped=0
+  schema：EXIT=0（version 3，tasks/projects/detail/manual_order）
+
+四、G7 新增 Compose UI 测试（模拟器实测）
+----------------------------------------
+测试类：G7DetailAttributeUiTest
+运行：./gradlew :app:connectedDebugAndroidTest --rerun-tasks \
+      -Pandroid.testInstrumentationRunnerArguments.class=io.github.mazilin.nautile.verification.G7DetailAttributeUiTest
+最终结果：12 tests / 0 failures / 0 errors / 0 skipped；BUILD SUCCESSFUL；
+日志 g7_targeted_20261125T202000.log。
+过程记录（测试自身定位错误的纠正，非放宽预期）：
+- g7_targeted_20261125T201642.log：11/12，1 failure。日期面板说明文字在 60% 半屏下不可见，
+  原断言 assertIsDisplayed 不适用；改为 assertExists 并新增“无日期时无 SetText 语义”断言。
+- g7_targeted_20261125T201824.log：11/12，1 failure。禁用 OutlinedTextField 不暴露 SetText 语义，
+  原断言对索引 0 取节点失败；改为 assertCountEquals(0)，预期（无日期不可填时刻）未变。
+- g7_targeted_20261125T202000.log：12/12 通过。
+
+用例（名称含 AC/设计编号）：
+1. G7_CMP30_detail_toolbar_has_exactly_five_icon_entries
+   五项入口存在且各只有 1 个节点；无“标签/提醒/重复/更多/语音”文本入口。
+2. G7_CMP31_detail_toolbar_items_are_at_least_48dp
+   五项语义边界宽、高均 ≥48dp。
+3. G7_CMP33_priority_selection_and_clear_persist_and_update_summary
+   四档菜单齐备；选“高”写库并更新摘要；只改优先级（标题/详情/清单/项目不变）；
+   选“无”清除为 NONE。
+4. G7_CMP32_due_date_and_time_saved_and_cleared_with_summary
+   无日期时时刻不可编辑并显示原因；选今天+09:30 写库；返回摘要“今天 09:30”；
+   清除后 dueDate/dueTime 均 null、摘要“未设置”。
+5. G7_CMP34_project_selection_and_clear_persist
+   菜单含无项目/活跃项目/新建项目；选择写 projectId；选无项目写 null。
+6. G7_CMP34_closed_project_prompts_reopen_then_retries_once_and_succeeds
+   已结项项目任务切换 GTD 触发重开确认；首次失败不写任务（update 0 次）；
+   确认后项目 ACTIVE、清单写为等待中，任务只更新 1 次。
+7. G7_CMP34_CMP37_retry_happens_only_once_then_error_keeps_value
+   重开被仓库替身忽略（模拟重开未生效）：确认后只重试 1 次，显示“项目状态已变化，请重试”，
+   任务清单保持收件箱，不再弹第二次重开确认（可控失败仓库）。
+8. G7_CMP35_checklist_switch_updates_position_and_ended_is_disabled
+   五项齐备；ENDED disabled + “已结束不可直接移入”；选“等待中”写库并更新摘要。
+9. G7_CMP35_closed_task_checklist_entry_is_disabled
+   已结项任务的清单入口禁用并读作“已结项，请在详情重新打开”，点击不展开菜单。
+10. G7_CMP36_detail_menu_edit_focuses_field_and_clear_writes_null
+    菜单含“编辑详情/清空详情”；编辑聚焦既有详情字段（tag task_detail_detail）；
+    清空写 null 且摘要“编辑详情，当前为空”。
+11. G7_AC_D08_blank_title_blocks_leave_and_keeps_sheet
+    标题改为空白后点关闭：显示“标题不能为空”“请先修正无效标题”，面板保留，
+    关闭未被放行，库标题未被改写。
+12. G7_CMP37_new_task_priority_and_due_summary_regression
+    新建面板（改引用共用控件后）优先级“高”与“今天 09:30”摘要正确，创建一次写入
+    priority=HIGH、dueDate=今天、dueTime=09:30，回归 G6 行为。
+
+五、全量 connected（上限 20 分钟）
+----------------------------------
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+结果：168 tests / 0 failures / 0 errors / 0 skipped；BUILD SUCCESSFUL；耗时 86s（1m25s）。
+日志：g7_connected_20261125T202316.log
+说明：168 = 既有 151 + 新增 12 + 截图 5；既有断言无需修改（0 失败）。
+
+六、截图（不提交）
+------------------
+命令：adb shell am instrument -w -r -e class ...G7DetailScreenshotTest \
+      io.github.mazilin.nautile.test/androidx.test.runner.AndroidJUnitRunner
+结果：OK (5 tests)，EXIT=0；日志 g7_screenshots_20261125T202241.log。
+文件（file 核对均为 PNG 1080x2400 RGBA，非空）：
+- docs/验证记录/门禁/g7_detail_toolbar_initial.png（详情初始：标题/详情/五图标）
+- docs/验证记录/门禁/g7_detail_priority_menu.png（优先级四项+check，无第二层遮罩）
+- docs/验证记录/门禁/g7_detail_date_panel.png（同面板日期选择+返回）
+- docs/验证记录/门禁/g7_detail_menu.png（详情菜单：编辑/清空）
+- docs/验证记录/门禁/g7_detail_summary_state.png（摘要：今天 09:30 / 高 / 课程项目 / 等待中）
+说明：截图由 Compose 测试宿主渲染后 adb pull，仅作视觉核对，不替代断言。
+
+七、设计核对
+------------
+- 同套图标/菜单：新建与详情均引用 TaskAttributeControls 的 AttributeToolbarItem、
+  PriorityMenuContent、ProjectMenuContent、ChecklistMenuContent、DetailMenuContent、
+  DateAttributePanel；语义文本一致（测试按同一 contentDescription 断言）。
+- 编辑即保存：优先级/日期时刻/项目/GTD/清空详情均在选择或清除时写库，无整页保存按钮；
+  测试直接核对 Room 值。
+- ENDED 禁用：清单菜单 ENDED disabled + 说明；已结项任务的清单入口禁用。
+- 摘要：日期“今天 HH:mm”、优先级中文、项目名、清单名；无值为纯图标。
+- 48dp：五项语义边界均 ≥48dp。
+- 无字面量：静态检查 8 规则命中 0。
+- NewTask 无行为变化：G6 的 11 例与全量 168 例通过，另有 1 例新建属性回归。
+
+八、问题、限制与未自动化
+------------------------
+事实：
+1. 仓库异常（Exception）路径未捕获：TodoViewModel 的字段写入直接调用 TaskCommands，
+   仓库抛错时无 catch，未转为界面错误；TaskCommands 为具体类，无法用命令替身注入结果失败。
+   因此“保存失败”只验证了命令结果失败（重开未生效后只重试一次并显示错误、值保留）。
+   影响：数据库 I/O 异常下可能崩溃而非提示；属实现缺口，交开发/架构判断是否需要 catch。
+2. 已结项项目不出现在项目菜单（CMP-34），无法通过“选择项目”触发重开确认；
+   本轮用“任务当前属于已结项项目 + 切换 GTD”构造同一守卫路径，已通过。
+3. 详情项目菜单“新建项目”未单独测试（G6 已覆盖新建面板同菜单；本轮未扩大范围）。
+未自动化：
+- 真机、暗色模式、200% 字体、键盘实际可见性与 IME 高度；
+- 动画观感、触感、菜单贴近键盘的像素级表现；
+- 仓库抛异常时的 UI 行为（无安全注入点，且会中断 instrumentation 进程）；
+- 本轮按任务书“不改生产代码”未做变异抽查（变异需临时改业务代码，超出本轮允许范围）。
+截图/日志不含密钥与个人敏感信息。
+
+九、结论
+--------
+静态 PASS；verify G7 与 G7-FINAL 四步 EXIT=0、JVM 178/0、lint 0、schema v3；
+新增 G7 UI 12/12；全量 connected 168/0/0/0（86s，模拟器非真机）；
+关键交互（五项/优先级/日期/项目/GTD/ENDED/清空/无效标题/重开重试/失败保留/新建回归）通过。
+判定：PASS（模拟器范围；真机、暗色、大字号、IME 与仓库异常路径仍列未自动化）。
