@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- inbox：空态装饰（Material Symbols Outlined 线性风格，24dp/2dp 描边） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M4,4L20,4A2,2 0 0 1 22,6L22,18A2,2 0 0 1 20,20L4,20A2,2 0 0 1 2,18L2,6A2,2 0 0 1 4,4ZM2,13L8,13L9.5,16L14.5,16L16,13L22,13"
+        android:strokeColor="@android:color/black"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />
+</vector>
