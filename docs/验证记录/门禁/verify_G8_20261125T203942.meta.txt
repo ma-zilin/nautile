@@ -1,0 +1,8 @@
+task=G8
+time=2026-11-25T20:40:06+08:00
+head=e683a8e3b4a2269669b520e0f12d94d4a0bfe7f0
+dirty_entries=100
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_G8_20261125T203942.log

@@ -1,0 +1,8 @@
+task=G10-R2
+time=2026-11-25T21:43:31+08:00
+head=975a874ddbcd5afb4f447fb9d0418d26cab8c8df
+dirty_entries=119
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_G10-R2_20261125T214306.log

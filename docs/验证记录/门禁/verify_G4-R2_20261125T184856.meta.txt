@@ -1,0 +1,8 @@
+task=G4-R2
+time=2026-11-25T18:49:17+08:00
+head=1cba60cbb6e02a6d87e7a6666848ce373a1273c2
+dirty_entries=46
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_G4-R2_20261125T184856.log

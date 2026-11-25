@@ -1,0 +1,98 @@
+# G10-R2 干净 HEAD 复验（独立验证证据）
+
+- 时间：2026-11-25T21:43:06+08:00 起
+- 角色：独立验证 Agent；只写证据/截图，未改业务代码。
+- 检查对象：HEAD `975a874ddbcd5afb4f447fb9d0418d26cab8c8df`（"feat(ui): view options menu content [G9]"）。
+  - `git status --porcelain`：仅 `docs/验证记录/门禁/` 下未跟踪截图/日志，无已跟踪文件修改（证据类 untracked，dirty_entries=119 均为证据）。
+  - `git stash list`：空。
+  - `ViewOptionsMenuContent` 在 HEAD：`git grep -n` 命中 `TaskAttributeControls.kt:428` 定义与 `TodoScreen.kt:559` 调用；`G10ScreenshotTest.kt` 已跟踪。
+- 设备：`emulator-5554`，AVD `nautile_api36`，API 36，1080x2400；模拟器，非真机。
+- 适用需求/设计：`docs/需求基线.md` v2.14；`.plans/设计/01_视觉与动效标准.md`；`.plans/设计/02_TickTick参考对照.md`。
+
+## 1. 静态 `bash scripts/check_ui_tokens.sh`
+
+- EXIT=0，RESULT: PASS；检查文件数 20；8 条规则命中总数 0（颜色/圆角/动效/文本图标/分栏/遮罩 alpha/material-icons-extended/无限动画 API 均 0）。
+- 范围限制：仅扫 `ui/theme`、`ui/designsystem`、`ui/AppRoot.kt`、`ui/screen/todo`；不能据此声称全项目无硬编码。
+
+## 2. 门禁 `bash scripts/verify.sh G10-R2`
+
+- 归档：`docs/验证记录/门禁/verify_G10-R2_20261125T214306.log` / `.meta.txt`；GATE RESULT: PASS。
+- 四步均 `--rerun-tasks` 且 EXIT=0：assembleDebug=0、assembleDebugAndroidTest(compile-only)=0、testDebugUnitTest=0、lintDebug=0。
+- JVM 统计：suites=36，tests=211，failures=0，errors=0，skipped=0。
+- schema：1/2/3.json 存在；v3 含 tasks/projects/detail/manual_order，内容检查 EXIT=0。
+- HEAD `975a874` 可构建（上轮唯一阻断已消除）。
+
+## 3. 全量 connected `./gradlew :app:connectedDebugAndroidTest --rerun-tasks`
+
+- EXIT=0，BUILD SUCCESSFUL，耗时 1m44s（70 tasks executed，`--rerun-tasks` 未走 up-to-date）。
+- 结果 XML：`app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml`；tests=206，failures=0，errors=0，skipped=0，34 个测试类。
+- 日志归档：`docs/验证记录/门禁/g10_r2_connected_20261125T2146.log`。
+- 关键类：G10ScreenshotTest=8、G9ViewUiTest=6、AcNewTaskToolbarG6Test=11、AcCardGroupsT091Test=8、AcGtdHeaderT090Test=4、AcTodoT07Test=23、MigrationTest=6，均 0 失败。
+
+## 4. 关键点复核（设计核对沿用上轮，本轮在干净 HEAD 重跑并重新截图）
+
+| 关键点 | 判定 | 依据 |
+| --- | --- | --- |
+| 全屏 GTD、无遮罩、左列五项、关闭按钮 | PASS | `GtdSelector.kt` 全屏注释/实现；AcGtdHeaderT090Test 4/4；g10_r2_gtd_fullscreen |
+| 面板工具栏五入口（日期/优先级/项目/清单/详情）与摘要 | PASS | AcNewTaskToolbarG6Test 11；g10_r2_quickadd_toolbar（旗标“无”、清单“收件箱”） |
+| 分组卡片/组头计数/空组 0/单独任务/无行分隔线 | PASS | AcCardGroupsT091Test 8；g10_r2_todo_light（课程项目 1、空项目 0、单独任务 1） |
+| 蓝色圆形 FAB（CircleShape + primary/onPrimary，右下 16dp） | PASS | TodoScreen.kt:514-522；g10_r2_todo_light/dark |
+| 19 图标、无 material-icons-extended | PASS | `res/drawable` 19 个 XML；静态规则 4/7=0 |
+| 深色主题 | PASS（含既有观察） | NautileTheme darkTheme；g10_r2_todo_dark 可辨、无硬编码；卡片比页面底更暗属设计 §11.2 第 9 项待确认，非阻断 |
+| 视图选项菜单（分类/排序、当前项打勾、无“应用”） | PASS | ViewOptionsMenuContent（HEAD 428）；G9ViewUiTest 6、G9ViewModelViewOptionsTest 8；g10_r2_view_menu |
+| 优先级锚定菜单（四色+中文，菜单无额外遮罩） | PASS | 锚定于旗标上方；g10_r2_priority_menu |
+
+观察（非阻断）：视图菜单 `MenuMaxHeight=320dp`，首屏只到“排序/优先级”，默认“手动”“创建时间”需滚动；未改设计。
+
+## 5. 截图（未提交，`docs/验证记录/门禁/`）
+
+g10_r2_todo_light_20261125T2145.png、g10_r2_todo_dark_20261125T2145.png、g10_r2_quickadd_toolbar_20261125T2145.png、g10_r2_priority_menu_20261125T2145.png、g10_r2_gtd_fullscreen_20261125T2145.png、g10_r2_view_menu_20261125T2145.png、g10_r2_search_no_result_20261125T2145.png、g10_r2_manual_drag_mid_20261125T2145.png —— 均为 PNG 1080x2400 RGBA。
+
+截图方式：Compose 测试宿主渲染真实页面组件（固定夹具），非真实数据库端到端截图；数据行为由第 3 节 connected 用例判定。
+
+## 6. 规格 → 实现 → 测试证据对照表
+
+| # | 规格（需求/设计） | 实现落点 | 测试/证据 |
+| --- | --- | --- | --- |
+| 1 | 待办头部：GTD→标题→搜索→视图→设置 | TodoScreen 头部 | AcGtdHeaderT090Test 4、AcTodoT07Test 23 |
+| 2 | 分组卡片/计数/空组 0/单独任务 | TaskGrouping + TaskGroupCard | AcCardGroupsT091Test 8、G9ViewUiTest 6、g10_r2_todo_light |
+| 3 | 浅/深色板由 #3B6FE0 推导 | Theme.kt + Color.kt | 静态规则 1=0、g10_r2_todo_light/dark |
+| 4 | 蓝色圆形 FAB 56dp | TodoScreen FAB | AcTodoT07Test、g10_r2_todo_light |
+| 5 | 全屏 GTD、无遮罩、三关闭路径 | GtdSelector.kt | AcGtdHeaderT090Test、g10_r2_gtd_fullscreen |
+| 6 | 三面板下拉/阈值/insets 单点 | NautileBottomSheet | AcSheetPullG4Test 21、AcDetailPullT088Test 7 |
+| 7 | 设置 pop 约 200ms | AppRoot.kt | AcSettingsExitG4Test 3/3 |
+| 8 | 新建工具栏五入口/锚定菜单/摘要 | NewTaskSheet + TaskAttributeControls | AcNewTaskToolbarG6Test 11、g10_r2_quickadd/priority |
+| 9 | 详情属性即改即存、失败保留 | TaskDetailSheet | G7DetailAttributeUiTest 12、AcDetailPersistenceT085Test |
+| 10 | 搜索标题/项目、无结果空态、清除/返回 | TaskSearch + 搜索栏 | G8SearchUiTest 6、G8SearchActivityTest 2、g10_r2_search_no_result |
+| 11 | 视图分类/排序菜单、立即生效、按模块记忆 | ViewOptionsMenuContent + ViewOptions + DataStore | G9ViewUiTest 6、G9ViewModelViewOptionsTest 8、g10_r2_view_menu |
+| 12 | 手动排序长按重排、事务写 manualOrder | TaskGroupCard 拖拽 + MIGRATION_2_3 | G5ManualOrderRoomTest 3、MigrationTest 6、G9ViewOptionsPersistenceTest 2 |
+| 13 | 图标集 19 个、功能图标有描述 | res/drawable 19 | 静态规则 4/7=0、G6/G8/G9 语义断言 |
+| 14 | Expressive 仅三处、无裸动效字面量 | NautileMotion + 三处引用 | 静态规则 3=0、AcSettingsExitG4Test、AcTodoT07Test |
+| 15 | 空态/搜索空态组件 | NautileStateViews | AcCardGroupsT091Test、G8、g10 截图 |
+| 16 | G1-A 基线回归 | AppRoot/MainActivity/TodoScreen | AcAppRootT06Test 5、TodoScreenSmokeTest 1、AppRootTest 5 |
+
+## 7. AC 缺口 / 未做项
+
+1. 标签：FR-V-03/AC-T-08 标签分类、AC-T-19 搜索标签命中未实现（用户后置）。
+2. 提醒、重复：未实现（不属 G2—G9 范围）。
+3. 项目颜色/图标：仅有 ic_folder/ic_inbox 基色，无用户可配置项目色/图标。
+4. 折叠：FR-V-08/AC-T-16 本轮不折叠（用户 2026-11-25 决定，需求变更记录待落档）。
+5. 日程/日志/计时/AI 调用未在 G2—G9 范围（占位/后续里程碑）。
+6. 加载/错误态：`NautileLoadingState`/`NautileErrorState` 已定义但主代码 0 处使用（设计 §7.6 未接入）。
+7. 设置/日程/日志/AI 页视觉与头部一致性未逐页截图核对。
+8. 空项目名仅禁用无提示；日期选择器 en-US（G6 观察）。
+9. 任务移入其他清单未清 `manualOrder`，与设计 §14.3 草案差异（G5 登记待确认）。
+
+## 8. 未自动化 / 未执行
+
+- 真机（vivo）验收未执行；本轮仅模拟器 API36，不声称真机通过。
+- 键盘实拍、200% 字体、TalkBack/Accessibility Scanner、深色对比度实测、动画观感与 pop 中间帧：未自动化。
+- 真实数据库端到端截图（新建→重启→列表）：未单独截图；数据规则由 connected 用例判定。
+- 视图菜单滚动后“手动/创建时间”可见性：仅首屏截图，未滚动截图。
+
+## 9. 判定
+
+- 干净 HEAD 确认：HEAD `975a874` 含 `ViewOptionsMenuContent` 与 `G10ScreenshotTest`；工作区仅未跟踪证据；stash 空。
+- 静态 PASS；门禁 PASS（四步 EXIT 0、JVM 211/0/0/0、schema v3 OK）；全量 connected PASS（206/0/0/0，1m44s）。
+- 关键点复核无未解释阻断；AC 缺口/未做项已列明。
+- **G10-R2 最终判定：PASS（限模拟器与已列范围；真机与人工体验项未自动化）**。
