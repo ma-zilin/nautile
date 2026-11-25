@@ -1,0 +1,64 @@
+G1-A3 受控变异抽查（先红后绿）元数据
+时间戳: 20261125T153353
+执行角色: 独立验证 Agent
+设备: emulator-5554 (nautile_api36 AVD, API 36, 模拟器非真机)
+
+[HEAD]
+b14574dae9cb2a31cb98ba97e939b4383d992f0b
+
+[基线工作区 git status --porcelain]
+仅 8 张未跟踪 PNG 截图（docs/验证记录/门禁/ 下），无已跟踪改动。
+
+[基线哈希]
+sha256 app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/GtdSelector.kt
+= 5daa49c84f6e71243e364b737e1a64d429862f4375e4e203b1c8bc6434f3f85d
+
+[注入点]
+GtdSelector.kt 左列宽度 leftColumnWidth 的 CMP-10 计算（原 L225）：
+  - with(density) { widestTextPx.toDp() } + NautileSpacing.space3 * 2
+  + 120.dp
+注入后哈希 = f29840698fff38e0cc427c2044134276b118ba646385b140ca13e572042bbebd
+注入后 git diff（仅此 1 行，见 g1_a3_mutation_20261125T153353.log 首段）：
+@@ -222,7 +222,7 @@
+                 constraints = unbounded,
+             ).size.width
+         }
+-        with(density) { widestTextPx.toDp() } + NautileSpacing.space3 * 2
++        120.dp
+     }
+
+[红相]
+命令:
+  ./gradlew :app:connectedDebugAndroidTest \
+    -Pandroid.testInstrumentationRunnerArguments.class=io.github.mazilin.nautile.verification.AcGtdHeaderT090Test \
+    --rerun-tasks
+开始 2026-11-25T15:34:1x+08:00 / 结束 2026-11-25T15:34:24+08:00
+退出码: 1 (BUILD FAILED)
+XML: tests=4 failures=1 errors=0 skipped=0
+失败用例: acG04_left_width_follows_longest_title
+断言: java.lang.AssertionError: W_L 应等于最长标题文本宽 + 2×12dp
+      expected:<106.666664> but was:<120.0> (AcGtdHeaderT090Test.kt:132)
+其余 3 例 PASS。符合“仅目标用例变红”的预期。
+
+[还原]
+最小反向编辑：将 120.dp 精确改回
+  with(density) { widestTextPx.toDp() } + NautileSpacing.space3 * 2
+未使用 git checkout/restore/stash/clean。
+还原后 sha256 = 5daa49c84f6e71243e364b737e1a64d429862f4375e4e203b1c8bc6434f3f85d
+与基线完全一致：是。
+git diff --name-only 为空（不含 GtdSelector.kt）。
+
+[绿相]
+命令: 同红相（--rerun-tasks）
+退出码: 0 (BUILD SUCCESSFUL)
+XML: tests=4 failures=0 errors=0 skipped=0 time=3.037s
+4 例全部 PASS（含 acG04_left_width_follows_longest_title）。
+
+[结论]
+result: PASS（变异被测试捕获；还原精确；绿相复跑通过）
+
+[未自动化 / 限制]
+- 仅覆盖 AcGtdHeaderT090Test 一个类，未复跑全量 97 例（本次为定点变异抽查，范围外不声明通过）。
+- 模拟器非真机；未评估真机渲染与实际手感。
+- 截图/日志不替代课程要求的截图取证；本轮未新增界面截图（缺陷为尺寸计算，属程序判定）。
+- 未提交、未推送；无业务代码残留改动。

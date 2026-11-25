@@ -74,6 +74,7 @@
 - 全量设备回归（单独执行）：`timeout -s INT 1200 ./gradlew :app:connectedDebugAndroidTest --rerun-tasks`；A3 exit 0、97/0/0/0、47s；A3-R2 exit 0、97/0/0/0、46s；XML `app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml`。
 - 分类统计：TodoScreenSmokeTest=1、RoomProjectRepositoryContractTest=5、RoomTaskRepositoryContractTest=5、MigrationTest=3、ProjectDaoTest=3、TaskDaoTest=3、RoomProjectRepositoryTest=2、RoomTaskRepositoryTest=3、AppRootTest=5、AcAppRootT06Test=5、AcDetailNewTaskUiT08T09Test=8、AcDetailPersistenceT085Test=1、AcDetailPullT088Test=7、AcGtdHeaderT090Test=4、AcSettingsEntryP1Test=2、AcTodoT07Test=23、AcUiT071Test=9、AcUiT077T081Test=8，合计 97。
 - 设备条件：emulator-5554 / nautile_api36 / Android 16（API36）/ x86_64 / KVM / `ro.kernel.qemu=1`；font_scale=1.0；window/transition/animator scale=0；1080×2400 / 420dpi；深色截图临时切换 Night mode 后恢复。
+- 受控变异抽查（2026-11-25 15:33，emulator-5554 / nautile_api36，模拟器非真机）：在 `GtdSelector` 左宽计算注入单行缺陷（`W_L` 改为固定 `120.dp`）后执行 `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.mazilin.nautile.verification.AcGtdHeaderT090Test --rerun-tasks`，红相退出码 1（BUILD FAILED），XML tests=4 / failures=1 / errors=0 / skipped=0，失败用例 `acG04_left_width_follows_longest_title`（expected:<106.666664> but was:<120.0>），同层其余 3 例通过；最小反向编辑还原后 sha256 与基线一致（`5daa49c84f6e71243e364b737e1a64d429862f4375e4e203b1c8bc6434f3f85d`），`git diff --name-only` 为空；绿相同命令复跑退出码 0、4 例 0 失败。证据：`docs/验证记录/门禁/g1_a3_mutation_20261125T153353.log`、`docs/验证记录/门禁/g1_a3_mutation_20261125T153353.meta.txt`。限制：仅覆盖该测试类 4 例，未复跑全量 97 例，不据此声明全量通过。
 
 ## 7. UI 验收清单（设计 §12 逐项）
 
@@ -97,7 +98,7 @@
 - 动画中间帧、可打断续播、边界拉动手感、面板下拉与预测返回：未自动化，需人工评审。
 - 深色对比度数值：未测（仅证明切换生效与角色色值）。
 - TalkBack 语义朗读、像素级面板/圆角测量：未执行。
-- 本轮未做新增测试先红后绿与变异抽查（A1 无新测试；A2/A3 测试为增量，无红灯记录）。
+- 已补做一次变异抽查并取得红→绿证据（见 §6）；A1 无新测试；A2/A3 新增测试编写于实现之后，未保留‘未实现即失败’的完整红相，以变异红相作为替代证据。
 
 ## 9. AC 缺口与范围外
 
@@ -117,7 +118,7 @@
 5. 品牌种子色、动态取色、中文行高、200% 宽度、RTL 仍【待确认】（设计 §11.2）。
 6. 图标为按 Material Symbols Outlined 风格手绘的矢量近似，未做官方字形逐像素比对。
 7. 静态检查范围仅 theme/designsystem/AppRoot/todo，未覆盖其他页面。
-8. 本轮无变异抽查、无新增测试先红后绿记录。
+8. 变异抽查已补做 1 次（限 AcGtdHeaderT090Test 4 例）；未覆盖全量测试，A2/A3 测试无‘实现前红相’记录。
 9. 模拟器结论不等同真机；动画、触感、性能需真机复核。
 
 ## 11. 待归档清单
