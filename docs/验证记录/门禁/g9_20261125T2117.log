@@ -1,0 +1,67 @@
+============================================================
+G9 闸门证据：视图、分类、排序与手动重排
+时间：2026-11-25T21:19:21+08:00
+HEAD：13a484e5f67863d6a55149315e386f9978b80e18
+工作区未提交条目：124（含开发实现与本次测试/证据）
+设备：emulator-5554（nautile_api36，API 36，模拟器，非真机）
+对应需求：FR-V-01/02/03、AC-T-08、AC-T-13、CMP-39/40/41
+============================================================
+
+===== 1. 静态检查 bash scripts/check_ui_tokens.sh =====
+  命中 0
+
+------------------------------------------------------------
+检查文件数：20（ui/theme + ui/designsystem + ui/screen/todo 的 .kt，另加 ui/AppRoot.kt）
+命中总数：0
+RESULT: PASS
+
+===== 2. 门禁 bash scripts/verify.sh G9 =====
+[STEP] assembleDebug EXIT=0
+[STEP] assembleDebugAndroidTest(compile-only) EXIT=0
+[STEP] testDebugUnitTest EXIT=0
+[STEP] lintDebug EXIT=0
+suites=36 tests=211 failures=0 errors=0 skipped=0
+[STEP] 测试结果统计 EXIT=0
+[STEP] schema 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）
+GATE RESULT: PASS
+verify 日志：docs/验证记录/门禁/verify_G9_20261125T211535.log
+
+===== 3. 全量 connectedDebugAndroidTest --rerun-tasks =====
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+BUILD FAILED in 1m 42s
+./gradlew :app:connectedDebugAndroidTest --rerun-tasks  0.98s user 0.12s system 1% cpu 1:42.31 total
+统计：tests=198 failures=1 errors=0 skipped=0（exit 1，耗时 1m42s）
+失败用例：io.github.mazilin.nautile.verification.G8SearchUiTest#G8_CMP38_close_restores_full_list_and_preserves_order_without_writing_data
+断言：搜索后任务顺序应保持（G8SearchUiTest.kt:258）
+根因核对：TaskSorting.byManual 对 manualOrder=null 先按 createdAt 倒序、再按 ID 倒序；
+G8 用例三条任务 createdAt 相同，新默认排序把插入序 一/二/三 反转为 三/二/一。
+旧实现 TodoViewModel 直接用 observeAll 顺序（DAO SELECT * 的 rowid 升序）分组，未排序。
+
+===== 4. G9 新增/更新测试执行结果 =====
+JVM：36 suites / 211 tests / 0 failures（新增 ViewOptionsTest 9、TaskSortingTest 9、TaskGroupingByViewTest 7）
+instrumentation 定向：24 tests / 0 failures
+  G9ViewOptionsPersistenceTest 2：真 DataStore 按模块写入/读回、重建实例保持、写失败保留旧值
+  G9ViewModelViewOptionsTest 8：默认、即选即写、按模块、失败回退、手动 0..n-1、失败回滚、非手动/搜索拒绝、完成放弃不改选项
+  G9ViewUiTest 6：菜单两组+选中态、回调、分类/排序结构变化、长按拖拽落位持久化、非手动不可拖、搜索隐藏空组
+  G9ScreenshotTest 4：生成 g9_view_menu / g9_priority_groups / g9_due_groups / g9_manual_drag_mid
+  AcGtdHeaderT090Test 4：视图入口由禁用占位改为可用（用户 2026-11-25 决定），其余断言保留
+
+===== 5. 截图（不提交，docs/验证记录/门禁/）=====
+docs/验证记录/门禁/g9_due_groups_20261125T2114.png
+docs/验证记录/门禁/g9_manual_drag_mid_20261125T2114.png
+docs/验证记录/门禁/g9_priority_groups_20261125T2114.png
+docs/验证记录/门禁/g9_view_menu_20261125T2114.png
+
+===== 6. 未自动化 / 人工评审 =====
+- 菜单锚定浮层的“无遮罩”仅断言列表内容仍可见；像素级透明度与视觉层级需人工核对。
+- 拖拽手感、长按时长与滚动冲突体验需真机/人工判定；本轮仅模拟器自动化。
+- AC-T-08 的“按标签分组”未实现：FR-V-03 含标签分类，但 Task 无标签字段，菜单仅项目/优先级/截止；需确认基线口径。
+
+===== 7. 判定 =====
+static PASS；verify PASS（JVM 211/0）；connected 198 tests / 1 failure → 未达 0/0，G9 闸门 FAIL。
+阻塞项为 G8 顺序回归（默认 manual 排序改变未排序任务展示顺序），交开发 Agent 修复后复测。
+
+===== 8. 完整日志副本 =====
+- 全量 connected：docs/验证记录/门禁/g9_connected_full_20261125T2117.log
+- 定向 G9 instrumentation（24/0）：docs/验证记录/门禁/g9_targeted_20261125T2117.log
+- 静态检查：/tmp/g9_ui_tokens.log（已摘录 RESULT）

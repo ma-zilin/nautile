@@ -10,6 +10,9 @@ import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.ProjectStatus
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
+import io.github.mazilin.nautile.domain.model.ViewClassification
+import io.github.mazilin.nautile.domain.model.ViewOptions
+import io.github.mazilin.nautile.domain.model.ViewSort
 import io.github.mazilin.nautile.domain.repository.ProjectRepository
 import io.github.mazilin.nautile.domain.repository.SettingsRepository
 import io.github.mazilin.nautile.domain.repository.TaskRepository
@@ -66,6 +69,21 @@ private data class TodoListBase(
     val projects: List<Project>,
     val confirmation: ProjectConfirmation?,
     val reopenPrompt: ProjectReopenPrompt?,
+    val savedViewOptions: ViewOptions,
+)
+
+/** 视图选项本地覆盖：写入成功前/后都以内存值为准，失败时回退到旧值（CMP-41）。 */
+private data class ViewOptionsOverride(val position: GtdPosition, val options: ViewOptions)
+
+/** 手动排序本地覆盖：拖拽落位后先按新顺序展示，写入失败再整体回滚（CMP-40.2）。 */
+private data class ManualOrderOverride(val position: GtdPosition, val orders: Map<TaskId, Long>)
+
+/** G9 视图选项的瞬时状态（不持久化）：本地覆盖与错误提示。 */
+private data class ViewPreferences(
+    val optionsOverride: ViewOptionsOverride? = null,
+    val viewError: String? = null,
+    val manualOverride: ManualOrderOverride? = null,
+    val manualError: String? = null,
 )
 
 private data class TaskDetailBase(
@@ -88,6 +106,11 @@ class TodoViewModel(
     private val settingsRepository: SettingsRepository,
     private val taskCommands: TaskCommands,
     private val projectCommands: ProjectCommands,
+    /**
+     * 手动排序批量写入（CMP-40.2）：生产环境接 `RoomTaskRepository.updateManualOrders` 的事务，
+     * 测试或预览可传空实现；抛异常表示写入失败，由本类回滚内存顺序。
+     */
+    private val writeManualOrders: suspend (Map<TaskId, Long>) -> Unit = {},
 ) : ViewModel() {
 
     private val allTasks = taskRepository.observeAll()
@@ -121,6 +144,9 @@ class TodoViewModel(
 
     private val search = MutableStateFlow(SearchInput())
 
+    /** G9 视图选项本地状态：选择即生效，写入失败再回退（CMP-41）。 */
+    private val viewPreferences = MutableStateFlow(ViewPreferences())
+
     private val todoListBase = combine(
         settingsRepository.settings,
         allTasks,
@@ -135,26 +161,50 @@ class TodoViewModel(
             projects = projects,
             confirmation = pending,
             reopenPrompt = reopenPrompt,
+            savedViewOptions = ViewOptions.fromSettings(settings.perModuleViewOptions, position),
         )
     }
 
-    val uiState: StateFlow<TodoUiState> = combine(todoListBase, search) { base, input ->
+    val uiState: StateFlow<TodoUiState> = combine(
+        todoListBase,
+        search,
+        viewPreferences,
+    ) { base, input, preferences ->
+        val options = preferences.optionsOverride
+            ?.takeIf { it.position == base.position }
+            ?.options
+            ?: base.savedViewOptions
+        val manualOrders = preferences.manualOverride
+            ?.takeIf { it.position == base.position }
+            ?.orders
         val filtered = TaskSearch.filter(base.tasks, base.projects, input.query)
+        // 搜索只过滤可见性；分组/排序仍按当前视图选项（CMP-38）。
+        val visibleSource = if (input.active) filtered else base.tasks
+        val viewTasks = manualOrders?.let { orders ->
+            visibleSource.map { task ->
+                orders[task.id]?.let { order -> task.copy(manualOrder = order) } ?: task
+            }
+        } ?: visibleSource
         TodoUiState(
             position = base.position,
             // 搜索态只保留有命中的组（不显示 0 结果组）；退出搜索恢复含空项目的完整分组。
-            groups = if (input.active) {
-                TaskGrouping.byProject(filtered, base.projects)
-            } else {
-                TaskGrouping.byProjectIncludingEmpty(base.tasks, base.projects)
-            },
+            groups = TaskGrouping.byView(
+                tasks = viewTasks,
+                projects = base.projects,
+                options = options,
+                includeEmptyProjects = !input.active,
+            ),
             // 选择器计数仍用当前清单全部任务，不随搜索过滤变化。
             visibleTasks = base.tasks,
             projectConfirmation = base.confirmation,
             projectReopenPrompt = base.reopenPrompt,
             searchAvailable = true,
+            viewOptionsAvailable = true,
             searchActive = input.active,
             searchQuery = input.query,
+            viewOptions = options,
+            viewOptionsError = preferences.viewError,
+            manualOrderError = preferences.manualError,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodoUiState())
 
@@ -251,6 +301,97 @@ class TodoViewModel(
     /** 清除图标：只清空查询，保持搜索栏与焦点（CMP-38）。 */
     fun clearSearch() {
         search.update { it.copy(query = "") }
+    }
+
+    // ---- 视图选项与手动排序（G9、CMP-39—CMP-41） ----
+
+    /** 切换分类：立即生效并写入当前模块；同值不重复写。 */
+    fun selectViewClassification(classification: ViewClassification) {
+        val current = uiState.value
+        if (current.viewOptions.classification == classification) return
+        persistViewOptions(current.position, current.viewOptions.copy(classification = classification))
+    }
+
+    /** 切换排序：立即生效并写入当前模块；同值不重复写。 */
+    fun selectViewSort(sort: ViewSort) {
+        val current = uiState.value
+        if (current.viewOptions.sort == sort) return
+        persistViewOptions(current.position, current.viewOptions.copy(sort = sort))
+    }
+
+    /**
+     * 选择即写入；写入失败回退到上一份内存值并提示，不显示“已保存”（CMP-41）。
+     * 旧值优先取本类覆盖值，其次由设置流重新派生。
+     */
+    private fun persistViewOptions(position: GtdPosition, options: ViewOptions) {
+        val previous = viewPreferences.value.optionsOverride
+        viewPreferences.update {
+            it.copy(optionsOverride = ViewOptionsOverride(position, options), viewError = null)
+        }
+        viewModelScope.launch {
+            val result = runCatching {
+                settingsRepository.setViewOptions(position, options.encode())
+            }
+            if (result.isFailure) {
+                viewPreferences.update { current ->
+                    current.copy(
+                        optionsOverride = previous,
+                        viewError = "视图选项保存失败，请重试",
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * 拖拽落位后一次性写入当前清单所有任务的新顺序（CMP-40.2）。
+     *
+     * 仅手动排序、非搜索态接受；先按新顺序展示，写入失败整体回滚并提示。
+     * [orderedIds] 只在目标组内变化，其他组顺序与相对位置保持不变。
+     */
+    fun reorderGroup(groupKey: String, orderedIds: List<TaskId>) {
+        val state = uiState.value
+        if (state.searchActive || state.viewOptions.sort != ViewSort.MANUAL) return
+        val group = state.groups.firstOrNull { it.key == groupKey } ?: return
+        if (group.tasks.map { it.id } == orderedIds) return
+
+        val tasksById = state.groups.flatMap { it.tasks }.associateBy { it.id }
+        val reordered = state.groups.flatMap { current ->
+            if (current.key == groupKey) {
+                orderedIds.mapNotNull { tasksById[it] }
+            } else {
+                current.tasks
+            }
+        }
+        // 数量不一致说明顺序与当前展示脱节（例如数据刚变化），放弃本次写入。
+        if (reordered.size != state.groups.sumOf { it.tasks.size }) return
+        val orders = reordered.mapIndexed { index, task -> task.id to index.toLong() }.toMap()
+        if (orders.isEmpty()) return
+
+        val position = state.position
+        val override = ManualOrderOverride(position, orders)
+        val previous = viewPreferences.value.manualOverride
+        viewPreferences.update { it.copy(manualOverride = override, manualError = null) }
+        viewModelScope.launch {
+            val result = runCatching { writeManualOrders(orders) }
+            if (result.isFailure) {
+                viewPreferences.update { current ->
+                    if (current.manualOverride != override) {
+                        current
+                    } else {
+                        current.copy(
+                            manualOverride = previous,
+                            manualError = "手动排序保存失败，已恢复原顺序",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    /** 关闭错误提示（不在下一次操作时误留失败状态）。 */
+    fun dismissViewError() {
+        viewPreferences.update { it.copy(viewError = null, manualError = null) }
     }
 
     fun completeTask(taskId: TaskId) {

@@ -1,0 +1,70 @@
+============================================================
+G9 第二轮复测（G9-R2）
+时间：2026-11-25T21:23+08:00
+HEAD：13a484e5f67863d6a55149315e386f9978b80e18
+上一轮：docs/验证记录/门禁/g9_20261125T2117.log（FAIL：G8SearchUiTest#G8_CMP38_close_restores_full_list_and_preserves_order_without_writing_data，G8SearchUiTest.kt:258）
+============================================================
+
+1. 检查对象与需求依据
+- 对象：TaskSorting.byManual 默认手动排序的同 createdAt 兜底次序修复。
+- 依据：CMP-38（搜索前后顺序保持）、CMP-40（四种排序）、AC-T-08；用户 2026-11-25 G9 口径“manualOrder 升序（null 末）→ createdAt 倒序 → ID 升序”。
+- 版本：工作区 G9 未提交改动 + 本轮 TaskSorting.kt 修复。
+
+2. diff 核对（相对上轮 2026-11-25 21:15:35 之后）
+- 文件系统核对：`find app/src build.gradle.kts app/build.gradle.kts gradle -newermt "2026-11-25 21:15:35" -type f`
+  结果只有 1 个文件：
+  app/src/main/java/io/github/mazilin/nautile/domain/rule/TaskSorting.kt
+- 构建/依赖/脚本：`git status --porcelain -- build.gradle.kts settings.gradle.kts app/build.gradle.kts gradle/ scripts/` 输出为空。
+- `git diff -- TaskSorting.kt`（HEAD 基线 0af7c56 即上轮实现）：
+  byManual 由 `byCreatedAtDesc.thenComparing(byIdDesc)` 改为 `byCreatedAtDesc.thenComparing(byIdAsc)`，
+  注释同步更新，删除未再使用的 byIdDesc。
+- 结论：仅排序比较器变化；无测试、UI、构建、依赖改动。符合申报范围。
+
+3. 静态检查
+命令：`bash scripts/check_ui_tokens.sh`
+结果：8 条规则命中 0，检查文件数 20，RESULT: PASS，EXIT=0
+日志：docs/验证记录/门禁/g9_r2_static_20261125T2123.log
+
+4. 刚性门禁
+命令：`bash scripts/verify.sh G9-R2`
+步骤与退出码：
+- assembleDebug EXIT=0
+- assembleDebugAndroidTest(compile-only) EXIT=0
+- testDebugUnitTest EXIT=0：suites=36 tests=211 failures=0 errors=0 skipped=0
+- lintDebug EXIT=0
+- schema 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）
+- GATE RESULT: PASS
+日志：docs/验证记录/门禁/verify_G9-R2_20261125T212126.log
+
+5. 全量 connected（模拟器 emulator-5554，API 36）
+命令：`./gradlew :app:connectedDebugAndroidTest --rerun-tasks`
+结果：BUILD SUCCESSFUL，CONNECTED_EXIT=0；耗时 1m43s（用例时间合计 93.7s）
+统计：tests=198 failures=0 errors=0 skipped=0（0/0 达标）
+失败分类：无
+日志：docs/验证记录/门禁/g9_r2_connected_20261125T2123.log
+结果 XML：app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml
+
+6. 重点用例
+- G8SearchUiTest：6/6 通过，含上轮失败的
+  G8_CMP38_close_restores_full_list_and_preserves_order_without_writing_data。
+  该用例三条任务 createdAt 相同，断言“Alpha 一→二→三”顺序保持；修复后 ID 升序兜底与插入顺序一致。
+- G9 新增用例：20/20 通过
+  G9ViewModelViewOptionsTest 8、G9ViewUiTest 6、G9ViewOptionsPersistenceTest 2、G9ScreenshotTest 4。
+- 手动拖拽：G9ViewUiTest#g9_manual_long_press_drag_reorders_and_persists_zero_based_orders 通过，
+  落位写 0..n-1，数据库读回 manualOrder=0/1/2；G9ViewModelViewOptionsTest#g9_manual_reorder_writes_zero_based_orders_and_persists 同样通过。
+- 优先级/截止分组：JVM TaskGroupingByViewTest 7 例与 G9ViewUiTest 分类切换用例通过，分组结构未见回归。
+
+7. 抽查说明（事实边界）
+- “默认排序与旧插入顺序一致”仅在同 createdAt 时成立（G8 场景，ID 升序 = 插入顺序）。
+  createdAt 不同时按新口径“createdAt 倒序”，与旧 rowid 插入顺序不同；该行为由
+  G9ViewModelViewOptionsTest#g9_default_is_project_manual_with_created_desc_order 与
+  TaskSortingTest#manual_null_tasks_fall_back_to_created_desc 明确断言，属已确认口径。
+
+8. 未执行 / 人工评审
+- 未执行：真机测试。本轮仅模拟器自动化，未宣称真机通过。
+- 人工评审：拖拽手感、长按时长与滚动冲突，以及菜单浮层视觉层级；均不在自动化判定范围。
+
+9. 判定
+diff 符合申报；静态 PASS；门禁 PASS（JVM 211/0）；全量 connected 198/0/0；G8Search 6/6、G9 20/20。
+判定：PASS。
+============================================================

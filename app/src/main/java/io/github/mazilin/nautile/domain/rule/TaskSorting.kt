@@ -36,11 +36,14 @@ object TaskSorting {
             .thenComparing(byIdAsc),
     )
 
-    /** 手动排序：null（未排序）置末；非 null 升序；同值/null 内按创建时间倒序，再按 ID 倒序。 */
+    /**
+     * 手动排序：null（未排序）置末；非 null 升序；
+     * 同值/null 组内按创建时间倒序，创建时间相同时按 ID 升序（保持旧插入顺序）。
+     */
     fun byManual(tasks: List<Task>): List<Task> = tasks.sortedWith(
         byManualOrderAsc
             .thenComparing(byCreatedAtDesc)
-            .thenComparing(byIdDesc),
+            .thenComparing(byIdAsc),
     )
 
     private val byDueDateAscNullLast: Comparator<Task> = Comparator { a, b ->
@@ -61,10 +64,6 @@ object TaskSorting {
 
     private val byIdAsc: Comparator<Task> = Comparator { a, b ->
         a.id.value.compareTo(b.id.value)
-    }
-
-    private val byIdDesc: Comparator<Task> = Comparator { a, b ->
-        b.id.value.compareTo(a.id.value)
     }
 
     private val byManualOrderAsc: Comparator<Task> = Comparator { a, b ->

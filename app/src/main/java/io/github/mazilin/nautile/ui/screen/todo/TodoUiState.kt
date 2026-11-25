@@ -5,6 +5,7 @@ import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Priority
 import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.Task
+import io.github.mazilin.nautile.domain.model.ViewOptions
 import io.github.mazilin.nautile.domain.rule.TaskGroup
 import java.time.LocalDate
 import java.time.LocalTime
@@ -26,6 +27,12 @@ data class TodoUiState(
     val searchActive: Boolean = false,
     /** 搜索查询串；空串表示不过滤，退出搜索后不保留。 */
     val searchQuery: String = "",
+    /** 当前清单生效的视图选项（CMP-39/41）；默认分类=项目、排序=手动。 */
+    val viewOptions: ViewOptions = ViewOptions.Default,
+    /** 视图选项写入失败提示；非 null 时不显示“已保存”。 */
+    val viewOptionsError: String? = null,
+    /** 手动排序写入失败提示；失败时列表已回滚到原顺序。 */
+    val manualOrderError: String? = null,
 ) {
     val isEmpty: Boolean get() = visibleTasks.isEmpty()
 }

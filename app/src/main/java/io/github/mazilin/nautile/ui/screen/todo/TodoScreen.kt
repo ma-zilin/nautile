@@ -1,10 +1,12 @@
 package io.github.mazilin.nautile.ui.screen.todo
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -36,10 +38,12 @@ import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -48,6 +52,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -56,6 +61,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -66,6 +75,7 @@ import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.R
@@ -74,6 +84,8 @@ import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
+import io.github.mazilin.nautile.domain.model.ViewClassification
+import io.github.mazilin.nautile.domain.model.ViewSort
 import io.github.mazilin.nautile.domain.rule.TaskGroup
 import io.github.mazilin.nautile.interaction.GestureArbiter
 import io.github.mazilin.nautile.ui.designsystem.NautileEmptyState
@@ -107,6 +119,10 @@ fun TodoScreen(
     onSearchQueryChanged: (String) -> Unit = {},
     onClearSearch: () -> Unit = {},
     onCloseSearch: () -> Unit = {},
+    onViewClassificationSelected: (ViewClassification) -> Unit = {},
+    onViewSortSelected: (ViewSort) -> Unit = {},
+    onReorderGroup: (String, List<TaskId>) -> Unit = { _, _ -> },
+    onDismissViewError: () -> Unit = {},
     newTaskOpen: Boolean = false,
     navigationUpdatesEnabled: Boolean = true,
 ) {
@@ -120,6 +136,15 @@ fun TodoScreen(
     var savedSearchIndex by remember { mutableIntStateOf(0) }
     var savedSearchOffset by remember { mutableIntStateOf(0) }
     var wasSearchActive by remember { mutableStateOf(false) }
+
+    // G9 视图菜单：锚定在视图图标上方；关闭不写状态（CMP-39）。
+    var viewMenuOpen by remember { mutableStateOf(false) }
+    var viewMenuAnchor by remember { mutableStateOf<Rect?>(null) }
+    var viewMenuOrigin by remember { mutableStateOf(Offset.Zero) }
+    var viewMenuRootSize by remember { mutableStateOf(IntSize.Zero) }
+
+    BackHandler(enabled = viewMenuOpen) { viewMenuOpen = false }
+    LaunchedEffect(state.position, state.searchActive) { viewMenuOpen = false }
 
     LaunchedEffect(state.searchActive) {
         if (state.searchActive) {
@@ -247,6 +272,9 @@ fun TodoScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            // 供视图锚定菜单换算浮层坐标（与既有手势分层，不消费事件）。
+            .onGloballyPositioned { viewMenuOrigin = it.positionInRoot() }
+            .onSizeChanged { viewMenuRootSize = it }
             .pointerInput(density) {
                 detectHorizontalDragGestures(
                     onDragStart = {
@@ -360,8 +388,11 @@ fun TodoScreen(
                         NautileIconButton(
                             iconRes = R.drawable.ic_tune,
                             contentDescription = unavailableDescription("视图选项", state.viewOptionsAvailable),
-                            onClick = {},
+                            onClick = { viewMenuOpen = true },
                             enabled = state.viewOptionsAvailable,
+                            modifier = Modifier.onGloballyPositioned {
+                                viewMenuAnchor = it.boundsInRoot()
+                            },
                         )
                         NautileIconButton(
                             iconRes = R.drawable.ic_settings,
@@ -431,9 +462,12 @@ fun TodoScreen(
                         }
                     }
                     state.groups.forEach { group ->
-                        item(key = groupKey(group)) {
+                        item(key = group.key) {
                             TaskGroupCard(
                                 group = group,
+                                manualSortEnabled = state.viewOptions.sort == ViewSort.MANUAL &&
+                                    !state.searchActive,
+                                onReorder = { orderedIds -> onReorderGroup(group.key, orderedIds) },
                                 onCompleteTask = onCompleteTask,
                                 onAbandonTask = onAbandonTask,
                                 onRequestProjectClose = onRequestProjectClose,
@@ -492,6 +526,44 @@ fun TodoScreen(
                 contentDescription = "新建待办或项目",
             )
         }
+
+        // 手动排序写入失败提示（CMP-40.2）：列表已回滚，点按可关闭提示。
+        val manualError = state.manualOrderError
+        if (manualError != null) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = 88.dp)
+                    .clickable(onClick = onDismissViewError),
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                shadowElevation = 3.dp,
+            ) {
+                Text(
+                    text = manualError,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+
+        // 视图锚定菜单（CMP-39）：透明点按层关闭；不遮罩、不收键盘、不改页面导航。
+        if (viewMenuOpen && state.viewOptionsAvailable) {
+            AttributeMenuOverlay(
+                anchor = viewMenuAnchor,
+                origin = viewMenuOrigin,
+                rootSize = viewMenuRootSize,
+                onDismiss = { viewMenuOpen = false },
+            ) {
+                ViewOptionsMenuContent(
+                    options = state.viewOptions,
+                    error = state.viewOptionsError,
+                    onClassificationSelected = onViewClassificationSelected,
+                    onSortSelected = onViewSortSelected,
+                )
+            }
+        }
     }
 
     state.projectConfirmation?.let { pending ->
@@ -529,10 +601,6 @@ fun TodoScreen(
  */
 private fun unavailableDescription(base: String, available: Boolean): String =
     if (available) base else "$base，功能尚未开放"
-
-/** 稳定的列表 key：沿用原有 project_<id> / ungrouped_header，避免滚动位置错乱。 */
-private fun groupKey(group: TaskGroup): String =
-    group.project?.let { "project_${it.id.value}" } ?: "ungrouped_header"
 
 /**
  * 搜索栏（CMP-38）：左侧返回退出搜索、右侧清除查询；自动聚焦并弹键盘。
@@ -589,10 +657,15 @@ private fun SearchBar(
 /**
  * 分组卡片（SHP-06/07、SPC-07）：整组一张 16dp 圆角卡片，无阴影无描边；
  * 组头名称与数量；空组只保留组头且可点入项目详情；组内行间 8dp 留白、无分隔线。
+ *
+ * G9：排序=手动且非搜索态时，行支持长按纵向拖拽在组内重排（CMP-40.2）；
+ * 未长按前横向左右滑仍按完成/放弃处理，长按进入拖拽后该行禁用横向滑动。
  */
 @Composable
 private fun TaskGroupCard(
     group: TaskGroup,
+    manualSortEnabled: Boolean,
+    onReorder: (List<TaskId>) -> Unit,
     onCompleteTask: (TaskId) -> Unit,
     onAbandonTask: (TaskId) -> Unit,
     onRequestProjectClose: (ProjectId, ClosedOutcome) -> Unit,
@@ -602,6 +675,56 @@ private fun TaskGroupCard(
     onRowDragEnd: () -> Unit,
 ) {
     val cardColor = MaterialTheme.colorScheme.surfaceContainerLowest
+    // 行最小高 56dp + 行间 8dp，用于把纵向位移换算成跨越的行数。
+    val rowHeightPx = with(LocalDensity.current) { 64.dp.toPx() }
+    var localTasks by remember(group.key) { mutableStateOf(group.tasks) }
+    var draggingId by remember { mutableStateOf<TaskId?>(null) }
+    var dragAccumulator by remember { mutableFloatStateOf(0f) }
+    val latestTasks by rememberUpdatedState(group.tasks)
+    val latestReorder by rememberUpdatedState(onReorder)
+
+    LaunchedEffect(group.tasks) {
+        if (draggingId == null) localTasks = group.tasks
+    }
+
+    fun startReorder(id: TaskId) {
+        draggingId = id
+        dragAccumulator = 0f
+    }
+
+    fun moveDragged(deltaY: Float) {
+        val dragging = draggingId ?: return
+        dragAccumulator += deltaY
+        val current = localTasks
+        val from = current.indexOfFirst { it.id == dragging }
+        if (from < 0) return
+        val shift = (dragAccumulator / rowHeightPx).toInt()
+        if (shift == 0) return
+        val to = (from + shift).coerceIn(0, current.lastIndex)
+        if (to == from) {
+            dragAccumulator = 0f
+            return
+        }
+        val moved = current.toMutableList()
+        val item = moved.removeAt(from)
+        moved.add(to, item)
+        localTasks = moved
+        dragAccumulator -= shift * rowHeightPx
+    }
+
+    fun finishReorder(commit: Boolean) {
+        if (draggingId == null) return
+        draggingId = null
+        dragAccumulator = 0f
+        if (!commit) {
+            localTasks = latestTasks
+            return
+        }
+        if (localTasks.map { it.id } != latestTasks.map { it.id }) {
+            latestReorder(localTasks.map { it.id })
+        }
+    }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -623,26 +746,66 @@ private fun TaskGroupCard(
                     onClick = { onOpenProjectDetail(project.id) },
                     containerColor = cardColor,
                 ) {
-                    GroupHeader(name = project.name, count = group.tasks.size, combinedLabel = true)
+                    GroupHeader(
+                        name = project.name,
+                        count = localTasks.size,
+                        combinedLabel = true,
+                    )
                 }
             } else {
-                GroupHeader(name = "单独任务", count = group.tasks.size, combinedLabel = false)
+                // 优先级/截止日期组：组头不可折叠、不可点入项目详情（CMP-42）。
+                GroupHeader(
+                    name = group.headerTitle,
+                    count = localTasks.size,
+                    combinedLabel = false,
+                )
             }
-            group.tasks.forEachIndexed { index, task ->
-                if (index > 0) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-                SwipeableRow(
-                    onSwipeLeft = { onCompleteTask(task.id) },
-                    onSwipeRight = { onAbandonTask(task.id) },
-                    onRowDragStart = onRowDragStart,
-                    onRowDragEnd = onRowDragEnd,
-                    onClick = { onOpenTaskDetail(task.id) },
-                    // 已结项行禁用滑动，只保留查看详情（T-10、AC-T-29）。
-                    swipeEnabled = task.closedOutcome == null,
-                    containerColor = cardColor,
-                ) {
-                    TaskRowContent(task = task)
+            localTasks.forEachIndexed { index, task ->
+                // key 跟随任务：拖拽重排后组合身份不随槽位改变，进行中的长按手势不会被打断。
+                key(task.id) {
+                    Column {
+                        if (index > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                        val reorderModifier = if (manualSortEnabled) {
+                            Modifier.pointerInput(task.id, manualSortEnabled) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        startReorder(task.id)
+                                        onRowDragStart()
+                                    },
+                                    onDrag = { change, dragAmount ->
+                                        // 长按后的纵向拖拽归重排；消费事件避免列表同时滚动。
+                                        change.consume()
+                                        moveDragged(dragAmount.y)
+                                    },
+                                    onDragEnd = {
+                                        finishReorder(commit = true)
+                                        onRowDragEnd()
+                                    },
+                                    onDragCancel = {
+                                        finishReorder(commit = false)
+                                        onRowDragEnd()
+                                    },
+                                )
+                            }
+                        } else {
+                            Modifier
+                        }
+                        SwipeableRow(
+                            onSwipeLeft = { onCompleteTask(task.id) },
+                            onSwipeRight = { onAbandonTask(task.id) },
+                            onRowDragStart = onRowDragStart,
+                            onRowDragEnd = onRowDragEnd,
+                            onClick = { onOpenTaskDetail(task.id) },
+                            // 已结项行禁用滑动，只保留查看详情（T-10、AC-T-29）；拖拽重排中同样禁用横向滑动。
+                            swipeEnabled = task.closedOutcome == null && draggingId == null,
+                            containerColor = cardColor,
+                            modifier = reorderModifier,
+                        ) {
+                            TaskRowContent(task = task)
+                        }
+                    }
                 }
             }
         }
@@ -723,8 +886,9 @@ private fun TaskRowContent(task: Task) {
 
 /**
  * 条目左右滑：左滑完成、右滑放弃；仅越过阈值才提交，否则回原位（BR-46、AC-T-17）。
- * [swipeEnabled] 为 false 时（已结项）不挂拖拽，只保留点按。
+ * [swipeEnabled] 为 false 时（已结项或拖拽重排中）不挂横向拖拽，只保留点按。
  * [containerColor] 跟随所在分组卡片，避免行自身底色切断卡片层级。
+ * [modifier] 为长按纵向拖拽重排（CMP-40.2），挂在外层以先于横向滑动判定长按。
  */
 @Composable
 private fun SwipeableRow(
@@ -732,6 +896,7 @@ private fun SwipeableRow(
     onSwipeRight: () -> Unit,
     onRowDragStart: () -> Unit,
     onRowDragEnd: () -> Unit,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     swipeEnabled: Boolean = true,
     containerColor: Color = MaterialTheme.colorScheme.surface,
@@ -740,7 +905,11 @@ private fun SwipeableRow(
     val density = LocalDensity.current.density
     var offset by remember { mutableFloatStateOf(0f) }
 
-    Box(modifier = Modifier.fillMaxWidth()) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(modifier),
+    ) {
         if (swipeEnabled) {
             Row(
                 modifier = Modifier

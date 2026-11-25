@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import io.github.mazilin.nautile.data.repository.RoomTaskRepository
 import io.github.mazilin.nautile.di.AppContainer
 import io.github.mazilin.nautile.domain.model.AppPage
 import io.github.mazilin.nautile.domain.model.GtdPosition
@@ -78,6 +79,15 @@ class MainActivity : ComponentActivity() {
                                     settingsRepository = container.settingsRepository,
                                     taskCommands = container.taskCommands,
                                     projectCommands = container.projectCommands,
+                                    // 手动排序复用 G5 的批量事务；装配层是唯一知道具体实现的地方。
+                                    writeManualOrders = { orders ->
+                                        val repository = container.taskRepository
+                                        if (repository is RoomTaskRepository) {
+                                            repository.updateManualOrders(orders)
+                                        } else {
+                                            error("当前任务仓库不支持手动排序")
+                                        }
+                                    },
                                 )
                             }
                         }
@@ -226,6 +236,11 @@ class MainActivity : ComponentActivity() {
                                     onSearchQueryChanged = todoViewModel::onSearchQueryChanged,
                                     onClearSearch = todoViewModel::clearSearch,
                                     onCloseSearch = todoViewModel::closeSearch,
+                                    onViewClassificationSelected =
+                                        todoViewModel::selectViewClassification,
+                                    onViewSortSelected = todoViewModel::selectViewSort,
+                                    onReorderGroup = todoViewModel::reorderGroup,
+                                    onDismissViewError = todoViewModel::dismissViewError,
                                     newTaskOpen = newTaskState != null,
                                     navigationUpdatesEnabled = !imeVisible && overlayEntry == null,
                                 )
