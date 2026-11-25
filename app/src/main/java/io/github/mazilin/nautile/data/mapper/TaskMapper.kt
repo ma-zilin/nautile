@@ -31,6 +31,7 @@ object TaskMapper {
         createdAt = Instant.ofEpochMilli(entity.createdAt),
         updatedAt = Instant.ofEpochMilli(entity.updatedAt),
         detail = entity.detail,
+        manualOrder = entity.manualOrder,
     )
 
     fun toEntity(task: Task): TaskEntity = TaskEntity(
@@ -48,5 +49,6 @@ object TaskMapper {
         createdAt = task.createdAt.toEpochMilli(),
         updatedAt = task.updatedAt.toEpochMilli(),
         detail = task.detail,
+        manualOrder = task.manualOrder,
     )
 }

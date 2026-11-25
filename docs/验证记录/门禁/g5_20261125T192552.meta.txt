@@ -1,0 +1,24 @@
+gate=G5 领域、用例与数据库扩展（独立验证）
+time=2026-11-25T19:34:53+08:00
+head=4bfced471c4a918c8f8739e78d260ba712b2a236
+dirty_entries=78
+device=emulator-5554 / nautile_api36(AVD) API36（模拟器，非真机）
+schema3=version=3 identityHash=948a8a74de357723e9f4ff28dd4a1988 tasks_cols=15 manual_order=INTEGER notNull=False default=None projects_cols=5
+schema_retained=1.json(version 1) 2.json(version 2) 保留；3.json 为当前
+red_worktree=/tmp/tride-g5-red-20261125T192552（HEAD 4bfced4，已 git worktree remove）
+red_jvm=EXIT=1 compileDebugUnitTestKotlin FAILED（缺 TaskSorting / Task.manualOrder / create 参数）
+red_androidtest=EXIT=1（缺 MIGRATION_2_3 / RoomTaskRepository.updateManualOrders / manualOrder）
+green_jvm_targeted=G5TaskSortingTest tests=8 failures=0；G5CreateFieldsTest tests=4 failures=0；SchemaV3ArtifactG5Test tests=3 failures=0
+verify_log=docs/验证记录/门禁/verify_G5_20261125T193318.log
+verify_steps=assembleDebug EXIT=0；assembleDebugAndroidTest EXIT=0；testDebugUnitTest EXIT=0；lintDebug EXIT=0；schema 检查 EXIT=0
+verify_jvm=suites=32 tests=178 failures=0 errors=0 skipped=0
+verify_result=PASS
+connected_r1=tests=21 failures=2（1 处本人断言错误、1 处筛选类名错误；原结果保留于 g5 日志，测试已纠正）
+connected_r2=tests=30 failures=0 errors=0 skipped=0（emulator-5554，timestamp 2026-11-25T11:31:10Z）
+connected_breakdown=MigrationTest 6/6；G5ManualOrderRoomTest 3/3；TaskDaoTest 3；ProjectDaoTest 3；RoomTaskRepositoryTest 3；RoomProjectRepositoryTest 2；RoomTaskRepositoryContractTest 5；RoomProjectRepositoryContractTest 5
+result=PASS
+judge=PASS（编译 + JVM + 迁移测试 + schema 检查均 PASS，红→绿证据齐全）
+unautomated=拖拽重排 UI（长按/跨组禁止/归一化/失败回滚恢复）、updateManualOrders 事务中途失败回滚（无故障注入）、跨进程重启后手动顺序保持、真机验收、排序 UI 接入
+deviations=TaskSorting 次级次序与设计草案 §14.3 文本不完全一致（byDue 同日先按 dueTime；byPriority 同级先按截止日期/时刻；byManual 同值/null 组内 createdAt 倒序）；设计 §14.3 还要求移入其他清单时 manualOrder 置 null，本增量未实现；均待架构/我确认
+note=设计 §11.2 第 15 项与 §15 仍将 manualOrder/db v3 记为待我批准；本轮按当前指令先行验证
+log=docs/验证记录/门禁/g5_20261125T192552.log

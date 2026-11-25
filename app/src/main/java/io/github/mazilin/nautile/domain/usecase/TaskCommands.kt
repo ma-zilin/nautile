@@ -2,6 +2,7 @@ package io.github.mazilin.nautile.domain.usecase
 
 import io.github.mazilin.nautile.domain.model.ClosedOutcome
 import io.github.mazilin.nautile.domain.model.GtdPosition
+import io.github.mazilin.nautile.domain.model.Priority
 import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.ProjectStatus
 import io.github.mazilin.nautile.domain.model.Task
@@ -36,6 +37,7 @@ enum class TaskCommandError {
 sealed interface TaskFieldUpdate {
     data class Title(val title: String) : TaskFieldUpdate
     data class Detail(val detail: String?) : TaskFieldUpdate
+    // 嵌套类同名会遮蔽模型枚举，此处保留全限定名。
     data class Priority(val priority: io.github.mazilin.nautile.domain.model.Priority) : TaskFieldUpdate
     data class DueDate(val dueDate: LocalDate?) : TaskFieldUpdate
     data class DueTime(val dueTime: LocalTime?) : TaskFieldUpdate
@@ -59,6 +61,10 @@ class TaskCommands(
         position: GtdPosition,
         projectId: ProjectId? = null,
         detail: String? = null,
+        priority: Priority = Priority.NONE,
+        dueDate: LocalDate? = null,
+        dueTime: LocalTime? = null,
+        manualOrder: Long? = null,
     ): TaskCommandResult {
         TaskRules.validateTitle(title)?.let { return TaskCommandResult.Invalid(map(it)) }
         if (!TaskRules.canMoveTo(position)) {
@@ -78,9 +84,13 @@ class TaskCommands(
             title = title,
             projectId = projectId,
             position = position,
+            priority = priority,
+            dueDate = dueDate,
+            dueTime = dueTime,
             createdAt = now,
             updatedAt = now,
             detail = normalizeDetail(detail),
+            manualOrder = manualOrder,
         )
         val id = tasks.insert(draft)
         return TaskCommandResult.Success(draft.copy(id = id))

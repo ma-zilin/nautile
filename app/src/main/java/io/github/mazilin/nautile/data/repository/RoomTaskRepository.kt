@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.data.repository
 
+import androidx.room.withTransaction
 import io.github.mazilin.nautile.data.db.NautileDatabase
 import io.github.mazilin.nautile.data.mapper.TaskMapper
 import io.github.mazilin.nautile.domain.model.GtdPosition
@@ -40,5 +41,19 @@ class RoomTaskRepository(private val database: NautileDatabase) : TaskRepository
     override suspend fun deleteAll(ids: List<TaskId>) {
         if (ids.isEmpty()) return
         taskDao.deleteByIds(ids.map { it.value })
+    }
+
+    /**
+     * 批量写入手动排序序号（CMP-40.2）：单事务内逐条更新，任一失败整体回滚。
+     *
+     * 幂等：重复提交同一映射得到相同结果；空映射不写库。不改其他列与其他查询排序。
+     */
+    suspend fun updateManualOrders(orders: Map<TaskId, Long>) {
+        if (orders.isEmpty()) return
+        database.withTransaction {
+            orders.forEach { (id, manualOrder) ->
+                taskDao.updateManualOrder(id.value, manualOrder)
+            }
+        }
     }
 }

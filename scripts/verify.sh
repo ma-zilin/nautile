@@ -95,19 +95,22 @@ PY
     SCHEMA_DIR="app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase"
     SCHEMA_V1="$SCHEMA_DIR/1.json"
     SCHEMA_V2="$SCHEMA_DIR/2.json"
-    if [ -f "$SCHEMA_V1" ] && [ -f "$SCHEMA_V2" ]; then
-        echo "schema 存在：$SCHEMA_V1（历史）与 $SCHEMA_V2（当前）"
-        if grep -q '"version": 2' "$SCHEMA_V2" \
-            && grep -q '"tableName": "tasks"' "$SCHEMA_V2" \
-            && grep -q '"tableName": "projects"' "$SCHEMA_V2" \
-            && grep -q '"columnName": "detail"' "$SCHEMA_V2"; then
-            echo "[STEP] schema 内容检查 EXIT=0（version 2，tasks/projects/detail；1.json 保留）"
+    SCHEMA_V3="$SCHEMA_DIR/3.json"
+    if [ -f "$SCHEMA_V1" ] && [ -f "$SCHEMA_V2" ] && [ -f "$SCHEMA_V3" ]; then
+        echo "schema 存在：$SCHEMA_V1（历史）、$SCHEMA_V2（历史）与 $SCHEMA_V3（当前）"
+        if grep -q '"version": 3' "$SCHEMA_V3" \
+            && grep -q '"tableName": "tasks"' "$SCHEMA_V3" \
+            && grep -q '"tableName": "projects"' "$SCHEMA_V3" \
+            && grep -q '"columnName": "detail"' "$SCHEMA_V3" \
+            && grep -q '"columnName": "manual_order"' "$SCHEMA_V3" \
+            && grep -q 'manual_order` INTEGER' "$SCHEMA_V3"; then
+            echo "[STEP] schema 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）"
         else
-            echo "[STEP] schema 内容检查 EXIT=1（缺 version 2、tasks/projects/detail）"
+            echo "[STEP] schema 内容检查 EXIT=1（缺 version 3、tasks/projects/detail/manual_order）"
             FAIL=1
         fi
     else
-        echo "[STEP] schema 产物检查 EXIT=1（1.json 或 2.json 不存在）"
+        echo "[STEP] schema 产物检查 EXIT=1（1.json、2.json 或 3.json 不存在）"
         FAIL=1
     fi
 

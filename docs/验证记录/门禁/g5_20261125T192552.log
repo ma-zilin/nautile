@@ -1,0 +1,103 @@
+============================================================
+G5 闸门：领域、用例与数据库扩展（独立验证）
+时间：2026-11-25T19:25:52+08:00
+HEAD：4bfced471c4a918c8f8739e78d260ba712b2a236
+工作区未提交条目：73
+设备：emulator-5554	device
+============================================================
+
+===== [红] 临时 worktree（HEAD 4bfced4，旧实现）＋新测试 =====
+worktree：/tmp/tride-g5-red-20261125T192552
+命令：./gradlew :app:testDebugUnitTest --tests *G5TaskSortingTest --tests *G5CreateFieldsTest --tests *SchemaV3ArtifactG5Test
+EXIT=1（compileDebugUnitTestKotlin FAILED）
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/test/java/io/github/mazilin/nautile/verification/G5CreateFieldsTest.kt:72:13 No parameter with name 'priority' found.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/test/java/io/github/mazilin/nautile/verification/G5CreateFieldsTest.kt:73:13 No parameter with name 'dueDate' found.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/test/java/io/github/mazilin/nautile/verification/G5CreateFieldsTest.kt:74:13 No parameter with name 'dueTime' found.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/test/java/io/github/mazilin/nautile/verification/G5CreateFieldsTest.kt:75:13 No parameter with name 'manualOrder' found.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/test/java/io/github/mazilin/nautile/verification/G5CreateFieldsTest.kt:82:34 Unresolved reference 'manualOrder' on receiver of type 'Task'.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/test/java/io/github/mazilin/nautile/verification/G5CreateFieldsTest.kt:95:28 Unresolved reference 'manualOrder' on receiver of type 'Task'.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/test/java/io/github/mazilin/nautile/verification/G5CreateFieldsTest.kt:99:62 Unresolved reference 'manualOrder' on receiver of type 'Task'.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/test/java/io/github/mazilin/nautile/verification/G5CreateFieldsTest.kt:136:13 No parameter with name 'manualOrder' found.
+...
+命令：./gradlew :app:compileDebugAndroidTestKotlin
+EXIT=1（Unresolved reference MIGRATION_2_3 / updateManualOrders / manualOrder）
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/androidTest/java/io/github/mazilin/nautile/data/db/MigrationTest.kt:120:13 Unresolved reference 'MIGRATION_2_3'.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/androidTest/java/io/github/mazilin/nautile/data/db/MigrationTest.kt:168:13 Unresolved reference 'MIGRATION_2_3'.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/androidTest/java/io/github/mazilin/nautile/verification/G5ManualOrderRoomTest.kt:68:9 No parameter with name 'manualOrder' found.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/androidTest/java/io/github/mazilin/nautile/verification/G5ManualOrderRoomTest.kt:78:20 Unresolved reference 'updateManualOrders' on receiver of type 'RoomTaskRepository'.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/androidTest/java/io/github/mazilin/nautile/verification/G5ManualOrderRoomTest.kt:86:49 Unresolved reference 'manualOrder' on receiver of type 'Task'.
+e: file:///tmp/tride-g5-red-20261125T192552/app/src/androidTest/java/io/github/mazilin/nautile/verification/G5ManualOrderRoomTest.kt:87:49 Unresolved reference 'manualOrder' on receiver of type 'Task'.
+结论：新测试在旧实现上无法编译通过（红），红灯原因是缺 TaskSorting、Task.manualOrder、MIGRATION_2_3、updateManualOrders。
+
+===== [绿] 当前工作区：新增 JVM 测试（定向） =====
+命令：./gradlew :app:testDebugUnitTest --tests *G5TaskSortingTest --tests *G5CreateFieldsTest --tests *SchemaV3ArtifactG5Test
+EXIT=0；G5CreateFieldsTest tests=4 failures=0；G5TaskSortingTest tests=8 failures=0；SchemaV3ArtifactG5Test tests=3 failures=0
+
+===== [门禁] bash scripts/verify.sh G5 =====
+门禁日志：docs/验证记录/门禁/verify_G5_20261125T192718.log
+元数据：docs/验证记录/门禁/verify_G5_20261125T192718.meta.txt
+===== [STEP] assembleDebug =====
+[STEP] assembleDebug EXIT=0
+===== [STEP] assembleDebugAndroidTest(compile-only) =====
+[STEP] assembleDebugAndroidTest(compile-only) EXIT=0
+===== [STEP] testDebugUnitTest =====
+[STEP] testDebugUnitTest EXIT=0
+===== [STEP] lintDebug =====
+[STEP] lintDebug EXIT=0
+===== [STEP] 测试结果统计 =====
+suites=32 tests=178 failures=0 errors=0 skipped=0
+[STEP] 测试结果统计 EXIT=0
+===== [STEP] schema 产物 =====
+schema 存在：app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/1.json（历史）、app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/2.json（历史）与 app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/3.json（当前）
+[STEP] schema 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）
+===== [STEP] connectedDebugAndroidTest =====
+GATE RESULT: PASS
+
+===== [设备] connected 第 1 次（含 1 个测试自身错误，已保留） =====
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks -Pandroid.testInstrumentationRunnerArguments.class=MigrationTest,...（含错误的类名 RoomRepositoryContractTest）
+EXIT=1；设备 nautile_api36(AVD) - 16；统计 tests=21 failures=2
+MigrationTest 6 项全部 OK（含 v1→v3、v2→v3、v3 打开校验）。
+失败 1（测试自身错误）：G5ManualOrderRoomTest.cmp40_2_update_manual_orders_writes_all_rows_and_only_that_column
+  AssertionError: expected:<[0, 1, 2]> but was:<[1, 2, 0]>
+  原因：我把 observeAll() 的返回顺序当成 manual_order 排序；该查询无 ORDER BY。
+  纠正依据：断言改为按 id 关联核对写入值，保留写入值与禁用排序查询的断言，不降低预期。
+失败 2（筛选参数错误）：RoomRepositoryContractTest initializationError —— 文件名不是类名，实际类为 RoomTaskRepositoryContractTest / RoomProjectRepositoryContractTest。
+日志：/tmp/g5_connected.log；结果副本：/tmp/g5_connected_r1_result.xml
+
+===== [设备] connected 第 2 次（修正测试断言与类名筛选后） =====
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks -Pandroid.testInstrumentationRunnerArguments.class=MigrationTest,G5ManualOrderRoomTest,TaskDaoTest,ProjectDaoTest,RoomTaskRepositoryTest,RoomProjectRepositoryTest,RoomTaskRepositoryContractTest,RoomProjectRepositoryContractTest
+EXIT=0（BUILD SUCCESSFUL）；设备 emulator-5554 / nautile_api36(AVD) - 16
+总计 tests=30 failures=0 errors=0 skipped=0 timestamp=2026-11-25T11:31:10
+  io.github.mazilin.nautile.data.db.MigrationTest tests=6 failures=0 time=0.115s
+  io.github.mazilin.nautile.verification.G5ManualOrderRoomTest tests=3 failures=0 time=0.032s
+  io.github.mazilin.nautile.data.db.TaskDaoTest tests=3 failures=0 time=0.020s
+  io.github.mazilin.nautile.data.db.ProjectDaoTest tests=3 failures=0 time=0.010s
+  io.github.mazilin.nautile.data.repository.RoomTaskRepositoryTest tests=3 failures=0 time=0.021s
+  io.github.mazilin.nautile.data.repository.RoomProjectRepositoryTest tests=2 failures=0 time=0.016s
+  io.github.mazilin.nautile.contract.RoomTaskRepositoryContractTest tests=5 failures=0 time=0.030s
+  io.github.mazilin.nautile.contract.RoomProjectRepositoryContractTest tests=5 failures=0 time=0.026s
+结果副本：/tmp/g5_connected_r2_result.xml
+
+===== [红] 补充：失败尾部 =====
+/tmp/g5_red_jvm.log:> Task :app:compileDebugUnitTestKotlin FAILED
+/tmp/g5_red_jvm.log:BUILD FAILED in 907ms
+/tmp/g5_red_androidtest.log:> Task :app:compileDebugAndroidTestKotlin FAILED
+/tmp/g5_red_androidtest.log:BUILD FAILED in 822ms
+
+===== [最终] 最终状态复跑门禁 =====
+门禁日志：docs/验证记录/门禁/verify_G5_20261125T193318.log
+===== [STEP] assembleDebug =====
+[STEP] assembleDebug EXIT=0
+===== [STEP] assembleDebugAndroidTest(compile-only) =====
+[STEP] assembleDebugAndroidTest(compile-only) EXIT=0
+===== [STEP] testDebugUnitTest =====
+[STEP] testDebugUnitTest EXIT=0
+===== [STEP] lintDebug =====
+[STEP] lintDebug EXIT=0
+===== [STEP] 测试结果统计 =====
+suites=32 tests=178 failures=0 errors=0 skipped=0
+[STEP] 测试结果统计 EXIT=0
+===== [STEP] schema 产物 =====
+[STEP] schema 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）
+===== [STEP] connectedDebugAndroidTest =====
+GATE RESULT: PASS

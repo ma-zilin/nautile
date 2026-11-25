@@ -17,6 +17,8 @@ value class TaskId(val value: Long)
  * @property positionBeforeClose 结项前位置，仅用于重新打开；未结项时为 null（BR-80）
  * @property closedOn 结项发生的本地日期，统计按它归档（D-05a）
  * @property detail 可选详情；null 表示未填写/空（FR-D-03、AC-D-09）
+ * @property manualOrder 仅用于手动排序（CMP-40）：非 null 时升序展示，null 表示未排序（展示在末位）；
+ *   首次拖拽落位时由用例把当前清单归一化为 0..n-1；不参与其他业务规则。
  */
 data class Task(
     val id: TaskId,
@@ -33,4 +35,5 @@ data class Task(
     val createdAt: Instant,
     val updatedAt: Instant,
     val detail: String? = null,
+    val manualOrder: Long? = null,
 )

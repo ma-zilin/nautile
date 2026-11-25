@@ -31,4 +31,8 @@ interface TaskDao {
 
     @Query("DELETE FROM tasks WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)
+
+    /** 单条手动排序写入；批量场景由仓库在同一事务内逐条调用（CMP-40.2）。 */
+    @Query("UPDATE tasks SET manual_order = :manualOrder WHERE id = :id")
+    suspend fun updateManualOrder(id: Long, manualOrder: Long)
 }

@@ -50,4 +50,7 @@ data class TaskEntity(
     val createdAt: Long,
     @ColumnInfo(name = "updated_at")
     val updatedAt: Long,
+    /** 手动排序序号（CMP-40）；可空，null 表示未手动排序；旧库 v2→v3 迁移补 NULL，不重写旧行。 */
+    @ColumnInfo(name = "manual_order")
+    val manualOrder: Long? = null,
 )

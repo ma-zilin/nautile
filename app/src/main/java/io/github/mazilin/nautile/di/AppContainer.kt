@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import io.github.mazilin.nautile.data.datastore.DataStoreSettingsRepository
 import io.github.mazilin.nautile.data.db.MIGRATION_1_2
+import io.github.mazilin.nautile.data.db.MIGRATION_2_3
 import io.github.mazilin.nautile.data.db.NautileDatabase
 import io.github.mazilin.nautile.data.repository.RoomProjectRepository
 import io.github.mazilin.nautile.data.repository.RoomTaskRepository
@@ -42,7 +43,7 @@ class AppContainer(context: Context) {
         NautileDatabase::class.java,
         DATABASE_NAME,
     )
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .build()
 
     private val dataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
