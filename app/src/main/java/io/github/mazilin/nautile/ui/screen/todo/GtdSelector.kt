@@ -1,18 +1,24 @@
 package io.github.mazilin.nautile.ui.screen.todo
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,18 +41,35 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.interaction.GestureArbiter
+import io.github.mazilin.nautile.ui.theme.NautileMotion
+import io.github.mazilin.nautile.ui.theme.NautileSpacing
+import io.github.mazilin.nautile.ui.theme.NautileStates
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 /**
- * GTD 半屏选择器（S1-T07、AC-G-04/05）。
+ * GTD 半屏选择器（S1-T07、G1-A1/A2、AC-G-04/05）。
  *
  * 左列五项、右侧当前清单；只有点按左列才切换；切换后保持半屏。
+ * 左列宽度按 CMP-10 测量：`W_L = max(五项标题文本宽) + 2 × 12dp`，右侧占余下宽度。
  * 右侧清单普通滚动优先，到顶/底后继续拉才预览边界切换，松手过阈值提交、否则回弹；首尾不循环。
  * 关闭：关闭按钮、空白左滑、系统返回（由 BackDispatcher 关闭覆盖层）。
+ *
+ * 开合动效（MOT-07/MOT-10）由 [animateReveal] 开启：面板 `translationY`、左列 `translationX` 用
+ * [NautileMotion.Expressive]，左列 alpha 与遮罩用 [NautileMotion.StandardEffects]；动画目标变化时
+ * 从当前值与速度重定向，中途反向不回到起点。初次组合直接终态，不播放入场（MOT-14）。
+ * 默认 [animateReveal] = false，直接组合时保持原有的即时布局与手势行为。
+ *
+ * @param visible 动效目标可见性；仅 [animateReveal] = true 时生效。
+ * @param onExitFinished 退出动效结束后的通知（宿主据此移除覆盖层）。
  */
 @Composable
 fun GtdSelector(
@@ -53,6 +77,9 @@ fun GtdSelector(
     tasks: List<Task>,
     onSelect: (GtdPosition) -> Unit,
     onClose: () -> Unit,
+    animateReveal: Boolean = false,
+    visible: Boolean = true,
+    onExitFinished: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val densityValue = density.density
@@ -60,16 +87,61 @@ fun GtdSelector(
     val previous = GestureArbiter.adjacentPosition(currentPosition, -1)
     val next = GestureArbiter.adjacentPosition(currentPosition, 1)
 
+    // 开合动效：位移用 Expressive，透明度用 StandardEffects（MOT-07）。
+    val revealMotion = remember { Animatable(if (visible) 1f else 0f) }
+    val effectsMotion = remember { Animatable(if (visible) 1f else 0f) }
+    var firstComposition by remember { mutableStateOf(true) }
+    var rendered by remember { mutableStateOf(!animateReveal || visible) }
+    val latestOnExitFinished by rememberUpdatedState(onExitFinished)
+
+    LaunchedEffect(animateReveal, visible) {
+        if (!animateReveal) {
+            // 未启用动效的直接组合：保持原即时行为，也不按 visible 隐藏。
+            revealMotion.snapTo(1f)
+            effectsMotion.snapTo(1f)
+            rendered = true
+            return@LaunchedEffect
+        }
+        if (firstComposition) {
+            // 首帧直接终态，不播放“从无到有”的开场（MOT-07.5、MOT-14）。
+            firstComposition = false
+            return@LaunchedEffect
+        }
+        val target = if (visible) 1f else 0f
+        if (target == 1f) rendered = true
+        // 从当前值与当前速度重定向；中途反向不回到起点（MOT-10）。
+        coroutineScope {
+            launch { revealMotion.animateTo(target, NautileMotion.Expressive) }
+            launch { effectsMotion.animateTo(target, NautileMotion.StandardEffects) }
+        }
+        if (target == 0f) {
+            rendered = false
+            latestOnExitFinished()
+        }
+    }
+
     val rightListState = rememberLazyListState()
     var pullOffset by remember { mutableFloatStateOf(0f) }
     var pullTarget by remember { mutableStateOf<GtdPosition?>(null) }
     var pullActive by remember { mutableStateOf(false) }
+
+    // 切换清单只换右侧内容（StandardEffects 淡入），不改动面板形态与左宽（MOT-07.3、MOT-12）。
+    val switchFade = remember { Animatable(1f) }
+    var switchedOnce by remember { mutableStateOf(false) }
 
     LaunchedEffect(currentPosition) {
         rightListState.scrollToItem(0)
         pullOffset = 0f
         pullTarget = null
         pullActive = false
+        if (animateReveal) {
+            if (switchedOnce) {
+                switchFade.snapTo(0f)
+                switchFade.animateTo(1f, NautileMotion.StandardEffects)
+            } else {
+                switchedOnce = true
+            }
+        }
     }
 
     fun resetPull() {
@@ -134,10 +206,37 @@ fun GtdSelector(
         }
     }
 
+    // 退出动效完成后不再绘制；composable 仍保持组合，以便再次打开时沿用同一动效状态。
+    if (!rendered) return
+
+    val textMeasurer = rememberTextMeasurer()
+    val rowTextStyle = MaterialTheme.typography.bodyLarge
+    val leftColumnWidth = remember(textMeasurer, density, density.fontScale, rowTextStyle) {
+        // 无界宽测量五项标题，取最大文本宽；键含密度与字体缩放，字号变化后重算（CMP-10）。
+        val unbounded = Constraints()
+        val widestTextPx = GtdPosition.entries.maxOf { position ->
+            textMeasurer.measure(
+                text = AnnotatedString(position.title),
+                style = rowTextStyle,
+                constraints = unbounded,
+            ).size.width
+        }
+        with(density) { widestTextPx.toDp() } + NautileSpacing.space3 * 2
+    }
+    val leftColumnWidthPx = with(density) { leftColumnWidth.toPx() }
+
+    val scrimColor = MaterialTheme.colorScheme.scrim
+    val selectedContainer = MaterialTheme.colorScheme.secondaryContainer
+    val selectedContent = MaterialTheme.colorScheme.onSecondaryContainer
+    val unselectedContent = MaterialTheme.colorScheme.onSurface
+    val sheetShape = MaterialTheme.shapes.extraLarge.copy(
+        bottomStart = CornerSize(0.dp),
+        bottomEnd = CornerSize(0.dp),
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.32f))
             .pointerInput(densityValue) {
                 var leftDrag = 0f
                 detectHorizontalDragGestures(
@@ -156,51 +255,86 @@ fun GtdSelector(
                 )
             },
     ) {
+        // 遮罩：alpha 在图层中读取动效值，避免逐帧重组（COL-10、MOT-07）。
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { alpha = effectsMotion.value }
+                .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA)),
+        )
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .fillMaxHeight(0.6f),
+                .fillMaxHeight(0.6f)
+                .graphicsLayer {
+                    // 面板从自身高度滑入；60% 高度形态不变（MOT-07、MOT-12）。
+                    translationY = (1f - revealMotion.value) * size.height
+                },
+            shape = sheetShape,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Column(
                         modifier = Modifier
-                            .weight(0.38f)
+                            .width(leftColumnWidth)
                             .fillMaxHeight()
-                            .padding(8.dp),
+                            .graphicsLayer {
+                                // 左列从 -W_L 滑入；宽度本身不做动画（MOT-07、MOT-12）。
+                                translationX = -(1f - revealMotion.value) * leftColumnWidthPx
+                                alpha = effectsMotion.value
+                            }
+                            .padding(vertical = NautileSpacing.space2),
                     ) {
-                        Text("清单", style = MaterialTheme.typography.labelLarge)
-                        GtdPosition.entries.forEach { position ->
-                            Surface(
-                                onClick = { onSelect(position) },
-                                color = if (position == currentPosition) {
-                                    MaterialTheme.colorScheme.primaryContainer
-                                } else {
-                                    Color.Transparent
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp),
-                            ) {
-                                Text(
-                                    text = position.title,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                )
+                        Text(
+                            text = "清单",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(
+                                horizontal = NautileSpacing.space3,
+                                vertical = NautileSpacing.space1,
+                            ),
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(NautileSpacing.space1)) {
+                            GtdPosition.entries.forEach { position ->
+                                val selected = position == currentPosition
+                                Surface(
+                                    onClick = { onSelect(position) },
+                                    shape = CircleShape,
+                                    color = if (selected) selectedContainer else Color.Transparent,
+                                    contentColor = if (selected) selectedContent else unselectedContent,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = NautileSpacing.space12)
+                                            .padding(
+                                                horizontal = NautileSpacing.space3,
+                                                vertical = NautileSpacing.space3,
+                                            ),
+                                    ) {
+                                        Text(text = position.title, style = rowTextStyle)
+                                    }
+                                }
                             }
                         }
                     }
                     Box(
                         modifier = Modifier
-                            .weight(0.62f)
+                            .weight(1f)
                             .fillMaxHeight()
                             .nestedScroll(connection),
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .graphicsLayer { translationY = pullOffset }
-                                .padding(8.dp),
+                                .graphicsLayer {
+                                    translationY = pullOffset
+                                    alpha = switchFade.value
+                                }
+                                .padding(NautileSpacing.space4),
                         ) {
                             Text(currentPosition.title, style = MaterialTheme.typography.titleMedium)
                             pullTarget?.let { target ->
@@ -213,7 +347,7 @@ fun GtdSelector(
                                 Text(
                                     text = "该清单暂无任务",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(top = 12.dp),
+                                    modifier = Modifier.padding(top = NautileSpacing.space3),
                                 )
                             } else {
                                 LazyColumn(

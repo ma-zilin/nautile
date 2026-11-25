@@ -15,6 +15,10 @@ data class TodoUiState(
     val visibleTasks: List<Task> = emptyList(),
     val projectConfirmation: ProjectConfirmation? = null,
     val projectReopenPrompt: ProjectReopenPrompt? = null,
+    /** 搜索入口可用性（设计 §10 RDY-05）：功能未实现前为 false，入口可见但禁用。 */
+    val searchAvailable: Boolean = false,
+    /** 视图入口可用性（设计 §10 RDY-05）：功能未实现前为 false，入口可见但禁用。 */
+    val viewOptionsAvailable: Boolean = false,
 ) {
     val isEmpty: Boolean get() = visibleTasks.isEmpty()
 }

@@ -14,13 +14,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,17 +48,20 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.domain.model.ClosedOutcome
 import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.interaction.GestureArbiter
+import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
 import kotlin.math.abs
 
 /**
@@ -269,30 +274,71 @@ fun TodoScreen(
             },
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            // 顶部栏等价结构（设计 §7.1、§4.2）：GTD → 标题区 → 搜索 → 视图 → 设置。
+            // 在页面内组装以保留 gtd_entry / settings_entry 的 testTag（NautileTopBar 不支持传入）。
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
             ) {
-                // 独立 GTD 入口；标题文字不再兼任按钮（T-02、AC-G-04）。
-                IconButton(
-                    onClick = onOpenSelector,
-                    modifier = Modifier
-                        .testTag("gtd_entry")
-                        .semantics { contentDescription = "GTD 清单" },
-                ) {
-                    Text("☰", style = MaterialTheme.typography.titleLarge)
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("待办", style = MaterialTheme.typography.titleLarge)
-                    Text(state.position.title, style = MaterialTheme.typography.labelMedium)
-                }
-                TextButton(
-                    onClick = onOpenSettings,
-                    modifier = Modifier.testTag("settings_entry"),
-                ) {
-                    Text("设置")
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        // 独立 GTD 入口；标题文字不再兼任按钮（T-02、AC-G-04）。
+                        NautileIconButton(
+                            iconRes = R.drawable.ic_menu,
+                            contentDescription = "打开 GTD 清单选择器",
+                            onClick = onOpenSelector,
+                            testTag = "gtd_entry",
+                        )
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = "待办",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.semantics { heading() },
+                            )
+                            Text(
+                                text = state.position.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        // 搜索/视图本轮不实现业务：可见禁用、无点击副作用（设计 §10 RDY-02/04）。
+                        NautileIconButton(
+                            iconRes = R.drawable.ic_search,
+                            contentDescription = unavailableDescription("搜索待办", state.searchAvailable),
+                            onClick = {},
+                            enabled = state.searchAvailable,
+                        )
+                        NautileIconButton(
+                            iconRes = R.drawable.ic_tune,
+                            contentDescription = unavailableDescription("视图选项", state.viewOptionsAvailable),
+                            onClick = {},
+                            enabled = state.viewOptionsAvailable,
+                        )
+                        NautileIconButton(
+                            iconRes = R.drawable.ic_settings,
+                            contentDescription = "设置",
+                            onClick = onOpenSettings,
+                            testTag = "settings_entry",
+                        )
+                    }
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
                 }
             }
 
@@ -321,17 +367,27 @@ fun TodoScreen(
                         val project = group.project
                         if (project != null) {
                             item(key = "project_${project.id.value}") {
-                                SwipeableRow(
-                                    onSwipeLeft = { onRequestProjectClose(project.id, ClosedOutcome.COMPLETED) },
-                                    onSwipeRight = { onRequestProjectClose(project.id, ClosedOutcome.ABANDONED) },
-                                    onRowDragStart = { rowDragging = true },
-                                    onRowDragEnd = { rowDragging = false },
-                                    onClick = { onOpenProjectDetail(project.id) },
-                                ) {
-                                    Text(
-                                        text = "${project.name}（${group.tasks.size}）",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    SwipeableRow(
+                                        onSwipeLeft = { onRequestProjectClose(project.id, ClosedOutcome.COMPLETED) },
+                                        onSwipeRight = { onRequestProjectClose(project.id, ClosedOutcome.ABANDONED) },
+                                        onRowDragStart = { rowDragging = true },
+                                        onRowDragEnd = { rowDragging = false },
+                                        onClick = { onOpenProjectDetail(project.id) },
+                                    ) {
+                                        Text(
+                                            text = "${project.name}（${group.tasks.size}）",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            modifier = Modifier
+                                                .heightIn(min = 56.dp)
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        )
+                                    }
+                                    // 行间分隔线：1dp outlineVariant，左内缩 16dp（设计 §4.2）。
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 16.dp),
+                                        thickness = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
                                     )
                                 }
                             }
@@ -340,40 +396,66 @@ fun TodoScreen(
                                 Text(
                                     text = "单独任务",
                                     style = MaterialTheme.typography.labelMedium,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 16.dp,
+                                        bottom = 4.dp,
+                                    ),
                                 )
                             }
                         }
-                        items(group.tasks, key = { "task_${it.id.value}" }) { task ->
-                            SwipeableRow(
-                                onSwipeLeft = { onCompleteTask(task.id) },
-                                onSwipeRight = { onAbandonTask(task.id) },
-                                onRowDragStart = { rowDragging = true },
-                                onRowDragEnd = { rowDragging = false },
-                                onClick = { onOpenTaskDetail(task.id) },
-                                // 已结项行禁用滑动，只保留查看详情（T-10、AC-T-29）。
-                                swipeEnabled = task.closedOutcome == null,
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
+                        itemsIndexed(
+                            items = group.tasks,
+                            key = { _, task -> "task_${task.id.value}" },
+                        ) { index, task ->
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                SwipeableRow(
+                                    onSwipeLeft = { onCompleteTask(task.id) },
+                                    onSwipeRight = { onAbandonTask(task.id) },
+                                    onRowDragStart = { rowDragging = true },
+                                    onRowDragEnd = { rowDragging = false },
+                                    onClick = { onOpenTaskDetail(task.id) },
+                                    // 已结项行禁用滑动，只保留查看详情（T-10、AC-T-29）。
+                                    swipeEnabled = task.closedOutcome == null,
                                 ) {
-                                    Text(
-                                        text = task.title,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    if (task.closedOutcome != null) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = 56.dp)
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
                                         Text(
-                                            text = "已结项",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            modifier = Modifier.padding(start = 8.dp),
+                                            text = task.title,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = if (task.closedOutcome != null) {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f),
                                         )
+                                        if (task.closedOutcome != null) {
+                                            Text(
+                                                text = "已结项",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(start = 8.dp),
+                                            )
+                                        }
                                     }
+                                }
+                                // 同组行间分隔线；组末不加，避免与下一分组标题重复分隔（§4.2）。
+                                if (index < group.tasks.lastIndex) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(start = 16.dp),
+                                        thickness = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant,
+                                    )
                                 }
                             }
                         }
@@ -401,8 +483,14 @@ fun TodoScreen(
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
                 .testTag("add_task"),
+            shape = MaterialTheme.shapes.large,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         ) {
-            Text("+")
+            Icon(
+                painter = painterResource(R.drawable.ic_add),
+                contentDescription = "新建待办或项目",
+            )
         }
     }
 
@@ -435,6 +523,12 @@ fun TodoScreen(
         )
     }
 }
+
+/**
+ * 未就绪动作的读屏描述（设计 §10 RDY-03）：功能实现后只去掉后缀，布局与图标位置不变。
+ */
+private fun unavailableDescription(base: String, available: Boolean): String =
+    if (available) base else "$base，功能尚未开放"
 
 /**
  * 条目左右滑：左滑完成、右滑放弃；仅越过阈值才提交，否则回原位（BR-46、AC-T-17）。
