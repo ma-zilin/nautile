@@ -1,0 +1,80 @@
+============================================================
+G1-A3 独立验证（回归与 UI 验收）
+时间：2026-11-25T15:20:11+08:00
+HEAD：2a47b22e621f5080f5d75b1ef71f0d8f29c69568
+工作区：7 个未跟踪文件（历史 emulator_boot PNG、4 张本轮截图、verify 日志与 meta）；无已跟踪文件改动
+设备：emulator-5554 / nautile_api36 / Android 16 (API36) / x86_64 / ro.kernel.qemu=1（模拟器，非真机）
+条件：font_scale=1.0；window/transition/animator scale=0（系统动画关闭）；night=no（深色截图临时切 yes 后恢复）
+============================================================
+
+[1] 静态检查
+命令：bash scripts/check_ui_tokens.sh
+退出码：0
+结果：RESULT PASS；规则 1-8 命中 0；检查文件 18 个（ui/theme + ui/designsystem + ui/screen/todo 的 .kt，另加 ui/AppRoot.kt）
+耗时：0.14s
+范围说明：脚本仅扫描待办页与共用组件范围；日程/日志/AI/设置不在 G1-A 视觉范围。
+
+[2] 刚性门禁
+命令：bash scripts/verify.sh G1-A3
+日志：docs/验证记录/门禁/verify_G1-A3_20261125T151619.log
+耗时：23.6s
+步骤退出码：
+  assembleDebug=0（4s）
+  assembleDebugAndroidTest(compile-only)=0（4s）
+  testDebugUnitTest=0（5s）
+  lintDebug=0（9s）
+JVM 统计：suites=28 tests=160 failures=0 errors=0 skipped=0
+schema：1.json（历史）与 2.json（当前）存在；version 2、tasks/projects/detail 检查 EXIT=0
+GATE RESULT：PASS
+脚本退出码：0
+
+[3] 全量设备回归（不筛选）
+命令：timeout -s INT 1200 ./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+退出码：0（CONNECTED_EXIT=0）
+耗时：47s（墙钟）；XML 内 testcase time 合计 37.77s
+结果 XML：app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml
+test-result-exit-code.txt：0
+XML 汇总：tests=97 failures=0 errors=0 skipped=0
+逐类：TodoScreenSmokeTest=1；RoomProjectRepositoryContractTest=5；RoomTaskRepositoryContractTest=5；MigrationTest=3；ProjectDaoTest=3；TaskDaoTest=3；RoomProjectRepositoryTest=2；RoomTaskRepositoryTest=3；AppRootTest=5；AcAppRootT06Test=5；AcDetailNewTaskUiT08T09Test=8；AcDetailPersistenceT085Test=1；AcDetailPullT088Test=7；AcGtdHeaderT090Test=4；AcSettingsEntryP1Test=2；AcTodoT07Test=23；AcUiT071Test=9；AcUiT077T081Test=8
+失败：无（0 failures / 0 errors / 0 skipped），无回归，无 S1 行为回退
+修复分类：不适用（无失败）
+
+[4] UI 验收清单（设计 §12 与 §8/§9；只读代码 + 截图）
+- token 无硬编码：PASS（规则 1-3、5-6 命中 0；颜色/圆角/时长只走角色与 NautileMotion）
+- 圆角使用 shape token：PASS（RoundedCornerShape 数字字面量 0 命中；CircleShape / extraLarge 派生 / CornerSize(0.dp)）
+- 图标 16 个：PASS（res/drawable 恰 16 个 ic_*.xml；功能性图标 contentDescription 非空，装饰性为 null；无 material-icons-extended）
+  - 偏差（非阻断）：ic_check/ic_cancel/ic_close/ic_arrow_back/ic_expand_more 暂未接线；滑动背景用可见文字“完成/放弃”，GTD 关闭用可见 TextButton“关闭”，可达性不降级
+- 48dp 触控：PASS（NautileIconButton 外层 48dp；列表行 min 56dp；GTD 左列项 min 48dp；FAB 56dp；Material TextButton 默认最小触控 48dp；AcGtdHeaderT090Test 触控断言随全量回归通过）
+- 深色模式：已截图（像素均值 RGB≈(20,18,25)，浅色≈(253,246,255)，确认切换生效）；对比度数值未测
+- 空/错/加载态组件：存在（NautileEmptyState/NautileErrorState/NautileLoadingState；加载态为静态图标+文案，无 CircularProgressIndicator/无限动画）
+  - 偏差（非阻断）：待办页与 GTD 空态使用纯文本“该清单暂无任务”，未接线 NautileEmptyState；CMP-14/CMP-20 视觉未计入通过
+- 三处动效仅引用 NautileMotion：PASS（页面无 tween/spring/durationMillis；Expressive 仅 GTD 选择器开合、面板/详情进出（SheetMotion）、页面切换（AppRoot）三类场景）
+- 同一交互跨页面一致：本轮仅待办页有完整头部；其他一级页仍为 PlaceholderScreen（TextButton“设置”），按设计 §11.1 #11 不判 G1-A 失败，未覆盖
+- 搜索/视图：按设计 §10 禁用可见，contentDescription“功能尚未开放”；AC-T-19 搜索命中、AC-N-11 跨页头部不在本轮覆盖，不宣称通过
+
+[5] 模拟器截图（docs/验证记录/门禁/，未提交）
+1) g1_a3_todo_20261125T151828.png：PNG 1080x2400 RGBA，64307 字节；待办页浅色，头部 GTD/搜索/视图/设置，空态文本
+2) g1_a3_gtd_selector_20261125T151834.png：PNG 1080x2400 RGBA，73581 字节；GTD 半屏选择器，五项齐全，左列/右侧清单
+3) g1_a3_new_task_20261125T151842.png：PNG 1080x2400 RGBA，75884 字节；新建输入面板（待办/项目、清单、标题、详情、取消/创建）
+4) g1_a3_dark_todo_20261125T151852.png：PNG 1080x2400 RGBA，64312 字节；深色待办页
+点击坐标仅用于取证，不作为功能判定；截图后已恢复 night=no。
+
+[6] 待归档清单（交证据整理 Agent）
+- g1_a3_todo_20261125T151828.png
+- g1_a3_gtd_selector_20261125T151834.png
+- g1_a3_new_task_20261125T151842.png
+- g1_a3_dark_todo_20261125T151852.png
+- verify_G1-A3_20261125T151619.log / .meta.txt
+- g1_a3_20261125T152011.log / .meta.txt（本文件）
+
+[7] 未自动化 / 未执行 / 不能程序判定
+1) 动画中间帧、可打断手感与观感（系统动画缩放为 0，仅验证终态；人工评审）
+2) 深色模式对比度数值（只证明切换生效；A11Y-10/22 人工评审）
+3) 200% 字体（A11Y-13/15/21）未执行
+4) 真机未执行（仅模拟器）
+5) 面板 28dp 圆角、22dp 拖拽柄区、48dp 触控只作代码/测试核对，未做像素测量
+6) 搜索/视图功能与 AC-T-19 搜索命中、AC-N-11 跨页头部未实现，未覆盖
+7) 本轮为回归与 UI 取证，无新增测试，无红灯/变异证据
+
+RESULT：PASS
+判定：静态检查 PASS（exit 0，0 命中）+ verify.sh 四步 PASS（JVM 160/0，schema v2）+ 全量设备回归 PASS（97/0/0/0）+ UI 清单无未解释阻断项（未接线/未覆盖项已列明）。范围限模拟器 emulator-5554（非真机）与本轮待办页视觉。

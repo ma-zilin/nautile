@@ -1,0 +1,118 @@
+============================================================
+G1-A3-R2 独立复验（两项设计偏差修正后）
+时间：2026-11-25T15:32:05+08:00
+HEAD：2a47b22e621f5080f5d75b1ef71f0d8f29c69568
+工作区：4 个已修改（2 业务 + 2 测试）+ 已忽略目录外未跟踪证据；无提交
+设备：emulator-5554 / sdk_gphone64_x86_64 / Android 16 (API36) / x86_64 / ro.kernel.qemu=1（模拟器，非真机）
+条件：font_scale=1.0；window/transition/animator scale=0；浅色截图时 Night mode=no，深色截图临时 yes 后恢复 no
+============================================================
+
+[0] 检查对象与偏差来源
+- 检查对象：G1-A3 待办页/GTD 选择器视觉收尾（待办页头部、GTD 选择器、空态、图标、token、动效、全量回归）。
+- 对应需求：需求基线 v2.14 的 AC-G-04、FR-G-15；设计 `.plans/设计/01_视觉与动效标准.md` §6.2 #11（close 图标、contentDescription“关闭”）、§7.4 CMP-10—CMP-14、§7.6 CMP-20。
+- 首轮（g1_a3_20261125T152011）判定 PASS，但登记两处非阻断偏差：
+  1) GTD 选择器关闭使用可见 TextButton“关闭”，未接线 `ic_close`；
+  2) 待办页空态使用纯文本，未接线 `NautileEmptyState`（CMP-20）。
+- 本轮按“新增修改不能沿用旧验证结论”全量复跑，不引用首轮通过结论。
+
+[1] 业务改动核对（git diff --stat）
+命令：git diff --stat
+结果：
+  app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/GtdSelector.kt  | 12 +++++++-----
+  app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/TodoScreen.kt   |  8 +++++++-
+  共 2 个业务文件（+14/-6），与授权范围一致；无构建配置、依赖、资源新增。
+  另 2 个测试文件为本轮授权的定位方式变更（见 [2]）。
+- GtdSelector.kt：TextButton("关闭") → `NautileIconButton(iconRes = R.drawable.ic_close, contentDescription = "关闭", ...)`，位置仍在 TopEnd；组件外层 48dp（CMP-09/A11Y-01）。
+- TodoScreen.kt：空清单分支 `Text("该清单暂无任务", bodyMedium)` → `NautileEmptyState(title = "该清单暂无任务", description = null, iconRes = R.drawable.ic_inbox)`；图标 48dp 装饰、contentDescription=null、标题 titleMedium（CMP-20）。
+- 文案保持不变，既有“该清单暂无任务”文本断言不失效。
+
+[2] 测试定位授权变更（仅两处，其余断言未改）
+1) app/src/androidTest/java/io/github/mazilin/nautile/verification/AcTodoT07Test.kt
+   - 新增 import `androidx.compose.ui.test.onNodeWithContentDescription`；
+   - AC_G_04_selector_close_button_and_blank_left_swipe_close：`onNodeWithText("关闭")` → `onNodeWithContentDescription("关闭")`；
+   - 同用例 `onRoot().swipeLeft()` 与 `assertEquals(2, closed)` 保持。
+2) app/src/androidTest/java/io/github/mazilin/nautile/verification/AcGtdHeaderT090Test.kt
+   - `onNodeWithText("关闭")` → `onNodeWithContentDescription("关闭")`；
+   - 前置“该清单暂无任务”可见断言、后置“关闭后两列不存在”断言保持。
+依据：G0.2 已核实设计授权行为变更（可见文本变图标，语义改用 contentDescription），不是回归、不是削弱断言。
+
+[3] 静态检查
+命令：bash scripts/check_ui_tokens.sh
+退出码：0
+结果：RESULT PASS；规则 1-8 命中 0；检查文件 18 个；耗时约 0.1s。
+范围说明：只扫描 ui/theme、ui/designsystem、ui/AppRoot.kt、ui/screen/todo；其余页面不在 G1-A 视觉范围。
+
+[4] 刚性门禁
+命令：bash scripts/verify.sh G1-A3-R2
+日志：docs/验证记录/门禁/verify_G1-A3-R2_20261125T152348.log
+元数据：docs/验证记录/门禁/verify_G1-A3-R2_20261125T152348.meta.txt
+脚本退出码：0
+四步（均 --rerun-tasks）：
+  assembleDebug=0（4s）
+  assembleDebugAndroidTest(compile-only)=0（4s，含本轮测试改动编译）
+  testDebugUnitTest=0（4s）
+  lintDebug=0（9s）
+JVM 统计：suites=28 tests=160 failures=0 errors=0 skipped=0
+schema：1.json（历史）与 2.json（当前）存在；version 2、tasks/projects/detail 检查 EXIT=0
+GATE RESULT：PASS（耗时约 24s）
+
+[5] 全量设备回归（不筛选，模拟器）
+命令：timeout -s INT 1200 ./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+退出码：0（70 tasks executed，非 up-to-date）
+耗时：46s 墙钟；XML testcase time 合计 37.10s
+结果 XML：app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml
+test-result-exit-code.txt：0
+XML 汇总：tests=97 failures=0 errors=0 skipped=0
+逐类：TodoScreenSmokeTest=1；RoomProjectRepositoryContractTest=5；RoomTaskRepositoryContractTest=5；MigrationTest=3；ProjectDaoTest=3；TaskDaoTest=3；RoomProjectRepositoryTest=2；RoomTaskRepositoryTest=3；AppRootTest=5；AcAppRootT06Test=5；AcDetailNewTaskUiT08T09Test=8；AcDetailPersistenceT085Test=1；AcDetailPullT088Test=7；AcGtdHeaderT090Test=4；AcSettingsEntryP1Test=2；AcTodoT07Test=23；AcUiT071Test=9；AcUiT077T081Test=8
+失败分类：无失败（0 failures / 0 errors / 0 skipped），无实现回归、无授权变更导致的失败、无测试或环境问题。
+执行条件：模拟器（非真机），屏幕常亮与无人值守条件不受控，结论仅代表该模拟器环境。
+
+[6] 两项偏差复核（程序 + 截图）
+安装与启动：adb install -r app/build/outputs/apk/debug/app-debug.apk（Success）；pm clear 后 am start COLD。
+A. 关闭按钮为 ic_close 图标
+- uiautomator dump：选择器内不存在可见文本节点“关闭”；存在 content-desc="关闭" 节点，bounds=[986,1044][1049,1107]（63×63px，24dp 视觉图标）。
+- 像素核对（g1_a3r2_gtd_selector_20261125T152650.png）：图标区域非背景像素 581 个，主色 (29,27,32)=onSurface；同高度空白对照区 0 个。
+- 行为核对：adb tap 图标中心后 dump：五项清单文本消失、“关闭”节点消失、待办空态仍在 → 关闭生效。
+B. 待办空态为 NautileEmptyState
+- uiautomator dump：文本“该清单暂无任务” bounds 高度 63px（≈24dp 行高，符合 titleMedium；bodyMedium 约 20dp）。
+- 像素核对（g1_a3r2_todo_20261125T152628.png）：标题上方图标区域非背景像素 5414 个，主色 (73,69,79)=onSurfaceVariant（48dp 图标）；同高度空白对照区 0 个。
+- 深色核对（g1_a3r2_dark_todo_20261125T152713.png）：背景 (20,18,24)，图标主色 (202,196,208)=onSurfaceVariant，图标区域非背景 5415，对照 0。
+结论：两项指定偏差均已消除；文案“该清单暂无任务”保留。
+
+[7] 截图（docs/验证记录/门禁/，未提交）
+1) g1_a3r2_todo_20261125T152628.png：PNG 1080x2400 RGBA，68462 字节；浅色待办页，空态为 inbox 图标+标题。
+2) g1_a3r2_gtd_selector_20261125T152650.png：PNG 1080x2400 RGBA，75661 字节；GTD 半屏选择器，五项齐全，右上角 ic_close 图标（无“关闭”文字）。
+3) g1_a3r2_dark_todo_20261125T152713.png：PNG 1080x2400 RGBA，深色待办页，空态图标与标题可见。
+- 均以 `file` 验证为有效 PNG；点击坐标仅用于取证，不作为功能判定；深色后已恢复 Night mode=no。
+- 首轮深色截图不再复用（本轮空态与关闭按钮已变，复用会与当前构建不对应）。
+
+[8] 待办页“规格→实现→测试证据”对照表（本轮修正）
+| 规格 | 实现 | 测试/证据 | 本轮结论 |
+| --- | --- | --- | --- |
+| §6.2 #11 close 图标 + contentDescription“关闭” | GtdSelector.kt NautileIconButton(ic_close) | AcTodoT07Test AC-G-04、AcGtdHeaderT090Test CMP-19/MOT-07；dump 无“关闭”文本、有 content-desc“关闭” | 已修正，PASS |
+| §7.6 CMP-20 空态 icon 48dp(null)+titleMedium | TodoScreen.kt NautileEmptyState(title, ic_inbox) | 文本断言保留；dump 行高 63px、像素图标 48dp onSurfaceVariant | 已修正，PASS |
+| §6.2 头部 4 图标 + ICO-07 | TodoScreen.kt（GTD/搜索/视图/设置） | AcGtdHeaderT090Test 顺序与禁用、dump content-desc | PASS（未改） |
+| §7.4 CMP-10/11 左宽自适应 W_L=max+24dp | GtdSelector.kt TextMeasurer | AcGtdHeaderT090Test 触控与列宽断言（模拟器 4/4 通过） | PASS（未改） |
+| §7.4 CMP-13 Expressive 开合、切换 StandardEffects | GtdSelector.kt + NautileMotion.kt | 静态规则 3 命中 0；动效中间帧未自动化 | PASS（终态）；中间帧人工 |
+| §6.1 ICO-01/08 16 图标、无文本图标 | res/drawable 16 个 ic_*.xml | 静态规则 4/7 命中 0 | PASS（未改） |
+| COL/SHP/SPC token 无硬编码 | Theme.kt/NautileSpacing.kt 等 | 静态规则 1/2/5/6 命中 0 | PASS（未改） |
+| §7.6 CMP-21/22 错误/加载静态态 | NautileStateViews.kt | 代码与静态规则 8 命中 0；无页面接线 | 组件存在，未接线（非本轮范围） |
+| CMP-14 GTD 右列空态用 EmptyState | GtdSelector.kt 仍为 Text(bodyMedium) | dump 文本存在；无独立断言像素 | 未修正（首轮遗留，非本轮两项授权范围） |
+
+[9] 未自动化 / 未执行 / 不能程序判定
+1) 动画中间帧、可打断手感与观感（系统动画缩放 0，仅验证终态）——人工评审。
+2) 深色对比度数值（只证明切换生效与角色色值）——人工评审 A11Y-10/22。
+3) 200% 字体（A11Y-13/15/21）未执行。
+4) 真机未执行（仅模拟器 emulator-5554）；无人值守条件不成立，需人工在场。
+5) 28dp 圆角、22dp 拖拽柄等像素级测量未做。
+6) 搜索/视图功能、AC-T-19 搜索命中、AC-N-11 跨页头部未实现，未覆盖。
+7) GTD 右列空态未接线 NautileEmptyState（CMP-14 视觉待下轮处理）。
+8) 本轮为设计偏差修正的复验，无新增测试、无红绿与变异抽查证据。
+
+[10] 剩余限制与问题影响
+- 两项指定偏差已消除，未发现新的实现回归（97 例 0 失败）。
+- GTD 右列仍为纯文本空态：观感与其他页空态不一致，不影响功能与本次两项判定；建议下轮按 CMP-14 接线。
+- 模拟器结论不外推到真机；体验类项保持人工评审。
+
+RESULT：PASS
+判定：业务改动仅 GtdSelector.kt、TodoScreen.kt；测试仅两处定位授权变更；静态检查 exit 0（0 命中）；verify.sh 四步 exit 0（JVM 160/0、schema v2）；全量设备回归 97/0/0/0（exit 0，46s，模拟器非真机）；两项偏差以 uiautomator dump、像素与点击行为三重核对消除。

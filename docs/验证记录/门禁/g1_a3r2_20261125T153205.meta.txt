@@ -1,0 +1,35 @@
+task=G1-A3-R2
+name=设计偏差修正后复验（GTD 关闭图标 / 待办空态组件）
+time=2026-11-25T15:32:05+08:00
+head=2a47b22e621f5080f5d75b1ef71f0d8f29c69568
+dirty_entries_at_verify=13
+dirty_entries_at_evidence=19（含本 log；写入 meta 后 20）
+dirty_note=已修改 4：GtdSelector.kt、TodoScreen.kt（业务，授权修正）+ AcTodoT07Test.kt、AcGtdHeaderT090Test.kt（两处定位授权变更）；其余为未跟踪证据（首轮 g1_a3_*、verify_G1-A3*、本轮 g1_a3r2_*、verify_G1-A3-R2*）；无依赖/构建配置改动
+scope=业务改动仅 GtdSelector.kt（TextButton“关闭”→NautileIconButton ic_close/contentDescription“关闭”）与 TodoScreen.kt（空态 Text→NautileEmptyState，文案“该清单暂无任务”保留）
+device=emulator-5554 / sdk_gphone64_x86_64 / Android 16 (API36) / x86_64 / ro.kernel.qemu=1（模拟器，非真机）
+device_conditions=font_scale=1.0；window/transition/animator scale=0；Night mode=no（深色截图临时 yes 后恢复）；1080x2400 / density 420
+static_command=bash scripts/check_ui_tokens.sh
+static=PASS exit=0 rules1-8 hits=0 files=18
+verify_command=bash scripts/verify.sh G1-A3-R2
+verify_steps=assembleDebug=0, assembleDebugAndroidTest=0, testDebugUnitTest=0, lintDebug=0（均 --rerun-tasks）
+verify_jvm=suites=28 tests=160 failures=0 errors=0 skipped=0
+verify_schema=version 2；tasks/projects/detail；1.json 保留；EXIT=0
+verify_gate=PASS（exit 0，约 24s）
+verify_log=docs/验证记录/门禁/verify_G1-A3-R2_20261125T152348.log
+verify_meta=docs/验证记录/门禁/verify_G1-A3-R2_20261125T152348.meta.txt
+connected_command=timeout -s INT 1200 ./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_exit=0
+connected_stats=tests=97 failures=0 errors=0 skipped=0
+connected_duration=46s（墙钟；70 tasks executed；XML testcase time 合计 37.10s）
+connected_xml=app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml
+connected_per_class=TodoScreenSmokeTest=1,RoomProjectRepositoryContractTest=5,RoomTaskRepositoryContractTest=5,MigrationTest=3,ProjectDaoTest=3,TaskDaoTest=3,RoomProjectRepositoryTest=2,RoomTaskRepositoryTest=3,AppRootTest=5,AcAppRootT06Test=5,AcDetailNewTaskUiT08T09Test=8,AcDetailPersistenceT085Test=1,AcDetailPullT088Test=7,AcGtdHeaderT090Test=4,AcSettingsEntryP1Test=2,AcTodoT07Test=23,AcUiT071Test=9,AcUiT077T081Test=8
+connected_failures=none（0/0/0/0，无实现回归、无授权变更失败、无测试/环境问题）
+deviation_1_close_icon=FIXED；dump 无“关闭”文本、有 content-desc 关闭 [986,1044][1049,1107]；点击后五项与关闭节点消失；图标区非背景 581px 主色 (29,27,32)，对照 0
+deviation_2_empty_state=FIXED；待办空态文本行高 63px（titleMedium）；文本上方图标区非背景 5414px 主色 (73,69,79)=onSurfaceVariant，对照 0；深色为 (202,196,208)
+screenshots=g1_a3r2_todo_20261125T152628.png(1080x2400,68462B),g1_a3r2_gtd_selector_20261125T152650.png(1080x2400,75661B),g1_a3r2_dark_todo_20261125T152713.png(1080x2400)
+screenshot_note=均经 file 验证为 PNG；深色首轮截图未复用（构建已变）；截图未提交
+remaining=GTD 右列空态仍为 Text(bodyMedium)，未接线 NautileEmptyState（CMP-14，首轮遗留，非本轮两项授权范围）
+result=PASS
+judge=业务改动范围相符 + 测试仅两处定位授权变更 + 静态 PASS（0 命中）+ verify 四步 PASS（JVM 160/0）+ 全量回归 97/0/0/0 PASS + 两项指定偏差以 dump/像素/行为三重核对消除
+not_automated=动画中间帧与可打断手感；深色对比度数值；200% 字体；真机；像素级面板测量；搜索/视图与跨页头部；GTD 右列空态组件化；本轮无新增测试/红绿/变异
+log=docs/验证记录/门禁/g1_a3r2_20261125T153205.log

@@ -1,0 +1,29 @@
+task=G1-A3
+name=回归与 UI 验收
+time=2026-11-25T15:20:11+08:00
+head=2a47b22e621f5080f5d75b1ef71f0d8f29c69568
+dirty_entries_at_evidence=7
+dirty_note=仅未跟踪：历史 emulator_boot PNG、4 张 g1_a3 截图、verify_G1-A3 日志与 meta；无已跟踪业务/测试文件改动
+device=emulator-5554 / nautile_api36 / Android 16 (API36) / x86_64 / ro.kernel.qemu=1（模拟器，非真机）
+device_conditions=font_scale=1.0；window/transition/animator scale=0；night=no（截图时临时 yes 后恢复）
+static_command=bash scripts/check_ui_tokens.sh
+static=PASS exit=0 rules1-8 hits=0 files=18 duration=0.14s
+verify_command=bash scripts/verify.sh G1-A3
+verify_steps=assembleDebug=0, assembleDebugAndroidTest=0, testDebugUnitTest=0, lintDebug=0（均 --rerun-tasks）
+verify_jvm=suites=28 tests=160 failures=0 errors=0 skipped=0
+verify_schema=version 2；tasks/projects/detail；1.json 保留；EXIT=0
+verify_gate=PASS（exit 0，耗时 23.6s）
+verify_log=docs/验证记录/门禁/verify_G1-A3_20261125T151619.log
+connected_command=timeout -s INT 1200 ./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_exit=0
+connected_stats=tests=97 failures=0 errors=0 skipped=0
+connected_duration=47s（墙钟；XML testcase time 合计 37.77s）
+connected_xml=app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml
+connected_per_class=TodoScreenSmokeTest=1,RoomProjectRepositoryContractTest=5,RoomTaskRepositoryContractTest=5,MigrationTest=3,ProjectDaoTest=3,TaskDaoTest=3,RoomProjectRepositoryTest=2,RoomTaskRepositoryTest=3,AppRootTest=5,AcAppRootT06Test=5,AcDetailNewTaskUiT08T09Test=8,AcDetailPersistenceT085Test=1,AcDetailPullT088Test=7,AcGtdHeaderT090Test=4,AcSettingsEntryP1Test=2,AcTodoT07Test=23,AcUiT071Test=9,AcUiT077T081Test=8
+connected_failures=none
+ui_checklist=token PASS；shape token PASS；icons 16 PASS；48dp PASS；dark 截图生效；empty/error/loading 组件存在（加载静态）；Expressive 仅三类；Todo 空态未接线 NautileEmptyState、部分图标未接线（非阻断偏差）；跨页头部与 AC-T-19 搜索未覆盖（设计 §10/§11.1 #11）
+screenshots=g1_a3_todo_20261125T151828.png(1080x2400),g1_a3_gtd_selector_20261125T151834.png(1080x2400),g1_a3_new_task_20261125T151842.png(1080x2400),g1_a3_dark_todo_20261125T151852.png(1080x2400)
+result=PASS
+judge=静态 PASS + verify 四步 PASS（JVM 160/0）+ 全量设备回归 97/0/0/0 PASS + UI 清单无未解释阻断项
+not_automated=动画中间帧/可打断手感；深色对比度数值；200% 字体；真机；像素级面板测量；搜索/视图与跨页头部；本轮无新增测试/红绿/变异
+log=docs/验证记录/门禁/g1_a3_20261125T152011.log
