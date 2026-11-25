@@ -5,19 +5,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 品牌种子色仍待确认（设计 §1.4 COL-08）。
- * 未确认前使用 M3 baseline 色板，组件只消费角色，不读取十六进制颜色；动态取色关闭（COL-07）。
+ * 浅/深两套 ColorScheme 由种子色 `#3B6FE0` 推导，定义在 Color.kt（COL-08、COL-13）。
+ * 组件只消费角色，不读取十六进制颜色；动态取色关闭（COL-07）。
  */
-private val NautileLightColorScheme = lightColorScheme()
-private val NautileDarkColorScheme = darkColorScheme()
 
 /**
  * 形状只使用 Material3 公开五档（设计 §3.1）；20/32/48dp 内部档位不使用（SHP-05）。

@@ -17,7 +17,22 @@ data class TaskGroup(val project: Project?, val tasks: List<Task>) {
  */
 object TaskGrouping {
 
-    fun byProject(tasks: List<Task>, projects: List<Project>): List<TaskGroup> {
+    /** 旧语义：只输出有任务的项目组与（非空时）单独任务组，保持既有调用与单测不变。 */
+    fun byProject(tasks: List<Task>, projects: List<Project>): List<TaskGroup> =
+        groupByProject(tasks, projects, includeEmptyProjects = false)
+
+    /**
+     * 分组卡片视图：按 [projects] 顺序输出所有项目组（0 任务也保留），
+     * 供待办列表显示空项目并点入项目详情（SHP-07、SPC-07）；任务顺序与 [byProject] 一致。
+     */
+    fun byProjectIncludingEmpty(tasks: List<Task>, projects: List<Project>): List<TaskGroup> =
+        groupByProject(tasks, projects, includeEmptyProjects = true)
+
+    private fun groupByProject(
+        tasks: List<Task>,
+        projects: List<Project>,
+        includeEmptyProjects: Boolean,
+    ): List<TaskGroup> {
         val projectById: Map<ProjectId, Project> = projects.associateBy { it.id }
         val grouped = LinkedHashMap<ProjectId, MutableList<Task>>()
         val ungrouped = mutableListOf<Task>()
@@ -32,7 +47,12 @@ object TaskGrouping {
         }
 
         val projectGroups = projects.mapNotNull { project ->
-            grouped[project.id]?.let { memberTasks -> TaskGroup(project, memberTasks.toList()) }
+            val memberTasks = grouped[project.id]
+            when {
+                includeEmptyProjects -> TaskGroup(project, memberTasks.orEmpty().toList())
+                memberTasks != null -> TaskGroup(project, memberTasks.toList())
+                else -> null
+            }
         }
         return if (ungrouped.isEmpty()) projectGroups else projectGroups + TaskGroup(null, ungrouped)
     }

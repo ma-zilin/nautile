@@ -1,0 +1,36 @@
+task=G2 主题、组件与待办列表视觉
+time=2026-11-25T17:17:15+08:00
+head=2bc7331cf7ca1ffebbdba821cb51f874bd51e0b1
+implementation_commit=none（实现未提交，工作区版本）
+dirty_entries=17
+device=emulator-5554 API36 AVD nautile_api36（模拟器，非真机）
+changed_files=Color.kt(新增)/Theme.kt/TaskGrouping.kt/TodoViewModel.kt/TodoScreen.kt；测试 AcCardGroupsT091Test.kt；脚本 check_ui_tokens.sh
+static_command=bash scripts/check_ui_tokens.sh
+static_baseline=FAIL exit=1 rule1_hits=69（全部 Color.kt）
+static_result=PASS exit=0 rule1_exempt=ui/theme/Color.kt rules2-8_unchanged hits=0
+verify_command=bash scripts/verify.sh G2
+verify_log=docs/验证记录/门禁/verify_G2_20261125T171224.log
+assembleDebug_exit=0
+assembleDebugAndroidTest_exit=0
+testDebugUnitTest_exit=0
+lintDebug_exit=0
+jvm_stats=suites=28 tests=160 failures=0 errors=0 skipped=0
+schema=1.json历史存在 + 2.json version2/tasks/projects/detail EXIT=0
+gate_result=PASS
+connected_command=./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_start=2026-11-25T17:12:53+08:00
+connected_duration=Gradle BUILD SUCCESSFUL in 50s
+connected_exit=0
+connected_stats=tests=105 failures=0 errors=0 skipped=0 classes=19
+connected_failures=none（实现回归/授权变更旧断言/测试问题/环境问题均 0）
+connected_log=docs/验证记录/门禁/g2_connected_20261125T171224.log
+connected_xml=docs/验证记录/门禁/g2_connected_20261125T171224.xml
+new_test=app/src/androidTest/java/io/github/mazilin/nautile/verification/AcCardGroupsT091Test.kt tests=8
+screenshot_light=docs/验证记录/门禁/g2_todo_light_20261125T171224.png（PNG 1080x2400）
+screenshot_dark=docs/验证记录/门禁/g2_todo_dark_20261125T171224.png（PNG 1080x2400）
+screenshot_note=项目/任务名 ASCII（adb 不支持中文输入）；浅色含空项目0+单独任务1，深色同结构；未提交
+design_check=种子色仅Color.kt；卡16dp/surfaceContainerLowest/无内部分隔线/卡间8dp/行间8dp；组头名称+数量；空组可点；FAB圆形primary；clipToBounds+不透明底；无新增硬编码
+design_conflict=FAB 形状/底色与设计§3.2/§1.2（large/primaryContainer）不一致，按用户 2026-11-25 G2 指令（圆形 primary）判定，设计文档待更新
+result=PASS
+judge=静态PASS且verify G2 PASS且全量connected 0失败0错误且设计核对无阻断项
+not_automated=像素对比度/深色观感/TalkBack/色板生成溯源/FAB圆角形状/16dp与8dp像素测量/业务代码注入红检/真机

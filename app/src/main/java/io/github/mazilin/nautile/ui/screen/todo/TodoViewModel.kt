@@ -99,7 +99,7 @@ class TodoViewModel(
         val visibleTasks = tasks.filter { it.position == position }
         TodoUiState(
             position = position,
-            groups = TaskGrouping.byProject(visibleTasks, projects),
+            groups = TaskGrouping.byProjectIncludingEmpty(visibleTasks, projects),
             visibleTasks = visibleTasks,
             projectConfirmation = pending,
             projectReopenPrompt = reopenPrompt,

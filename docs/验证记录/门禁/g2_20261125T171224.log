@@ -1,0 +1,133 @@
+============================================================
+G2 闸门：主题、组件与待办列表视觉（独立验证）
+时间：2026-11-25T17:17:08+08:00
+HEAD：2bc7331cf7ca1ffebbdba821cb51f874bd51e0b1
+工作区：未提交（实现 + 测试 + 检查脚本），git status 条目如下
+ M app/src/main/java/io/github/mazilin/nautile/domain/rule/TaskGrouping.kt
+ M app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/TodoScreen.kt
+ M app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/TodoViewModel.kt
+ M app/src/main/java/io/github/mazilin/nautile/ui/theme/Theme.kt
+ M scripts/check_ui_tokens.sh
+?? app/src/androidTest/java/io/github/mazilin/nautile/verification/AcCardGroupsT091Test.kt
+?? app/src/main/java/io/github/mazilin/nautile/ui/theme/Color.kt
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g2_20261125T171224.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g2_connected_20261125T171224.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g2_connected_20261125T171224.xml"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g2_todo_dark_20261125T171224.png"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g2_todo_light_20261125T171224.png"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G2_20261125T171155.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G2_20261125T171155.meta.txt"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G2_20261125T171224.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G2_20261125T171224.meta.txt"
+模拟器：emulator-5554（API36，AVD nautile_api36，非真机）
+============================================================
+
+===== [1] 静态检查 scripts/check_ui_tokens.sh =====
+授权变更：规则 1 仅豁免 ui/theme/Color.kt；规则 2-8 未放宽。
+豁免前基线（17:09:40）：规则 1 命中 69（全部在 Color.kt），EXIT=1。
+============================================================
+G1-A2 设计 token 静态检查
+时间：2026-11-25T17:17:08+08:00
+HEAD：2bc7331cf7ca1ffebbdba821cb51f874bd51e0b1
+扫描路径：app/src/main/java/io/github/mazilin/nautile/ui/theme
+          app/src/main/java/io/github/mazilin/nautile/ui/designsystem
+          app/src/main/java/io/github/mazilin/nautile/ui/AppRoot.kt
+          app/src/main/java/io/github/mazilin/nautile/ui/screen/todo
+============================================================
+
+[规则 1] 颜色字面量：Color(0x / Color.Black / Color.White / Color.Red（COL-01、NO-01；豁免 theme/Color.kt 种子色板）
+  命中 0
+[规则 2] 圆角字面量：RoundedCornerShape(<数字>（SHP-01、NO-02；豁免 theme/Theme.kt）
+  命中 0
+[规则 3] 动效字面量：tween( / spring( / durationMillis（MOT-03、NO-03；豁免 theme/NautileMotion.kt）
+  命中 0
+[规则 4] 文本图标：Text("☰/+/✓/×")（ICO-02、ICO-08、NO-05）
+  命中 0
+[规则 5] 固定比例分栏：weight(0.38f/0.62f)（CMP-10、NO-10）
+  命中 0
+[规则 6] 遮罩 alpha 字面量：0.32f（COL-10；豁免 theme/NautileSpacing.kt）
+  命中 0
+[规则 7] 依赖：material-icons-extended 出现在构建/依赖声明文件（build.gradle.kts settings.gradle.kts app/build.gradle.kts gradle/libs.versions.toml；ICO-02、ICO-09、NO-13）
+  命中 0
+[规则 8] 无限动画 API：CircularProgressIndicator / infiniteRepeatable / rememberInfiniteTransition（MOT-13）
+  命中 0
+
+------------------------------------------------------------
+检查文件数：19（ui/theme + ui/designsystem + ui/screen/todo 的 .kt，另加 ui/AppRoot.kt）
+命中总数：0
+RESULT: PASS
+STATIC_EXIT=0
+
+===== [2] 门禁 bash scripts/verify.sh G2 =====
+verify 日志：docs/验证记录/门禁/verify_G2_20261125T171224.log
+HEAD：2bc7331cf7ca1ffebbdba821cb51f874bd51e0b1
+工作区未提交条目数：9
+[STEP] assembleDebug EXIT=0
+[STEP] assembleDebugAndroidTest(compile-only) EXIT=0
+[STEP] testDebugUnitTest EXIT=0
+[STEP] lintDebug EXIT=0
+===== [STEP] 测试结果统计 =====
+suites=28 tests=160 failures=0 errors=0 skipped=0
+[STEP] 测试结果统计 EXIT=0
+[STEP] schema 内容检查 EXIT=0（version 2，tasks/projects/detail；1.json 保留）
+GATE RESULT: PASS
+JVM 统计：suites=28 tests=160 failures=0 errors=0 skipped=0
+
+===== [3] 全量设备回归 :app:connectedDebugAndroidTest --rerun-tasks =====
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+开始：2026-11-25T17:12:53+08:00；Gradle 报告：BUILD SUCCESSFUL in 50s；EXIT=0
+tests=105 failures=0 errors=0 skipped=0
+classes=19
+  io.github.mazilin.nautile.TodoScreenSmokeTest tests=1
+  io.github.mazilin.nautile.contract.RoomProjectRepositoryContractTest tests=5
+  io.github.mazilin.nautile.contract.RoomTaskRepositoryContractTest tests=5
+  io.github.mazilin.nautile.data.db.MigrationTest tests=3
+  io.github.mazilin.nautile.data.db.ProjectDaoTest tests=3
+  io.github.mazilin.nautile.data.db.TaskDaoTest tests=3
+  io.github.mazilin.nautile.data.repository.RoomProjectRepositoryTest tests=2
+  io.github.mazilin.nautile.data.repository.RoomTaskRepositoryTest tests=3
+  io.github.mazilin.nautile.ui.AppRootTest tests=5
+  io.github.mazilin.nautile.verification.AcAppRootT06Test tests=5
+  io.github.mazilin.nautile.verification.AcCardGroupsT091Test tests=8
+  io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test tests=8
+  io.github.mazilin.nautile.verification.AcDetailPersistenceT085Test tests=1
+  io.github.mazilin.nautile.verification.AcDetailPullT088Test tests=7
+  io.github.mazilin.nautile.verification.AcGtdHeaderT090Test tests=4
+  io.github.mazilin.nautile.verification.AcSettingsEntryP1Test tests=2
+  io.github.mazilin.nautile.verification.AcTodoT07Test tests=23
+  io.github.mazilin.nautile.verification.AcUiT071Test tests=9
+  io.github.mazilin.nautile.verification.AcUiT077T081Test tests=8
+失败分类：0 失败（无实现回归 / 无授权变更旧断言失效 / 无测试问题 / 无环境问题）
+新增类结果（首轮定向）：AcCardGroupsT091Test tests=8 failures=0 errors=0 skipped=0 EXIT=0
+
+===== [4] 截图（不提交；docs/验证记录/门禁/） =====
+docs/验证记录/门禁/g2_todo_light_20261125T171224.png: PNG image data, 1080 x 2400, 8-bit/color RGBA, non-interlaced
+docs/验证记录/门禁/g2_todo_dark_20261125T171224.png:  PNG image data, 1080 x 2400, 8-bit/color RGBA, non-interlaced
+浅色：EmptyProject（0）空项目卡 + 单独任务(1)/SoloTask；白卡、无行分隔线、圆形蓝色 FAB。
+深色：同结构；surfaceContainerLowest 卡片比 background 更暗，可分辨；FAB 浅蓝圆形。
+说明：项目/任务名用 ASCII（adb input text 不支持中文输入）；中文界面文案与语义未变。
+
+===== [5] 设计核对（源码 + 静态 + 语义测试） =====
+种子色/色板：Color(0x 仅出现在 ui/theme/Color.kt（静态规则 1 豁免后 0 命中）；Theme.kt 只引用两套 scheme。
+卡片：TodoScreen.kt:509 surfaceContainerLowest；:514 shapes.large；:513 左右 16dp；:510-519 无阴影无描边。
+间距：LazyColumn :373 卡片间 8dp；:538 组内行间 8dp；:574 组头上下 8/4dp；:520 卡片底部 8dp。
+无分隔线：TodoScreen.kt 仅 :349 顶部栏 HorizontalDivider，分组卡片内无 HorizontalDivider。
+组头：GroupHeader 名称 titleMedium + 数量 bodySmall；项目组语义合并“名称（数量）”；空组仅组头且整卡可点入项目详情。
+单独任务组：仅当存在未归属项目任务时输出（TaskGrouping 纯函数测试 + UI 测试）。
+FAB：:443 CircleShape、:444 primary、:442 tag add_task、图标 contentDescription“新建待办或项目”；测试断言 56dp 等宽高。
+文字遮挡修复：:369 LazyColumn clipToBounds + :370 background 不透明底；:418-419 预览层不透明 + clipToBounds。
+不折叠：无展开/收起/折叠 contentDescription，无 ToggleableState 节点（语义测试通过）。
+未新增硬编码：规则 1-8 全部 0 命中；无 material-icons-extended。
+项目创建接线：MainActivity.kt:348-350 onCreateProject -> TodoViewModel.createProject；项目创建后空组即时出现（截图实测）。
+
+===== [6] 判定 =====
+静态 PASS + verify G2 PASS（四步 EXIT=0、JVM 160/0/0/0、schema v2）+ 全量 connected 105/0/0/0 + 设计核对无阻断项 => PASS（G2）。
+
+===== [7] 未自动化 / 人工项 =====
+1) 像素级对比度（A11Y-10）、深色卡片观感（COL-12/D 设计问题 9）需人工评审；截图已留。
+2) TalkBack 朗读文案（A11Y-23，实现读作“名称（N）”）需真机/模拟器人工核对。
+3) “两套 scheme 确由 #3B6FE0 生成”无法由代码证明；仅确认色板集中在 Color.kt、非 M3 baseline 紫色、蓝色系。
+4) FAB 圆形只能以 56dp 等宽高 + CircleShape 源码核对，语义树不暴露形状。
+5) 16dp 圆角、8dp 间距为源码核对与截图观感，未做像素测量。
+6) 未做业务代码注入式红检（授权禁止改业务代码）；静态规则在豁免前实际 FAIL 作为规则敏感性红证据。
+7) 模拟器非真机；真机触控/性能/厂商 ROM 差异未验证。

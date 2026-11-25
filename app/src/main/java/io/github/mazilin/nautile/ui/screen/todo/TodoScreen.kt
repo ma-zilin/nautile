@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.screen.todo
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -10,15 +11,18 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -38,7 +42,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -49,8 +55,11 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -60,6 +69,7 @@ import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
+import io.github.mazilin.nautile.domain.rule.TaskGroup
 import io.github.mazilin.nautile.interaction.GestureArbiter
 import io.github.mazilin.nautile.ui.designsystem.NautileEmptyState
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
@@ -343,18 +353,26 @@ fun TodoScreen(
                 }
             }
 
+            // 页面背景只用 background 角色；分组卡片用 surfaceContainerLowest 分层（SHP-07）。
+            val pageBackground = MaterialTheme.colorScheme.background
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(pageBackground)
                     .nestedScroll(boundaryConnection),
             ) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
+                        // MOT-15：平移内容裁剪在不透明列表层内，不绘制到预览区外。
+                        .clipToBounds()
+                        .background(pageBackground)
                         .graphicsLayer { translationY = pullOffset },
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (state.isEmpty) {
+                    if (state.groups.isEmpty()) {
                         item(key = "empty") {
                             Box(
                                 modifier = Modifier.fillParentMaxSize(),
@@ -370,114 +388,47 @@ fun TodoScreen(
                         }
                     }
                     state.groups.forEach { group ->
-                        val project = group.project
-                        if (project != null) {
-                            item(key = "project_${project.id.value}") {
-                                Column(modifier = Modifier.fillMaxWidth()) {
-                                    SwipeableRow(
-                                        onSwipeLeft = { onRequestProjectClose(project.id, ClosedOutcome.COMPLETED) },
-                                        onSwipeRight = { onRequestProjectClose(project.id, ClosedOutcome.ABANDONED) },
-                                        onRowDragStart = { rowDragging = true },
-                                        onRowDragEnd = { rowDragging = false },
-                                        onClick = { onOpenProjectDetail(project.id) },
-                                    ) {
-                                        Text(
-                                            text = "${project.name}（${group.tasks.size}）",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            modifier = Modifier
-                                                .heightIn(min = 56.dp)
-                                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        )
-                                    }
-                                    // 行间分隔线：1dp outlineVariant，左内缩 16dp（设计 §4.2）。
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(start = 16.dp),
-                                        thickness = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant,
-                                    )
-                                }
-                            }
-                        } else {
-                            item(key = "ungrouped_header") {
-                                Text(
-                                    text = "单独任务",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(
-                                        start = 16.dp,
-                                        end = 16.dp,
-                                        top = 16.dp,
-                                        bottom = 4.dp,
-                                    ),
-                                )
-                            }
-                        }
-                        itemsIndexed(
-                            items = group.tasks,
-                            key = { _, task -> "task_${task.id.value}" },
-                        ) { index, task ->
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                SwipeableRow(
-                                    onSwipeLeft = { onCompleteTask(task.id) },
-                                    onSwipeRight = { onAbandonTask(task.id) },
-                                    onRowDragStart = { rowDragging = true },
-                                    onRowDragEnd = { rowDragging = false },
-                                    onClick = { onOpenTaskDetail(task.id) },
-                                    // 已结项行禁用滑动，只保留查看详情（T-10、AC-T-29）。
-                                    swipeEnabled = task.closedOutcome == null,
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(min = 56.dp)
-                                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Text(
-                                            text = task.title,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = if (task.closedOutcome != null) {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            },
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            modifier = Modifier.weight(1f),
-                                        )
-                                        if (task.closedOutcome != null) {
-                                            Text(
-                                                text = "已结项",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(start = 8.dp),
-                                            )
-                                        }
-                                    }
-                                }
-                                // 同组行间分隔线；组末不加，避免与下一分组标题重复分隔（§4.2）。
-                                if (index < group.tasks.lastIndex) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(start = 16.dp),
-                                        thickness = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant,
-                                    )
-                                }
-                            }
+                        item(key = groupKey(group)) {
+                            TaskGroupCard(
+                                group = group,
+                                onCompleteTask = onCompleteTask,
+                                onAbandonTask = onAbandonTask,
+                                onRequestProjectClose = onRequestProjectClose,
+                                onOpenTaskDetail = onOpenTaskDetail,
+                                onOpenProjectDetail = onOpenProjectDetail,
+                                onRowDragStart = { rowDragging = true },
+                                onRowDragEnd = { rowDragging = false },
+                            )
                         }
                     }
                 }
 
+                // MOT-15：预览层不透明并裁剪；空间不足时隐藏文字，不溢出到列表交界。
                 pullTarget?.let { target ->
-                    Text(
-                        text = "松手切换到 ${target.title}",
-                        style = MaterialTheme.typography.labelMedium,
-                        modifier = Modifier
-                            .align(
-                                if (pullOffset > 0f) Alignment.TopCenter else Alignment.BottomCenter,
+                    val reveal = with(LocalDensity.current) { abs(pullOffset).toDp() }
+                    if (reveal >= 32.dp) {
+                        val atTop = pullOffset > 0f
+                        Box(
+                            modifier = Modifier
+                                .align(
+                                    if (atTop) Alignment.TopCenter else Alignment.BottomCenter,
+                                )
+                                .fillMaxWidth()
+                                .height(reveal)
+                                .background(pageBackground)
+                                .clipToBounds(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "松手切换到 ${target.title}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(horizontal = 16.dp),
                             )
-                            .padding(8.dp),
-                    )
+                        }
+                    }
                 }
             }
         }
@@ -489,9 +440,9 @@ fun TodoScreen(
                 .align(Alignment.BottomEnd)
                 .padding(16.dp)
                 .testTag("add_task"),
-            shape = MaterialTheme.shapes.large,
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            shape = CircleShape,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_add),
@@ -536,9 +487,149 @@ fun TodoScreen(
 private fun unavailableDescription(base: String, available: Boolean): String =
     if (available) base else "$base，功能尚未开放"
 
+/** 稳定的列表 key：沿用原有 project_<id> / ungrouped_header，避免滚动位置错乱。 */
+private fun groupKey(group: TaskGroup): String =
+    group.project?.let { "project_${it.id.value}" } ?: "ungrouped_header"
+
+/**
+ * 分组卡片（SHP-06/07、SPC-07）：整组一张 16dp 圆角卡片，无阴影无描边；
+ * 组头名称与数量；空组只保留组头且可点入项目详情；组内行间 8dp 留白、无分隔线。
+ */
+@Composable
+private fun TaskGroupCard(
+    group: TaskGroup,
+    onCompleteTask: (TaskId) -> Unit,
+    onAbandonTask: (TaskId) -> Unit,
+    onRequestProjectClose: (ProjectId, ClosedOutcome) -> Unit,
+    onOpenTaskDetail: (TaskId) -> Unit,
+    onOpenProjectDetail: (ProjectId) -> Unit,
+    onRowDragStart: () -> Unit,
+    onRowDragEnd: () -> Unit,
+) {
+    val cardColor = MaterialTheme.colorScheme.surfaceContainerLowest
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = MaterialTheme.shapes.large,
+        color = cardColor,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(modifier = Modifier.padding(bottom = 8.dp)) {
+            val project = group.project
+            if (project != null) {
+                SwipeableRow(
+                    onSwipeLeft = { onRequestProjectClose(project.id, ClosedOutcome.COMPLETED) },
+                    onSwipeRight = { onRequestProjectClose(project.id, ClosedOutcome.ABANDONED) },
+                    onRowDragStart = onRowDragStart,
+                    onRowDragEnd = onRowDragEnd,
+                    onClick = { onOpenProjectDetail(project.id) },
+                    containerColor = cardColor,
+                ) {
+                    GroupHeader(name = project.name, count = group.tasks.size, combinedLabel = true)
+                }
+            } else {
+                GroupHeader(name = "单独任务", count = group.tasks.size, combinedLabel = false)
+            }
+            group.tasks.forEachIndexed { index, task ->
+                if (index > 0) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                SwipeableRow(
+                    onSwipeLeft = { onCompleteTask(task.id) },
+                    onSwipeRight = { onAbandonTask(task.id) },
+                    onRowDragStart = onRowDragStart,
+                    onRowDragEnd = onRowDragEnd,
+                    onClick = { onOpenTaskDetail(task.id) },
+                    // 已结项行禁用滑动，只保留查看详情（T-10、AC-T-29）。
+                    swipeEnabled = task.closedOutcome == null,
+                    containerColor = cardColor,
+                ) {
+                    TaskRowContent(task = task)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 组头：名称 titleMedium + 数量 bodySmall；间距 8dp；不显示展开箭头（CMP-07）。
+ *
+ * [combinedLabel] 为 true 时读屏合并为“名称（数量）”一次读出，保留既有项目行文案断言；
+ * 为 false 时只合并子项语义，“单独任务”文案仍可单独匹配。
+ */
+@Composable
+private fun GroupHeader(name: String, count: Int, combinedLabel: Boolean) {
+    val semanticsModifier = if (combinedLabel) {
+        Modifier.clearAndSetSemantics { text = AnnotatedString("$name（$count）") }
+    } else {
+        Modifier.semantics(mergeDescendants = true) {}
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
+            .then(semanticsModifier),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "$count",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+/** 扁平行内容（SHP-06）：无卡片圆角、无分隔线；最小高 56dp，标题 bodyLarge。 */
+@Composable
+private fun TaskRowContent(task: Task) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = task.title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (task.closedOutcome != null) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        if (task.closedOutcome != null) {
+            Text(
+                text = "已结项",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+        }
+    }
+}
+
 /**
  * 条目左右滑：左滑完成、右滑放弃；仅越过阈值才提交，否则回原位（BR-46、AC-T-17）。
  * [swipeEnabled] 为 false 时（已结项）不挂拖拽，只保留点按。
+ * [containerColor] 跟随所在分组卡片，避免行自身底色切断卡片层级。
  */
 @Composable
 private fun SwipeableRow(
@@ -548,6 +639,7 @@ private fun SwipeableRow(
     onRowDragEnd: () -> Unit,
     onClick: () -> Unit = {},
     swipeEnabled: Boolean = true,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current.density
@@ -591,6 +683,7 @@ private fun SwipeableRow(
                 .graphicsLayer { translationX = offset }
                 .then(dragModifier)
                 .clickable(onClick = onClick),
+            color = containerColor,
         ) {
             content()
         }

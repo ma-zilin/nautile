@@ -5,6 +5,7 @@
 # 依据：.plans/设计/01_视觉与动效标准.md 的 COL-01/COL-11、SHP-01、MOT-03、ICO-02/ICO-08/ICO-09、NO-01/NO-02/NO-03/NO-05。
 # 规则采用“命中即 FAIL”；G1-A2 接线待办页后扩展扫描路径。
 # 规则 1-6、8 扫描 ui/theme、ui/designsystem、ui/AppRoot.kt、ui/screen/todo/；规则 7 只扫描构建/依赖声明文件。
+# 规则 1 豁免 ui/theme/Color.kt：种子色与浅/深两套色板是该文件唯一职责（COL-11 的落点）；其他规则不放宽。
 #
 # 不新增依赖、不改构建配置、不修改业务代码。
 # 退出码：0 = 全部规则 0 命中；1 = 至少一条规则命中；2 = 环境或路径问题（测试自身错误）。
@@ -73,11 +74,12 @@ echo "          $TODO_DIR"
 echo "============================================================"
 echo
 
-# 规则 1：颜色字面量（COL-01 / NO-01）
+# 规则 1：颜色字面量（COL-01 / NO-01），豁免 theme/Color.kt（种子色与两套色板唯一来源）
 out1="$(rg -n --no-heading --no-messages \
     -e 'Color\(0x' -e 'Color\.Black' -e 'Color\.White' -e 'Color\.Red' \
     "${SCAN_PATHS[@]}" || true)"
-report_rule "1" "颜色字面量：Color(0x / Color.Black / Color.White / Color.Red（COL-01、NO-01）" "$out1"
+out1="$(printf '%s\n' "$out1" | grep -v -e '/theme/Color\.kt:' | sed '/^$/d' || true)"
+report_rule "1" "颜色字面量：Color(0x / Color.Black / Color.White / Color.Red（COL-01、NO-01；豁免 theme/Color.kt 种子色板）" "$out1"
 
 # 规则 2：圆角字面量（SHP-01 / NO-02），豁免 theme/Theme.kt
 out2="$(rg -n --no-heading --no-messages \
