@@ -1,0 +1,47 @@
+task=G10
+time=2026-11-25T21:41:28+08:00
+head=ff9c7c0c476e036c95a9402656e276d8ec9d600e
+dirty_entries=121
+dirty_code=M app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/TaskAttributeControls.kt (+77, ViewOptionsMenuContent)
+dirty_test=?? app/src/androidTest/java/io/github/mazilin/nautile/verification/G10ScreenshotTest.kt
+device=emulator-5554 nautile_api36 API36 1080x2400 (模拟器，非真机)
+static_command=bash scripts/check_ui_tokens.sh
+static_exit=0
+static_result=PASS
+static_hits=0
+static_files=20
+static_scope=ui/theme,ui/designsystem,ui/AppRoot.kt,ui/screen/todo
+verify_command=bash scripts/verify.sh G10
+verify_exit=0
+verify_result=PASS
+verify_log=docs/验证记录/门禁/verify_G10_20261125T213209.log
+verify_meta=docs/验证记录/门禁/verify_G10_20261125T213209.meta.txt
+verify_step_assembleDebug=0
+verify_step_assembleDebugAndroidTest=0
+verify_step_testDebugUnitTest=0
+verify_step_lintDebug=0
+jvm_suites=36
+jvm_tests=211
+jvm_failures=0
+jvm_errors=0
+jvm_skipped=0
+schema=1.json/2.json/3.json 存在；v3 含 tasks/projects/detail/manual_order；内容检查 EXIT=0
+connected_command=./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_exit=0
+connected_duration=105s
+connected_tests=206
+connected_failures=0
+connected_errors=0
+connected_skipped=0
+connected_classes=34
+connected_failed_cases=none
+connected_first_full=198/0/0/0 101s（新增截图测试前）
+screenshot_test=runs=8 failures=0 (首跑 1 例测试自身断言错误，修正后重跑通过)
+reference_alignment=图1 快速添加 PASS/PASS/PASS/部分(键盘沿用G4)/PASS；图2 列表 PASS×5+不适用(箭头)；图3 未分组 PASS、已完成组部分(源码有未截图)、行内百分比不适用；图4 优先级菜单 PASS×4；不复制品牌/素材/文案/结构 PASS
+ui_checklist=token PASS(限脚本范围)；圆角 PASS；19图标 PASS；48dp PASS；深色 部分(卡片偏暗待确认)；空/加载/错误 部分(加载/错误组件未接入)；跨页 部分(仅待办)；Expressive PASS；设置200ms PASS；边界裁剪 PASS；insets单点 PASS；键盘 部分(沿用G4)
+screenshots=docs/验证记录/门禁/g10_todo_light_20261125T2138.png,g10_todo_dark,g10_quickadd_toolbar,g10_priority_menu,g10_gtd_fullscreen,g10_search_no_result,g10_view_menu,g10_manual_drag_mid（均 file=PNG 1080x2400 RGBA）
+observations=视图菜单 MenuMaxHeight=320dp，手动/创建时间需滚动且默认项不在首屏；搜索空态文案“无搜索结果”与设计“无匹配任务”不一致（清除入口在搜索栏）
+blocking=HEAD ff9c7c0 的 TodoScreen 引用 ViewOptionsMenuContent，但提交中无定义（工作区 +77 行未提交）→ HEAD 不可构建；需开发提交后复测
+result=FAIL
+judge=FAIL（唯一阻断为交付版本完整性；静态/门禁/全量回归/参考对齐/UI 清单无功能阻断）
+not_automated=真机验收；键盘实拍；200%字体；TalkBack/Accessibility Scanner；深色对比度实测；动画观感与pop中间帧；真实数据库端到端截图；日程/日志/AI/设置页视觉；干净HEAD编译复核

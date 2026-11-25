@@ -66,6 +66,9 @@ import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Priority
 import io.github.mazilin.nautile.domain.model.Project
 import io.github.mazilin.nautile.domain.model.ProjectId
+import io.github.mazilin.nautile.domain.model.ViewClassification
+import io.github.mazilin.nautile.domain.model.ViewOptions
+import io.github.mazilin.nautile.domain.model.ViewSort
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import io.github.mazilin.nautile.ui.theme.NautileStates
 import java.time.Instant
@@ -418,7 +421,80 @@ internal fun DetailMenuContent(
 }
 
 /**
- * 日期选择面板（同一底部面板内切换，CMP-31.2、CMP-32）。
+ * G9 视图选项菜单（CMP-39）：两组单选，当前项打勾；不提供标签分类，也没有“应用”按钮。
+ * 选择立即回调；[error] 非 null 时在菜单底部提示保存失败。
+ */
+@Composable
+internal fun ViewOptionsMenuContent(
+    options: ViewOptions,
+    error: String?,
+    onClassificationSelected: (ViewClassification) -> Unit,
+    onSortSelected: (ViewSort) -> Unit,
+) {
+    MenuGroupTitle("分类")
+    ViewClassification.entries.forEach { classification ->
+        val label = classification.menuLabel()
+        AttributeMenuItem(
+            text = label,
+            description = "分类：$label",
+            selected = options.classification == classification,
+            onClick = { onClassificationSelected(classification) },
+        )
+    }
+    MenuGroupTitle("排序")
+    ViewSort.entries.forEach { sort ->
+        val label = sort.menuLabel()
+        AttributeMenuItem(
+            text = label,
+            description = "排序：$label",
+            selected = options.sort == sort,
+            onClick = { onSortSelected(sort) },
+        )
+    }
+    if (error != null) {
+        Text(
+            text = error,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(
+                start = NautileSpacing.space3,
+                end = NautileSpacing.space3,
+                top = NautileSpacing.space1,
+                bottom = NautileSpacing.space2,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun MenuGroupTitle(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(
+            start = NautileSpacing.space3,
+            end = NautileSpacing.space3,
+            top = NautileSpacing.space2,
+            bottom = NautileSpacing.space1,
+        ),
+    )
+}
+
+internal fun ViewClassification.menuLabel(): String = when (this) {
+    ViewClassification.PROJECT -> "项目"
+    ViewClassification.PRIORITY -> "优先级"
+    ViewClassification.DUE -> "截止日期"
+}
+
+internal fun ViewSort.menuLabel(): String = when (this) {
+    ViewSort.DUE -> "截止日期"
+    ViewSort.PRIORITY -> "优先级"
+    ViewSort.CREATED -> "创建时间"
+    ViewSort.MANUAL -> "手动"
+}
+
+/** 日期选择面板（同一底部面板内切换，CMP-31.2、CMP-32）。
  *
  * 先选日期才可填时刻；选择立即回调；日期面板不设“确定”总开关，“清除”清空日期与时刻。
  */

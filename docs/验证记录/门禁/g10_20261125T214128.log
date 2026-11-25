@@ -1,0 +1,159 @@
+# G10 参考对齐、回归与交付验收（独立验证证据）
+
+- 时间：2026-11-25T21:41:28+08:00
+- 角色：独立验证 Agent；只写测试/证据/截图，未改业务代码。
+- 检查对象版本：HEAD `ff9c7c0c476e036c95a9402656e276d8ec9d600e`（工作区 dirty）。
+  - 代码相关未提交：`M app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/TaskAttributeControls.kt`（+77 行，含 `ViewOptionsMenuContent`/`menuLabel`）
+  - 本 Agent 新增：`app/src/androidTest/java/io/github/mazilin/nautile/verification/G10ScreenshotTest.kt`（截图夹具，8 例）
+  - 其余未提交条目为 `docs/验证记录/门禁/` 截图与证据（历史轮次遗留 + 本轮 g10_*）。
+- 设备：`emulator-5554`，`nautile_api36`，API 36，1080x2400，模拟器非真机。
+- 适用需求/设计：`docs/需求基线.md` v2.14；`.plans/设计/01_视觉与动效标准.md`（§6/§8/§9/§12/§13/§14）；`.plans/设计/02_TickTick参考对照.md`。
+- 参照产品：`/home/wordwoods/Downloads/TickTick/` 4 张 JPG（只读，未复制入库）。
+
+## 1. 静态检查 `bash scripts/check_ui_tokens.sh`
+
+- 退出码：0；RESULT: PASS；检查文件数 20；命中总数 0。
+- 逐规则命中：1 颜色=0、2 圆角=0、3 动效=0、4 文本图标=0、5 固定比例分栏=0、6 遮罩 alpha=0、7 material-icons-extended=0、8 无限动画 API=0。
+- 范围限制：规则 1—6、8 只扫描 `ui/theme`、`ui/designsystem`、`ui/AppRoot.kt`、`ui/screen/todo`；日程/日志/AI/设置页未纳入本脚本，不能据此声称全项目无硬编码。
+
+## 2. 门禁 `bash scripts/verify.sh G10`
+
+- 归档：`docs/验证记录/门禁/verify_G10_20261125T213209.log` / `.meta.txt`；GATE RESULT: PASS。
+- 四步均 `--rerun-tasks` 且 EXIT=0：assembleDebug=0、assembleDebugAndroidTest(compile-only)=0、testDebugUnitTest=0、lintDebug=0。
+- JVM 统计：suites=36，tests=211，failures=0，errors=0，skipped=0。
+- schema：1.json/2.json/3.json 存在；v3 含 tasks/projects/detail/manual_order，内容检查 EXIT=0。
+- 本次未设置 `VERIFY_CONNECTED=1`；设备回归由第 3 节单独执行。
+
+## 3. 全量 connected 回归 `./gradlew :app:connectedDebugAndroidTest --rerun-tasks`
+
+- 最终全量（含新增 G10ScreenshotTest）：EXIT=0，BUILD SUCCESSFUL，耗时 105s；tests=206，failures=0，errors=0，skipped=0；34 个测试类。
+- 日志：`/tmp/g10_connected_full.log`（未入库）；结果 XML：`app/build/outputs/androidTest-results/connected/debug/`。
+- 首轮全量（新增截图测试前）：EXIT=0，198 例，0/0/0，耗时 101s。
+- 截图测试单类：`-Pandroid.testInstrumentationRunnerArguments.class=...G10ScreenshotTest`，8 例 0 失败（13s）。首跑 1 例失败（断言用未合并语义查“空项目”，改为“空项目（0）”）已修正后重跑通过，原失败为测试自身错误，未降低断言。
+- 逐类用例数：
+  AcAppRootT06Test=5, AcCardGroupsT091Test=8, AcDetailNewTaskUiT08T09Test=8, AcDetailPersistenceT085Test=1,
+  AcDetailPullT088Test=7, AcGtdHeaderT090Test=4, AcNewTaskToolbarG6Test=11, AcSettingsEntryP1Test=2,
+  AcSettingsExitG4Test=3, AcSheetPullG4Test=21, AcTodoT07Test=23, AcUiT071Test=9, AcUiT077T081Test=8,
+  AppRootTest=5, G10ScreenshotTest=8, G5ManualOrderRoomTest=3, G6NewTaskScreenshotTest=5,
+  G7DetailAttributeUiTest=12, G7DetailScreenshotTest=5, G8SearchActivityTest=2, G8SearchScreenshotTest=2,
+  G8SearchUiTest=6, G9ScreenshotTest=4, G9ViewModelViewOptionsTest=8, G9ViewOptionsPersistenceTest=2,
+  G9ViewUiTest=6, MigrationTest=6, ProjectDaoTest=3, RoomProjectRepositoryContractTest=5,
+  RoomProjectRepositoryTest=2, RoomTaskRepositoryContractTest=5, RoomTaskRepositoryTest=3, TaskDaoTest=3,
+  TodoScreenSmokeTest=1
+- 失败用例：无（0）。
+
+## 4. 参考对齐（4 张 TickTick 图 → 本项目实现）
+
+| 参考项 | 判定 | 依据/理由 |
+| --- | --- | --- |
+| 图1 白色大圆角面板贴底、输入区在上 | PASS | `g10_quickadd_toolbar`：surface 面板、顶部 28dp（extraLarge）、标题/详情节在上，工具栏在下；未复制其品牌色 |
+| 图1 底部工具栏分组 | PASS | 五入口：日期、优先级、项目、清单、详情；无标签/提醒/重复/更多/语音（NO-17）；`g10_quickadd_toolbar` |
+| 图1/图4 点图标出锚定菜单 | PASS | `g10_priority_menu`：菜单锚定于旗标上方，白底圆角、3dp 阴影，菜单自身无遮罩 |
+| 图1/图4 键盘保持不动 | 部分（沿用 G4/G6 证据，G10 未复跑） | G4 证据 `g4_r3_keyboard_newtask_*` 与 AcSheetPullG4Test 21/21 通过；本轮截图夹具无软键盘，不能作为键盘证据 |
+| 图1 已选项在工具栏显示摘要 | PASS | 旗标“无”、清单“收件箱”可见；日期摘要设置后显示（G6NewTaskScreenshotTest summary_state 通过） |
+| 图2 浅灰页面底 + 白色分组卡片 | PASS | `g10_todo_light`：background + surfaceContainerLowest，16dp `shapes.large`，无阴影 |
+| 图2 组头名称 + 右侧数量 | PASS | `g10_todo_light`：“课程项目 1”“空项目 0”“单独任务 1” |
+| 图2 空组显示 0 且可见 | PASS | `g10_todo_light`：“空项目 0”卡片；AcCardGroupsT091Test 8/8 |
+| 图2 行内无分隔线、靠留白 | PASS | `g10_todo_light` 无行分隔线；仅顶部栏 1dp outlineVariant 结构线；静态规则无卡片内 HorizontalDivider |
+| 图2 蓝色圆形 FAB | PASS | `g10_todo_light/dark`：CircleShape + primary/onPrimary，右下 16dp |
+| 图2 组头展开箭头 | 不适用（按设计不采纳） | CMP-42 本轮不折叠，NO-06/CMP-07 不显示假箭头；`expand_more` 资源存在但 0 处引用 |
+| 图2/图3 不复制品牌、3 项底导、图标风格 | PASS | 底部导航仍为待办/日程/日志/AI；自绘 19 个 drawable；中文文案 |
+| 图3 “未分组”与项目组并存 | PASS | “单独任务”组与项目组并列（`g10_todo_light`） |
+| 图3 已完成组灰化 | 部分（源码有、本轮未截图） | `TaskRowContent` 已结项用 onSurfaceVariant + “已结项”标签；G10 夹具均为未结项，未采 ENDED 组截图 |
+| 图3 行内图标/次要信息/百分比 | 不适用（明确不采纳） | 02 §5：不因参考图新增字段；未显示百分比假数据 |
+| 图4 彩旗 + 文字、颜色非唯一 | PASS | `g10_priority_menu`：高/中/低/无 + 旗标色（error/primary/secondary/onSurfaceVariant），中文文字为唯一可靠区分 |
+| 图4 菜单无遮罩 | PASS | 菜单层无额外 scrim；仅保留输入面板自身的 32% 遮罩 |
+| 图4 不复制英文文案/红黄蓝具体值 | PASS | 中文四级命名；色角色映射见 01 CMP-33 |
+
+## 5. UI 验收清单（设计 §12/§8/§9）
+
+| 项 | 判定 | 证据/说明 |
+| --- | --- | --- |
+| token 无硬编码 | PASS（限脚本范围） | 静态 8 规则 0 命中；范围限 theme/designsystem/AppRoot/todo |
+| 圆角 shape | PASS | 规则 2 = 0；分组卡 `shapes.large`、面板 `extraLarge` 顶部两角、FAB CircleShape |
+| 19 图标与 contentDescription | PASS | `res/drawable` 19 个（含 flag/folder/notes）；`expand_more` 未显示符合 CMP-42；功能性图标描述由 G6/G8/G9 用例断言 |
+| 48dp 触控 | PASS | NautileIconButton 容器 48dp/视觉 40dp/图标 24dp；行最小 56dp；FAB 默认 56dp |
+| 深色主题 | 部分 | `g10_todo_dark` 可辨、无硬编码；卡片比页面底更暗，属设计 §11.2 第 9 项待确认，非阻断 |
+| 空/加载/错误态 | 部分 | 空态与搜索无结果已接 `NautileEmptyState`；`NautileLoadingState`/`NautileErrorState` 已定义但主代码 0 处使用（设计 §7.6 未接入页面） |
+| 跨页一致（待办头部/面板） | 部分 | 本轮只核对与截取待办页；日程/日志/AI/设置未逐页截图 |
+| 三处 Expressive | PASS | 静态：GTD 开合（GtdSelector）、面板（三面板/BottomSheet）、页面切换（AppRoot）引用 `NautileMotion.Expressive`；无裸 tween/spring（规则 3=0） |
+| 设置退出 200ms | PASS | AcSettingsExitG4Test 3/3：100ms 时页面仍存在、动画结束后移除；`StandardSpatial=200ms` |
+| 边界裁剪 | PASS | 列表层 `clipToBounds` + 不透明预览层（MOT-15）；G2 回归通过 |
+| insets 单点 | PASS | `NautileBottomSheet` 单处消费 `ime ∪ navigationBars`；MainActivity 无 windowInsetsPadding；GtdSelector 仅 systemBars 一处 |
+| 键盘无空隙 | 部分（沿用 G4 证据） | G4 灰区 439px→4px 与 AcSheetPullG4Test 21/21；G10 未重新截键盘图 |
+
+补充观察（非阻断）：视图菜单 `MenuMaxHeight=320dp`，`g10_view_menu` 首屏只显示到“排序/优先级”，默认选中的“手动”与“创建时间”需滚动；搜索空态文案为“无搜索结果”+说明，设计 CMP-38 写“无匹配任务”+“清除搜索”，清除入口在搜索栏（contentDescription“清除搜索”）。
+
+## 6. 截图（未提交，`docs/验证记录/门禁/`）
+
+| 文件 | `file` 校验 |
+| --- | --- |
+| g10_todo_light_20261125T2138.png | PNG 1080x2400 RGBA |
+| g10_todo_dark_20261125T2138.png | PNG 1080x2400 RGBA |
+| g10_quickadd_toolbar_20261125T2138.png | PNG 1080x2400 RGBA |
+| g10_priority_menu_20261125T2138.png | PNG 1080x2400 RGBA |
+| g10_gtd_fullscreen_20261125T2138.png | PNG 1080x2400 RGBA |
+| g10_search_no_result_20261125T2138.png | PNG 1080x2400 RGBA |
+| g10_view_menu_20261125T2138.png | PNG 1080x2400 RGBA |
+| g10_manual_drag_mid_20261125T2138.png | PNG 1080x2400 RGBA |
+
+截图方式：Compose 测试宿主渲染真实页面组件（固定夹具、模拟器 1080x2400），非真实数据库端到端截图；待办页截图不含 AppRoot 底部导航。数据行为由第 3 节 connected 用例判定。
+
+## 7. 交付版本完整性（阻断项）
+
+- 事实：HEAD `ff9c7c0` 的 `TodoScreen.kt` 调用 `ViewOptionsMenuContent`（1 处），但 `acb5ccc`/`ff9c7c0` 的 `TaskAttributeControls.kt` 均无该定义（grep 计数 0）；工作区未提交的 +77 行才包含定义。
+- 推断：按 Kotlin 编译规则，该 HEAD 快照会出现 unresolved reference，不能直接构建交付；未检出 HEAD 单独编译（避免破坏当前工作区），如需可复核。
+- 影响：Gitee/最终报告若引用 `ff9c7c0` 与当前产品、截图不一致；交付版本必须包含该未提交改动。
+- 处理建议（交开发）：提交 `TaskAttributeControls.kt` 改动并重跑门禁；独立验证在干净 HEAD 上复跑静态+verify+全量 connected。未修改业务代码。
+
+## 8. 未自动化 / 未执行
+
+- 真机（vivo）验收：未执行；本轮为模拟器（API36），不声称真机通过。
+- 键盘实拍、深色对比度实测、200% 字体截图、TalkBack/Accessibility Scanner、动画观感与 pop 中间帧：未自动化/未执行（部分沿用 G4 证据，不并入 G10 程序结论）。
+- 真实数据库端到端截图（新建→重启→列表）：未单独截图；数据规则由 connected 用例（MigrationTest、Room 契约、G5/G9 事务）判定。
+- 日程/日志/AI/设置页视觉清单：未逐页执行。
+- 干净 HEAD 编译复核：未执行（见第 7 节）。
+
+## 9. Result 与判定
+
+- 静态：PASS（0 命中，限脚本范围）。
+- 门禁：PASS（四步 EXIT 0；JVM 211/0/0/0；schema v3 OK）。
+- 全量回归：PASS（模拟器 206/0/0/0，105s；含 G1-A 与 G2—G9）。
+- 参考对齐：无功能性阻断（4 张图逐项 PASS/部分/不适用，部分项均有既有证据或明确不采纳理由）。
+- UI 清单：2 项“部分”（加载/错误态未接入、深色卡片对比待确认）+ 1 项“部分”（键盘/跨页沿用既有证据），无未解释阻断；另有视图菜单高度与搜索空态文案 2 条观察。
+- 交付版本：FAIL（HEAD `ff9c7c0` 缺 `ViewOptionsMenuContent` 定义，版本不可构建）。
+- G10 判定：**FAIL（唯一阻断为交付版本完整性；功能、门禁、回归、参考对齐均 PASS）**。开发提交缺失改动后，独立验证在干净 HEAD 复跑后转 PASS。
+
+## 10. 规格 → 实现 → 测试证据对照表（供最终报告）
+
+| # | 规格（需求/设计） | 实现落点 | 测试/证据 |
+| --- | --- | --- | --- |
+| 1 | 待办头部：GTD→标题→搜索→视图→设置（CMP-43、AC-N-11） | TodoScreen.kt 头部组合 | AcGtdHeaderT090Test 4、AcTodoT07Test 23、g10_todo_light |
+| 2 | 分组卡片：项目/单独任务/空组 0/计数/无行分隔线（SHP-06/07、SPC-07、CMP-27） | TaskGrouping.byView + TaskGroupCard | AcCardGroupsT091Test 8、G9ViewUiTest 6、g10_todo_light |
+| 3 | 浅/深色板由 #3B6FE0 推导（COL-02/08/13） | Theme.kt + Color.kt | 静态规则 1=0、g10_todo_light/dark |
+| 4 | 蓝色圆形 FAB 56dp（FR-D-02、SHP-02） | TodoScreen FAB | AcTodoT07Test、g10_todo_light |
+| 5 | 全屏 GTD：左宽=max+24dp、右列余宽、无遮罩、三关闭路径（FR-G-15—18、AC-G-04/05） | GtdSelector.kt | AcGtdHeaderT090Test 4、AcTodoT07Test、g10_gtd_fullscreen |
+| 6 | 三面板下拉/阈值/insets 单点/键盘贴面板（SPC-08、MOT-08） | NautileBottomSheet + 三面板 | AcSheetPullG4Test 21、AcDetailPullT088Test 7、g4_r3 证据 |
+| 7 | 设置页 pop 约 200ms、保留到动画结束（MOT-09.2、CMP-29） | AppRoot.kt | AcSettingsExitG4Test 3/3 |
+| 8 | 新建属性工具栏五入口/锚定菜单/摘要（CMP-30—37、NO-17） | NewTaskSheet + TaskAttributeControls | AcNewTaskToolbarG6Test 11、g10_quickadd_toolbar / g10_priority_menu |
+| 9 | 详情属性编辑即保存、失败保留、无效阻止（CMP-31—37、AC-D-09） | TaskDetailSheet | G7DetailAttributeUiTest 12、AcDetailPersistenceT085Test |
+| 10 | 搜索标题/项目、实时、无结果空态、清除/返回（CMP-38） | TaskSearch + TodoScreen 搜索栏 | G8SearchUiTest 6、G8SearchActivityTest 2、g10_search_no_result |
+| 11 | 视图分类/排序菜单、立即生效、按模块记忆（CMP-39/41、AC-T-08） | ViewOptionsMenuContent + ViewOptions + DataStore | G9ViewUiTest 6、G9ViewModelViewOptionsTest 8、g10_view_menu |
+| 12 | 手动排序长按重排、事务写 manualOrder、失败回滚（CMP-40、DB v3） | TaskGroupCard 拖拽 + MIGRATION_2_3 | G5ManualOrderRoomTest 3、MigrationTest 6、G9ViewOptionsPersistenceTest 2、g10_manual_drag_mid |
+| 13 | 图标集 19 个、功能图标有描述、无 material-icons-extended（ICO-01—10） | res/drawable 19 个 | 静态规则 4/7=0、G6/G8/G9 语义断言 |
+| 14 | Expressive 仅三处、其余 Standard、无裸动效字面量（MOT-03/04） | NautileMotion + AppRoot/GtdSelector/面板 | 静态规则 3=0、AcSettingsExitG4Test、AcTodoT07Test |
+| 15 | 空态/搜索空态/加载/错误组件（§7.6、CMP-20—22） | NautileStateViews | AcCardGroupsT091Test、G8、g10 截图；加载/错误未接入 |
+| 16 | G1-A 基线回归（AppRoot、设置入口、GTD 头、冒烟） | AppRoot/MainActivity/TodoScreen | AcAppRootT06Test 5、AcSettingsEntryP1Test 2、AppRootTest 5、TodoScreenSmokeTest 1 |
+
+## 11. AC 缺口 / 未做项清单（草案）
+
+1. FR-V-08、AC-T-16 折叠未实现（用户 2026-11-25 决定本轮不折叠；需变更记录 4.25 落档）。
+2. FR-V-03、AC-T-08 标签分类未实现（用户后置；Task 当前无标签字段）。
+3. AC-T-19 搜索标签命中未实现（用户本轮口径“不搜标签”；需 4.25）。
+4. 四象限、看板、日程、日志、计时、提醒、CSV、AI 调用、撤销、备份恢复未在 G2—G9 范围（后续里程碑）。
+5. `NautileLoadingState`/`NautileErrorState` 已定义但未接入任何页面（设计 §7.6）。
+6. 设置/日程/日志/AI 页视觉与头部一致性未逐页截图核对。
+7. 任务移入其他清单未清 `manualOrder`、排序次级次序与设计 §14.3 草案差异（G5 登记待确认）。
+8. 空项目名仅禁用无提示；日期选择器 en-US（G6 观察）。
+9. 人工评审项（AC-G-04/05、AC-D-07、AC-D-09、AC-M-01 等）未在真机执行。
+10. 未自动化：真机、键盘实拍、200% 字体、TalkBack/Accessibility Scanner、深色对比度、动画观感、真实 DB 端到端截图、干净 HEAD 编译复核。
