@@ -303,7 +303,8 @@ class AcGtdHeaderT090Test {
         composeRule.onNodeWithText("清单").assertIsDisplayed()
         composeRule.onNodeWithText("该清单暂无任务").assertIsDisplayed()
 
-        composeRule.onNodeWithText("关闭").performClick()
+        // 设计 §6.2 #11：关闭为 ic_close 图标按钮，按 contentDescription“关闭”定位。
+        composeRule.onNodeWithContentDescription("关闭").performClick()
         // 退出动效完成后覆盖层才移除；等待终态，不把中间帧当依据。
         composeRule.waitUntil(timeoutMillis = 5_000) {
             composeRule.onAllNodesWithText("清单").fetchSemanticsNodes().isEmpty()

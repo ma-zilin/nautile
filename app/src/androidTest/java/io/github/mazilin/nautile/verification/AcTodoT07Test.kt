@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -203,7 +204,8 @@ class AcTodoT07Test {
             }
         }
 
-        composeRule.onNodeWithText("关闭").performClick()
+        // 设计 §6.2 #11：关闭为 ic_close 图标按钮，按 contentDescription“关闭”定位。
+        composeRule.onNodeWithContentDescription("关闭").performClick()
         composeRule.onRoot().performTouchInput { swipeLeft() }
 
         composeRule.runOnIdle { assertEquals(2, closed) }
