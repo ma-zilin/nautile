@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,9 +45,11 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.interaction.GestureArbiter
+import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
 import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import io.github.mazilin.nautile.ui.theme.NautileStates
@@ -383,12 +384,13 @@ fun GtdSelector(
                         }
                     }
                 }
-                TextButton(
+                // 动作图标 ic_close（设计 §6.2 #11）；触控 48dp 由组件保证（CMP-09）。
+                NautileIconButton(
+                    iconRes = R.drawable.ic_close,
+                    contentDescription = "关闭",
                     onClick = onClose,
                     modifier = Modifier.align(Alignment.TopEnd),
-                ) {
-                    Text("关闭")
-                }
+                )
             }
         }
     }

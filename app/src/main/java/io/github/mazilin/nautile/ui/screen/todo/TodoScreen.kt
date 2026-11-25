@@ -61,6 +61,7 @@ import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.interaction.GestureArbiter
+import io.github.mazilin.nautile.ui.designsystem.NautileEmptyState
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
 import kotlin.math.abs
 
@@ -359,7 +360,12 @@ fun TodoScreen(
                                 modifier = Modifier.fillParentMaxSize(),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text("该清单暂无任务", style = MaterialTheme.typography.bodyMedium)
+                                // 空清单空态（设计 §7 CMP-20、§4.2）：保留可见标题文案供既有断言。
+                                NautileEmptyState(
+                                    title = "该清单暂无任务",
+                                    description = null,
+                                    iconRes = R.drawable.ic_inbox,
+                                )
                             }
                         }
                     }
