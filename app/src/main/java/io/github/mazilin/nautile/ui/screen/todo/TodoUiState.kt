@@ -18,10 +18,14 @@ data class TodoUiState(
     val visibleTasks: List<Task> = emptyList(),
     val projectConfirmation: ProjectConfirmation? = null,
     val projectReopenPrompt: ProjectReopenPrompt? = null,
-    /** 搜索入口可用性（设计 §10 RDY-05）：功能未实现前为 false，入口可见但禁用。 */
+    /** 搜索入口可用性（设计 §10 RDY-05）：默认 false 保留禁用占位；ViewModel 输出为 true。 */
     val searchAvailable: Boolean = false,
     /** 视图入口可用性（设计 §10 RDY-05）：功能未实现前为 false，入口可见但禁用。 */
     val viewOptionsAvailable: Boolean = false,
+    /** 搜索态是否打开（CMP-38）：只影响可见性，不写任务字段、不改排序。 */
+    val searchActive: Boolean = false,
+    /** 搜索查询串；空串表示不过滤，退出搜索后不保留。 */
+    val searchQuery: String = "",
 ) {
     val isEmpty: Boolean get() = visibleTasks.isEmpty()
 }

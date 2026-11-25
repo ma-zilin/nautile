@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +58,12 @@ class MainActivity : ComponentActivity() {
     private val container: AppContainer
         get() = (application as NautileApp).container
 
+    /**
+     * 搜索态优先关闭钩子（G8、CMP-38）：由组合期更新，系统返回先退出搜索，
+     * 再按既有 IME → 覆盖层 → 导航顺序分发；搜索未打开时不参与，返回语义不变。
+     */
+    private var closeSearchIfActive: (() -> Boolean)? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -98,6 +105,19 @@ class MainActivity : ComponentActivity() {
                 var startupApplied by remember { mutableStateOf(false) }
                 var scrollNavigationVisible by remember { mutableStateOf(true) }
 
+                // 每次重组把最新的搜索开关暴露给 Activity 返回回调（不读 Compose 状态以外的数据）。
+                // 有覆盖层时仍按既有顺序先关覆盖层，搜索栏只在一级待办页上优先关闭。
+                SideEffect {
+                    closeSearchIfActive = {
+                        if (todoState.searchActive && overlayEntry == null) {
+                            todoViewModel.closeSearch()
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                }
+
                 // AC-N-14/P-03：等 DataStore 首次发射；失败回落待办并提示，不伪造设置。
                 LaunchedEffect(startup) {
                     when (val state = startup) {
@@ -123,6 +143,10 @@ class MainActivity : ComponentActivity() {
                 // 切换一级页时记录 lastPage。
                 LaunchedEffect(activeTab, startupApplied) {
                     if (startupApplied) settingsViewModel.recordLastPage(activeTab.toPage())
+                }
+                // 查询不跨页面保留（CMP-38）：离开待办模块时退出搜索。
+                LaunchedEffect(activeTab) {
+                    if (activeTab != AppTab.TODO) todoViewModel.closeSearch()
                 }
                 if (startup == StartupState.Loading || !startupApplied) {
                     StartupPlaceholder()
@@ -198,6 +222,10 @@ class MainActivity : ComponentActivity() {
                                         )
                                         if (!opened) todoViewModel.closeNewTask()
                                     },
+                                    onOpenSearch = todoViewModel::openSearch,
+                                    onSearchQueryChanged = todoViewModel::onSearchQueryChanged,
+                                    onClearSearch = todoViewModel::clearSearch,
+                                    onCloseSearch = todoViewModel::closeSearch,
                                     newTaskOpen = newTaskState != null,
                                     navigationUpdatesEnabled = !imeVisible && overlayEntry == null,
                                 )
@@ -391,6 +419,8 @@ class MainActivity : ComponentActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
+                    // 搜索优先关闭：只退出搜索栏，不退出页面/应用，也不改变既有返回顺序。
+                    if (closeSearchIfActive?.invoke() == true) return
                     if (container.backDispatcher.dispatch(::hideIme)) return
                     // 未消费：临时停用自身，交还系统默认返回（回桌面/退出）。
                     isEnabled = false

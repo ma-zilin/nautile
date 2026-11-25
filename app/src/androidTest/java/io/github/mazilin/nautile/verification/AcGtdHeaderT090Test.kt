@@ -13,6 +13,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -54,7 +55,7 @@ import org.junit.runner.RunWith
  * 预期从需求基线 v2.14 与设计 `.plans/设计/01_视觉与动效标准.md` 派生，不照抄实现：
  * - `W_L = max(五项清单名标题文本宽) + 2×12dp`，`W_R = W − W_L`；
  * - 左列恰五项、无“日历”、只有点按切换；
- * - 头部从左到右 GTD → 标题 → 搜索 → 视图 → 设置，搜索/视图可见但禁用；
+ * - 头部从左到右 GTD → 标题 → 搜索 → 视图 → 设置；搜索已可用（G8），视图仍可见禁用；
  * - 选择器打开后左右两列可见，关闭后不再存在（只判终态，不依赖动画时长）。
  *
  * 隔离性：全部为内存态 Compose 组合，不读写数据库/DataStore；需要设备（模拟器或真机）。
@@ -226,14 +227,17 @@ class AcGtdHeaderT090Test {
         composeRule.runOnIdle { assertNull("滑动不应切换清单", selected) }
     }
 
-    /** A11Y-03/07、RDY-01/03：头部顺序、搜索/视图禁用语义、设置与 GTD 入口语义、48dp 触控。 */
+    /** A11Y-03/07、RDY-01/03：头部顺序、搜索可用/视图禁用语义、设置与 GTD 入口语义、48dp 触控。 */
     @Test
-    fun acN11_header_order_and_disabled_search_view() {
+    fun acN11_header_order_and_search_enabled_view_disabled() {
         lateinit var density: Density
         composeRule.setContent {
             NautileTheme {
                 density = LocalDensity.current
-                TodoScreen(state = TodoUiState(position = GtdPosition.INBOX))
+                // G8 起搜索可用（用户 2026-11-25 决定）；视图仍按 RDY-02/04 保持禁用。
+                TodoScreen(
+                    state = TodoUiState(position = GtdPosition.INBOX, searchAvailable = true),
+                )
             }
         }
         composeRule.waitForIdle()
@@ -246,11 +250,11 @@ class AcGtdHeaderT090Test {
             .assertIsDisplayed()
             .assertContentDescriptionEquals("设置")
 
-        val searchDesc = "搜索待办，功能尚未开放"
+        val searchDesc = "搜索待办"
         val viewDesc = "视图选项，功能尚未开放"
         val search = composeRule.onNodeWithContentDescription(searchDesc)
         val view = composeRule.onNodeWithContentDescription(viewDesc)
-        search.assertIsDisplayed().assertIsNotEnabled()
+        search.assertIsDisplayed().assertIsEnabled()
         view.assertIsDisplayed().assertIsNotEnabled()
 
         // 头部从左到右：GTD → 标题 → 搜索 → 视图 → 设置。

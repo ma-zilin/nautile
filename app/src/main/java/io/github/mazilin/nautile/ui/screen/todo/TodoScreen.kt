@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -31,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +45,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -60,6 +64,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -98,6 +103,10 @@ fun TodoScreen(
     onConfirmProjectReopen: () -> Unit = {},
     onCancelProjectReopen: () -> Unit = {},
     onOpenNewTask: () -> Unit = {},
+    onOpenSearch: () -> Unit = {},
+    onSearchQueryChanged: (String) -> Unit = {},
+    onClearSearch: () -> Unit = {},
+    onCloseSearch: () -> Unit = {},
     newTaskOpen: Boolean = false,
     navigationUpdatesEnabled: Boolean = true,
 ) {
@@ -106,6 +115,21 @@ fun TodoScreen(
     var savedFirstIndex by remember { mutableIntStateOf(0) }
     var savedFirstOffset by remember { mutableIntStateOf(0) }
     var wasNewTaskOpen by remember { mutableStateOf(false) }
+
+    // 搜索前记录滚动位置，退出搜索后恢复（CMP-38：退出恢复搜索前的清单与滚动位置）。
+    var savedSearchIndex by remember { mutableIntStateOf(0) }
+    var savedSearchOffset by remember { mutableIntStateOf(0) }
+    var wasSearchActive by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.searchActive) {
+        if (state.searchActive) {
+            savedSearchIndex = listState.firstVisibleItemIndex
+            savedSearchOffset = listState.firstVisibleItemScrollOffset
+        } else if (wasSearchActive) {
+            listState.scrollToItem(savedSearchIndex, savedSearchOffset)
+        }
+        wasSearchActive = state.searchActive
+    }
 
     // 打开新建面板前记录滚动位置，关闭后恢复；列表本身不因面板开合重建。
     LaunchedEffect(newTaskOpen) {
@@ -326,11 +350,11 @@ fun TodoScreen(
                                 overflow = TextOverflow.Ellipsis,
                             )
                         }
-                        // 搜索/视图本轮不实现业务：可见禁用、无点击副作用（设计 §10 RDY-02/04）。
+                        // 搜索入口（CMP-38）：就绪后可点；视图仍未就绪，保持可见禁用（RDY-02/04）。
                         NautileIconButton(
                             iconRes = R.drawable.ic_search,
                             contentDescription = unavailableDescription("搜索待办", state.searchAvailable),
-                            onClick = {},
+                            onClick = onOpenSearch,
                             enabled = state.searchAvailable,
                         )
                         NautileIconButton(
@@ -344,6 +368,15 @@ fun TodoScreen(
                             contentDescription = "设置",
                             onClick = onOpenSettings,
                             testTag = "settings_entry",
+                        )
+                    }
+                    // 搜索栏插在标题行下方，标题与三图标保持可见（CMP-38/43）。
+                    if (state.searchActive) {
+                        SearchBar(
+                            query = state.searchQuery,
+                            onQueryChanged = onSearchQueryChanged,
+                            onClear = onClearSearch,
+                            onClose = onCloseSearch,
                         )
                     }
                     HorizontalDivider(
@@ -373,17 +406,27 @@ fun TodoScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (state.groups.isEmpty()) {
-                        item(key = "empty") {
+                        // 搜索无命中与清单本身为空使用不同空态（CMP-38）。
+                        val noSearchHit = state.searchActive && state.searchQuery.isNotBlank()
+                        item(key = if (noSearchHit) "search_empty" else "empty") {
                             Box(
                                 modifier = Modifier.fillParentMaxSize(),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                // 空清单空态（设计 §7 CMP-20、§4.2）：保留可见标题文案供既有断言。
-                                NautileEmptyState(
-                                    title = "该清单暂无任务",
-                                    description = null,
-                                    iconRes = R.drawable.ic_inbox,
-                                )
+                                if (noSearchHit) {
+                                    NautileEmptyState(
+                                        title = "无搜索结果",
+                                        description = "试试其他任务标题或项目名称",
+                                        iconRes = R.drawable.ic_search,
+                                    )
+                                } else {
+                                    // 空清单空态（设计 §7 CMP-20、§4.2）：保留可见标题文案供既有断言。
+                                    NautileEmptyState(
+                                        title = "该清单暂无任务",
+                                        description = null,
+                                        iconRes = R.drawable.ic_inbox,
+                                    )
+                                }
                             }
                         }
                     }
@@ -490,6 +533,58 @@ private fun unavailableDescription(base: String, available: Boolean): String =
 /** 稳定的列表 key：沿用原有 project_<id> / ungrouped_header，避免滚动位置错乱。 */
 private fun groupKey(group: TaskGroup): String =
     group.project?.let { "project_${it.id.value}" } ?: "ungrouped_header"
+
+/**
+ * 搜索栏（CMP-38）：左侧返回退出搜索、右侧清除查询；自动聚焦并弹键盘。
+ *
+ * 输入实时生效、不需要提交；清除只清空查询，仍保留搜索栏与焦点。
+ */
+@Composable
+private fun SearchBar(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+    onClear: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, end = 8.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        NautileIconButton(
+            iconRes = R.drawable.ic_arrow_back,
+            contentDescription = "退出搜索",
+            onClick = onClose,
+        )
+        TextField(
+            value = query,
+            onValueChange = onQueryChanged,
+            modifier = Modifier
+                .weight(1f)
+                .focusRequester(focusRequester),
+            singleLine = true,
+            placeholder = {
+                Text(
+                    text = "搜索标题或项目",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            textStyle = MaterialTheme.typography.bodyLarge,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        )
+        NautileIconButton(
+            iconRes = R.drawable.ic_cancel,
+            contentDescription = "清除搜索",
+            onClick = onClear,
+            enabled = query.isNotEmpty(),
+        )
+    }
+}
 
 /**
  * 分组卡片（SHP-06/07、SPC-07）：整组一张 16dp 圆角卡片，无阴影无描边；

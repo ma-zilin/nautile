@@ -16,6 +16,7 @@ import io.github.mazilin.nautile.domain.repository.TaskRepository
 import io.github.mazilin.nautile.domain.rule.ProjectRules
 import io.github.mazilin.nautile.domain.rule.TaskGrouping
 import io.github.mazilin.nautile.domain.rule.TaskRules
+import io.github.mazilin.nautile.domain.rule.TaskSearch
 import io.github.mazilin.nautile.domain.usecase.ProjectCommandResult
 import io.github.mazilin.nautile.domain.usecase.ProjectCommands
 import io.github.mazilin.nautile.domain.usecase.TaskCommandError
@@ -50,6 +51,21 @@ private data class ProjectDetailBase(
     val projects: List<Project>,
     val tasks: List<Task>,
     val nameDraft: String?,
+)
+
+/** 搜索态本地输入：只在内存中，不持久化、不写任务字段（CMP-38）。 */
+private data class SearchInput(
+    val active: Boolean = false,
+    val query: String = "",
+)
+
+/** 当前清单的未过滤事实，供搜索再派生分组，避免重复订阅数据源。 */
+private data class TodoListBase(
+    val position: GtdPosition,
+    val tasks: List<Task>,
+    val projects: List<Project>,
+    val confirmation: ProjectConfirmation?,
+    val reopenPrompt: ProjectReopenPrompt?,
 )
 
 private data class TaskDetailBase(
@@ -103,7 +119,9 @@ class TodoViewModel(
     private val newTaskState = MutableStateFlow<NewTaskUiState?>(null)
     val newTask: StateFlow<NewTaskUiState?> = newTaskState.asStateFlow()
 
-    val uiState: StateFlow<TodoUiState> = combine(
+    private val search = MutableStateFlow(SearchInput())
+
+    private val todoListBase = combine(
         settingsRepository.settings,
         allTasks,
         allProjects,
@@ -111,13 +129,32 @@ class TodoViewModel(
         projectReopenPrompt,
     ) { settings, tasks, projects, pending, reopenPrompt ->
         val position = settings.lastGtdPosition ?: GtdPosition.INBOX
-        val visibleTasks = tasks.filter { it.position == position }
-        TodoUiState(
+        TodoListBase(
             position = position,
-            groups = TaskGrouping.byProjectIncludingEmpty(visibleTasks, projects),
-            visibleTasks = visibleTasks,
-            projectConfirmation = pending,
-            projectReopenPrompt = reopenPrompt,
+            tasks = tasks.filter { it.position == position },
+            projects = projects,
+            confirmation = pending,
+            reopenPrompt = reopenPrompt,
+        )
+    }
+
+    val uiState: StateFlow<TodoUiState> = combine(todoListBase, search) { base, input ->
+        val filtered = TaskSearch.filter(base.tasks, base.projects, input.query)
+        TodoUiState(
+            position = base.position,
+            // 搜索态只保留有命中的组（不显示 0 结果组）；退出搜索恢复含空项目的完整分组。
+            groups = if (input.active) {
+                TaskGrouping.byProject(filtered, base.projects)
+            } else {
+                TaskGrouping.byProjectIncludingEmpty(base.tasks, base.projects)
+            },
+            // 选择器计数仍用当前清单全部任务，不随搜索过滤变化。
+            visibleTasks = base.tasks,
+            projectConfirmation = base.confirmation,
+            projectReopenPrompt = base.reopenPrompt,
+            searchAvailable = true,
+            searchActive = input.active,
+            searchQuery = input.query,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodoUiState())
 
@@ -193,6 +230,27 @@ class TodoViewModel(
     /** 点按左侧清单或边界拉动后切换；持久化上次 GTD（AC-N-14）。 */
     fun selectPosition(position: GtdPosition) {
         viewModelScope.launch { settingsRepository.setLastGtdPosition(position) }
+    }
+
+    // ---- 搜索（G8、CMP-38）：只改可见性，不写任务字段、不改排序 ----
+
+    /** 打开搜索：进入搜索态并清空上次查询（查询不跨页面/重启保留）。 */
+    fun openSearch() {
+        search.value = SearchInput(active = true, query = "")
+    }
+
+    /** 退出搜索：清空查询并恢复完整清单分组。 */
+    fun closeSearch() {
+        search.value = SearchInput()
+    }
+
+    fun onSearchQueryChanged(text: String) {
+        search.update { it.copy(query = text) }
+    }
+
+    /** 清除图标：只清空查询，保持搜索栏与焦点（CMP-38）。 */
+    fun clearSearch() {
+        search.update { it.copy(query = "") }
     }
 
     fun completeTask(taskId: TaskId) {

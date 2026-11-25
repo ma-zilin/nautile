@@ -1,0 +1,44 @@
+task=G8
+name=搜索（Search）
+time=2026-11-25T20:40:12+08:00
+head=e683a8e3b4a2269669b520e0f12d94d4a0bfe7f0
+dirty_entries=pre-existing dev changes + G8 tests (not committed)
+device=emulator-5554 / sdk_gphone64_x86_64 / API 36 (非真机)
+requirements=CMP-38、FR-N-14、FR-N-15、BR-76、AC-T-19（标签按用户 2026-11-25 决定不搜）
+baseline=docs/需求基线.md v2.2
+implementation=dev uncommitted: TaskSearch.filter, TodoUiState searchActive/searchQuery, TodoViewModel open/close/query/clear, TodoScreen search bar/empty state, MainActivity back priority
+
+static_command=bash scripts/check_ui_tokens.sh
+static_result=PASS hits=0 exit=0
+
+gate_command=bash scripts/verify.sh G8
+gate_steps=assembleDebug,assembleDebugAndroidTest,testDebugUnitTest,lintDebug
+gate_exits=0,0,0,0
+gate_jvm=suites=33 tests=186 failures=0 errors=0 skipped=0
+gate_lint=exit 0
+gate_schema=v3 tasks/projects/detail/manual_order OK
+gate_result=PASS
+
+new_jvm=G8TaskSearchTest 8 tests (empty/blank, case-insensitive title, project name, mixed order, no hit, detail not searched, unknown project id, input unchanged/original objects)
+new_ui=G8SearchUiTest 6 tests (entry+realtime, no-hit empty state, clear, close/order/data unchanged, current GTD list/no empty group, detail not searched)
+new_activity=G8SearchActivityTest 2 tests (back exits search keeps page, no cross-module/no query restore)
+new_screenshot=G8SearchScreenshotTest 2 tests
+updated_test=AcGtdHeaderT090Test acN11 searchEnabled(viewDisabled), basis=user 2026-11-25 “搜索可用”; other assertions unchanged
+
+targeted_command=./gradlew :app:connectedDebugAndroidTest --rerun-tasks -Pandroid.testInstrumentationRunnerArguments.class=io.github.mazilin.nautile.verification.G8SearchUiTest,io.github.mazilin.nautile.verification.G8SearchActivityTest,io.github.mazilin.nautile.verification.G8SearchScreenshotTest,io.github.mazilin.nautile.verification.AcGtdHeaderT090Test
+targeted_run1=14 tests, 1 failure (test-side: onNodeWithText("待办") matched 2 nodes); fixed assertion, original result retained
+targeted_run2_activity=2 tests 0 failures
+full_command=./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+full_result=tests=178 failures=0 errors=0 skipped=0 classes=29 duration=93s
+full_g8_cases=18 (8 JVM + 6 UI + 2 Activity + 2 screenshot) all pass; AcGtdHeaderT090Test 4/4 pass
+
+screenshot1=docs/验证记录/门禁/g8_search_active.png (1080x2400 PNG RGBA, 79954 B)
+screenshot2=docs/验证记录/门禁/g8_search_no_result.png (1080x2400 PNG RGBA, 80769 B)
+screenshot_method=G8SearchScreenshotTest captureToImage -> app external files -> adb pull; visual check OK
+
+judgement=PASS
+gaps=标签搜索未实现（用户决定，不算失败）；模拟器非真机；返回手势/IME真机体验未自动化；无实现前红证据、未做变异（授权不改业务代码）
+log=docs/验证记录/门禁/g8_20261125T204012.log
+verify_log=docs/验证记录/门禁/verify_G8_20261125T204012.log
+verify_meta=docs/验证记录/门禁/verify_G8_20261125T204012.meta.txt
+screenshot_note=全量 connected 结束会卸载应用并清理 external files；截图证据在相同 APK 上手动 adb install + am instrument 复跑 G8SearchScreenshotTest（OK 2 tests）后立即 adb pull。
