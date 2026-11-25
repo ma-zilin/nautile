@@ -93,7 +93,9 @@ class AcUiT071Test {
         }
 
         composeRule.onNodeWithText("待办").assertIsDisplayed()
-        composeRule.onNodeWithText("设置").performClick()
+        // G1-A2 授权行为变更（设计 §6 ICO-05/§10）：设置入口改为图标按钮，
+        // 按 testTag 点击，contentDescription 仍为“设置”；其余断言不变。
+        composeRule.onNodeWithTag("settings_entry").performClick()
 
         composeRule.runOnIdle { assertEquals(1, settings) }
     }

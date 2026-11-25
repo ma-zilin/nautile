@@ -1,0 +1,32 @@
+task=G1-A2
+name=待办页交互与视觉闸门
+time=2026-11-25T15:13:30+08:00
+head=ae0a693997ddea264c243aff5aaf58d480a0a571
+head_note=任务书标注 HEAD=78d45be；实际 HEAD 为 ae0a693（其上的 docs 证据提交），功能基线仍为 78d45be
+dirty_entries_at_verify=20
+dirty_entries_at_evidence=24
+dirty_business=MainActivity.kt,ui/AppRoot.kt,ui/screen/todo/{GtdSelector,NewTaskSheet,ProjectDetailSheet,TaskDetailSheet,TodoScreen,TodoUiState}.kt
+dirty_test=androidTest/.../AcSettingsEntryP1Test.kt,AcUiT071Test.kt（授权修改）,AcGtdHeaderT090Test.kt（新增）
+dirty_script=scripts/check_ui_tokens.sh（扫描范围扩展）
+static=check_ui_tokens.sh: PASS, exit=0, rules1-8 hits=0, files=18（theme+designsystem+todo 的 .kt，另加 AppRoot.kt）
+static_command=bash scripts/check_ui_tokens.sh
+verify_first_run=GATE FAIL：assembleDebug=0, assembleDebugAndroidTest=1（AcGtdHeaderT090Test unresolved import 'assertDoesNotExist'，测试自身错误）, testDebugUnitTest=0, lintDebug=0
+verify_rerun=GATE PASS（命令与首轮相同，仅修正测试导入）
+verify_steps=assembleDebug=0, assembleDebugAndroidTest=0, testDebugUnitTest=0, lintDebug=0（均 --rerun-tasks）
+verify_jvm=suites=28 tests=160 failures=0 errors=0 skipped=0；schema v2 检查 EXIT=0
+verify_log_fail=docs/验证记录/门禁/verify_G1-A2_20261125T151055.log
+verify_log_pass=docs/验证记录/门禁/verify_G1-A2_20261125T151158.log
+verify_extra_logs_note=门禁目录另有 151025/151131 两个非本会话生成的 verify 日志，未用于本结论
+connected_command=./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.mazilin.nautile.verification.AcGtdHeaderT090Test,io.github.mazilin.nautile.verification.AcSettingsEntryP1Test,io.github.mazilin.nautile.verification.AcUiT071Test,io.github.mazilin.nautile.verification.AcTodoT07Test --rerun-tasks
+connected_exit=0
+connected_stats=tests=38 failures=0 errors=0 skipped=0（AcGtdHeaderT090Test=4、AcSettingsEntryP1Test=2、AcUiT071Test=9、AcTodoT07Test=23）
+connected_duration=26s（15:12:57→15:13:23）
+connected_xml=app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml
+device=emulator-5554 / AVD nautile_api36 / Android 16 (API36) / x86_64 / ro.kernel.qemu=1（模拟器，非真机）
+device_conditions=font_scale=1.0；window_animation_scale=0（系统动画关闭；Compose 测试时钟不受影响）
+result=PASS
+judge=静态检查 PASS + verify 四步 PASS（JVM 160/0）+ 筛选 UI 测试 38/0 PASS + 设计只读核对无阻断项
+unauthorized_change=none（未修改业务代码；仅改两个授权测试、新增测试、扩展脚本）
+not_automated=1) 动画中间帧/可打断手感与观感（仅判终态，人工评审）；2) 深色模式实际视觉（仅静态规则核对，未截图）；3) 200% fontScale A11Y-15 未执行；4) 真机未执行；5) 面板 28dp/22dp 为只读核对，未做像素测量；6) 新增测试无红灯/变异证据（实现先于本轮测试）
+screenshot_reminder=本轮未生成验收截图；请我保存模拟器上待办页头部与 GTD 选择器开合的验收截图（第九节）
+log=docs/验证记录/门禁/g1_a2_20261125T151017.log

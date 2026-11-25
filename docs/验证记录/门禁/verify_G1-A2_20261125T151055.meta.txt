@@ -1,0 +1,8 @@
+task=G1-A2
+time=2026-11-25T15:11:17+08:00
+head=ae0a693997ddea264c243aff5aaf58d480a0a571
+dirty_entries=16
+connected_requested=0
+androidtest_compile=executed
+result=FAIL
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_G1-A2_20261125T151055.log

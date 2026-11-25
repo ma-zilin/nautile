@@ -1,9 +1,9 @@
 package io.github.mazilin.nautile.verification
 
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -85,7 +85,13 @@ class AcSettingsEntryP1Test {
         }
     }
 
-    /** AC-P1-1：settings_entry 唯一、可见、可点击，文案仍为“设置”。 */
+    /**
+     * AC-P1-1：settings_entry 唯一、可见、可点击，读屏名仍为“设置”。
+     *
+     * G1-A2 授权行为变更（设计 §6 ICO-05/§10）：设置入口由 TextButton("设置") 改为图标按钮，
+     * 可见文本消失、contentDescription 保持“设置”，testTag 不变。本断言随设计变更调整，
+     * 不属于回归；唯一性/可见/可点击/顺序/负分支断言保持不变。
+     */
     @Test
     fun settings_entry_exists_AC_P1_1() {
         setHost()
@@ -96,7 +102,7 @@ class AcSettingsEntryP1Test {
         composeRule.onNodeWithTag("settings_entry")
             .assertIsDisplayed()
             .assertHasClickAction()
-            .assertTextEquals("设置")
+            .assertContentDescriptionEquals("设置")
 
         // 头部顺序（结构顺序，不判像素间距）：GTD 入口在左，设置入口在右。
         val gtdBounds = composeRule.onNodeWithTag("gtd_entry").fetchSemanticsNode().boundsInRoot
