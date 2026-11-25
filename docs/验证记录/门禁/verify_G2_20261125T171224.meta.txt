@@ -1,0 +1,8 @@
+task=G2
+time=2026-11-25T17:12:46+08:00
+head=2bc7331cf7ca1ffebbdba821cb51f874bd51e0b1
+dirty_entries=9
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_G2_20261125T171224.log
