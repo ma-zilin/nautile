@@ -1,0 +1,203 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="105" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-25T09:30:40" hostname="localhost">
+  <testsuite name="io.github.mazilin.nautile.TodoScreenSmokeTest" tests="1" failures="0" errors="0" skipped="0" time="0.831" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="placeholder_is_displayed" classname="io.github.mazilin.nautile.TodoScreenSmokeTest" time="0.831" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.contract.RoomProjectRepositoryContractTest" tests="5" failures="0" errors="0" skipped="0" time="0.047" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="AC_T_17_delete_with_tasks_removes_project_and_children" classname="io.github.mazilin.nautile.contract.RoomProjectRepositoryContractTest" time="0.013" />
+    <testcase name="AC_T_17_insert_get_and_rename_project" classname="io.github.mazilin.nautile.contract.RoomProjectRepositoryContractTest" time="0.008" />
+    <testcase name="AC_T_17_update_with_tasks_persists_project_and_children" classname="io.github.mazilin.nautile.contract.RoomProjectRepositoryContractTest" time="0.013" />
+    <testcase name="AC_T_17_delete_empty_project" classname="io.github.mazilin.nautile.contract.RoomProjectRepositoryContractTest" time="0.006" />
+    <testcase name="AC_T_01_task_can_belong_to_project_and_position" classname="io.github.mazilin.nautile.contract.RoomProjectRepositoryContractTest" time="0.007" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.contract.RoomTaskRepositoryContractTest" tests="5" failures="0" errors="0" skipped="0" time="0.050" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="AC_T_01_delete_and_delete_all_remove_tasks" classname="io.github.mazilin.nautile.contract.RoomTaskRepositoryContractTest" time="0.008" />
+    <testcase name="AC_T_01_update_persists_title_and_closed_fields" classname="io.github.mazilin.nautile.contract.RoomTaskRepositoryContractTest" time="0.005" />
+    <testcase name="AC_T_01_observe_by_position_queries_all_five_positions" classname="io.github.mazilin.nautile.contract.RoomTaskRepositoryContractTest" time="0.021" />
+    <testcase name="AC_T_01_insert_assigns_id_and_reads_back" classname="io.github.mazilin.nautile.contract.RoomTaskRepositoryContractTest" time="0.005" />
+    <testcase name="AC_T_29_reopen_update_clears_closed_fields_and_restores_position" classname="io.github.mazilin.nautile.contract.RoomTaskRepositoryContractTest" time="0.011" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.data.db.MigrationTest" tests="3" failures="0" errors="0" skipped="0" time="0.133" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="AC_T_01_schema_v1_contains_tasks_and_projects" classname="io.github.mazilin.nautile.data.db.MigrationTest" time="0.069" />
+    <testcase name="AC_T_01_schema_v1_opens_without_migration" classname="io.github.mazilin.nautile.data.db.MigrationTest" time="0.034" />
+    <testcase name="AC_D_09_migration_v1_to_v2_adds_nullable_detail_and_keeps_old_row" classname="io.github.mazilin.nautile.data.db.MigrationTest" time="0.030" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.data.db.ProjectDaoTest" tests="3" failures="0" errors="0" skipped="0" time="0.022" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="AC_T_17_rename_and_change_status" classname="io.github.mazilin.nautile.data.db.ProjectDaoTest" time="0.011" />
+    <testcase name="AC_T_17_delete_project" classname="io.github.mazilin.nautile.data.db.ProjectDaoTest" time="0.006" />
+    <testcase name="AC_T_17_insert_and_observe_projects" classname="io.github.mazilin.nautile.data.db.ProjectDaoTest" time="0.005" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.data.db.TaskDaoTest" tests="3" failures="0" errors="0" skipped="0" time="0.018" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="AC_T_01_insert_and_observe_by_position" classname="io.github.mazilin.nautile.data.db.TaskDaoTest" time="0.006" />
+    <testcase name="AC_T_01_update_title_and_close_fields" classname="io.github.mazilin.nautile.data.db.TaskDaoTest" time="0.005" />
+    <testcase name="AC_T_01_delete_single_and_by_ids" classname="io.github.mazilin.nautile.data.db.TaskDaoTest" time="0.007" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.data.repository.RoomProjectRepositoryTest" tests="2" failures="0" errors="0" skipped="0" time="0.020" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="acT17_batch_close_updates_project_and_children_in_one_call" classname="io.github.mazilin.nautile.data.repository.RoomProjectRepositoryTest" time="0.011" />
+    <testcase name="acT17_delete_with_tasks_removes_children_and_project" classname="io.github.mazilin.nautile.data.repository.RoomProjectRepositoryTest" time="0.009" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.data.repository.RoomTaskRepositoryTest" tests="3" failures="0" errors="0" skipped="0" time="0.019" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="acT01_insert_and_observe_by_position" classname="io.github.mazilin.nautile.data.repository.RoomTaskRepositoryTest" time="0.007" />
+    <testcase name="acT01_delete_and_delete_all_remove_tasks" classname="io.github.mazilin.nautile.data.repository.RoomTaskRepositoryTest" time="0.006" />
+    <testcase name="acT01_complete_and_reopen_persist_through_repository" classname="io.github.mazilin.nautile.data.repository.RoomTaskRepositoryTest" time="0.006" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.ui.AppRootTest" tests="5" failures="0" errors="0" skipped="0" time="3.941" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="frN19_three_placeholder_pages_open_same_settings" classname="io.github.mazilin.nautile.ui.AppRootTest" time="1.501" />
+    <testcase name="acN14_four_tabs_switch_by_bottom_navigation_only" classname="io.github.mazilin.nautile.ui.AppRootTest" time="1.071" />
+    <testcase name="acN14_back_priority_keyboard_overlay_fullscreen_then_system" classname="io.github.mazilin.nautile.ui.AppRootTest" time="0.250" />
+    <testcase name="acN15_bottom_navigation_hidden_for_overlay_and_fullscreen" classname="io.github.mazilin.nautile.ui.AppRootTest" time="0.568" />
+    <testcase name="acN16_horizontal_swipe_does_not_change_tab" classname="io.github.mazilin.nautile.ui.AppRootTest" time="0.551" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcAppRootT06Test" tests="5" failures="0" errors="0" skipped="0" time="3.646" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="AC_N_14_three_placeholder_settings_entries_open_same_root" classname="io.github.mazilin.nautile.verification.AcAppRootT06Test" time="1.265" />
+    <testcase name="AC_N_16_horizontal_swipe_does_not_change_first_level_page" classname="io.github.mazilin.nautile.verification.AcAppRootT06Test" time="0.509" />
+    <testcase name="AC_N_14_four_bottom_entries_switch_pages_by_click" classname="io.github.mazilin.nautile.verification.AcAppRootT06Test" time="0.874" />
+    <testcase name="AC_N_15_navigation_hidden_when_scroll_state_says_hidden" classname="io.github.mazilin.nautile.verification.AcAppRootT06Test" time="0.403" />
+    <testcase name="AC_N_15_navigation_hidden_for_overlay_and_full_screen" classname="io.github.mazilin.nautile.verification.AcAppRootT06Test" time="0.595" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcCardGroupsT091Test" tests="8" failures="0" errors="0" skipped="0" time="3.337" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="t091_empty_project_group_is_visible_with_count_zero_and_opens_detail" classname="io.github.mazilin.nautile.verification.AcCardGroupsT091Test" time="0.476" />
+    <testcase name="t091_standalone_group_only_when_ungrouped_tasks_exist" classname="io.github.mazilin.nautile.verification.AcCardGroupsT091Test" time="0.371" />
+    <testcase name="t091_no_expand_arrow_or_toggle_semantics" classname="io.github.mazilin.nautile.verification.AcCardGroupsT091Test" time="0.417" />
+    <testcase name="t091_grouping_including_empty_keeps_all_projects_and_standalone_rule" classname="io.github.mazilin.nautile.verification.AcCardGroupsT091Test" time="0.284" />
+    <testcase name="t091_viewmodel_keeps_empty_project_group" classname="io.github.mazilin.nautile.verification.AcCardGroupsT091Test" time="0.232" />
+    <testcase name="t091_fab_is_round_primary_and_opens_new_task" classname="io.github.mazilin.nautile.verification.AcCardGroupsT091Test" time="0.515" />
+    <testcase name="t091_group_header_count_and_rows_keep_click_and_swipe" classname="io.github.mazilin.nautile.verification.AcCardGroupsT091Test" time="0.602" />
+    <testcase name="t091_light_and_dark_keep_same_semantics" classname="io.github.mazilin.nautile.verification.AcCardGroupsT091Test" time="0.440" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test" tests="8" failures="0" errors="0" skipped="0" time="4.325" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="AC_D_07_invalid_new_task_stays_visible_with_error" classname="io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test" time="0.547" />
+    <testcase name="AC_D_08_invalid_task_title_shows_error" classname="io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test" time="0.463" />
+    <testcase name="AC_D_07_new_task_sheet_create_and_cancel" classname="io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test" time="0.593" />
+    <testcase name="AC_D_06_task_title_done_commits" classname="io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test" time="0.556" />
+    <testcase name="AC_T_28_project_reopen_prompt_confirm_and_cancel" classname="io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test" time="0.620" />
+    <testcase name="AC_T_29_closed_task_shows_reopen_entry" classname="io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test" time="0.425" />
+    <testcase name="AC_D_06_project_name_done_commits" classname="io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test" time="0.571" />
+    <testcase name="AC_D_06_project_detail_shows_children_and_collapse" classname="io.github.mazilin.nautile.verification.AcDetailNewTaskUiT08T09Test" time="0.550" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcDetailPersistenceT085Test" tests="1" failures="0" errors="0" skipped="0" time="0.024" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="AC_D_09_detail_survives_database_reopen" classname="io.github.mazilin.nautile.verification.AcDetailPersistenceT085Test" time="0.024" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcDetailPullT088Test" tests="7" failures="0" errors="0" skipped="0" time="3.236" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="T_088_project_input_focused_pull_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.485" />
+    <testcase name="T_088_task_non_input_pull_still_closes" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.432" />
+    <testcase name="T_088_task_pull_starting_inside_input_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.418" />
+    <testcase name="T_088_project_pull_starting_inside_input_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.449" />
+    <testcase name="T_088_invalid_field_pull_outside_input_shows_prompt" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.454" />
+    <testcase name="T_088_project_non_input_pull_still_closes" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.411" />
+    <testcase name="T_088_task_input_focused_pull_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.587" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcGtdHeaderT090Test" tests="4" failures="0" errors="0" skipped="0" time="2.503" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="acG04_click_only_switch_and_five_items" classname="io.github.mazilin.nautile.verification.AcGtdHeaderT090Test" time="0.636" />
+    <testcase name="acG04_left_width_follows_longest_title" classname="io.github.mazilin.nautile.verification.AcGtdHeaderT090Test" time="0.679" />
+    <testcase name="acA2_selector_reveal_final_state" classname="io.github.mazilin.nautile.verification.AcGtdHeaderT090Test" time="0.525" />
+    <testcase name="acN11_header_order_and_disabled_search_view" classname="io.github.mazilin.nautile.verification.AcGtdHeaderT090Test" time="0.663" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcSettingsEntryP1Test" tests="2" failures="0" errors="0" skipped="0" time="1.245" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="opens_root_settings_from_todo_AC_P1_2" classname="io.github.mazilin.nautile.verification.AcSettingsEntryP1Test" time="0.658" />
+    <testcase name="settings_entry_exists_AC_P1_1" classname="io.github.mazilin.nautile.verification.AcSettingsEntryP1Test" time="0.587" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcTodoT07Test" tests="23" failures="0" errors="0" skipped="0" time="8.708" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="AC_T_17_task_swipe_left_completes_item" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.357" />
+    <testcase name="AC_G_05_full_screen_below_threshold_rebounds_and_keeps_position" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.380" />
+    <testcase name="AC_G_05_full_screen_empty_list_pull_switches_and_keeps_full_screen" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.320" />
+    <testcase name="AC_G_04_item_swipe_abandons_item_and_does_not_open_selector" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.369" />
+    <testcase name="AC_G_05_boundary_pull_on_empty_list_commits_to_adjacent" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.377" />
+    <testcase name="AC_T_17_project_confirmation_text_has_required_space" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.352" />
+    <testcase name="AC_G_05_first_position_pull_down_does_not_wrap" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.348" />
+    <testcase name="AC_G_05_click_switch_keeps_selector_open" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.444" />
+    <testcase name="AC_G_05_half_screen_below_threshold_rebounds_and_keeps_position" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.349" />
+    <testcase name="AC_N_15_todo_scroll_hides_and_shows_navigation" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.484" />
+    <testcase name="AC_G_04_independent_gtd_entry_opens_gtd_selector" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.350" />
+    <testcase name="AC_T_17_project_swipe_right_requests_abandon_confirmation" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.420" />
+    <testcase name="AC_G_05_short_list_boundary_pull_commits_to_adjacent" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.327" />
+    <testcase name="AC_G_05_full_screen_first_position_pull_down_does_not_wrap" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.358" />
+    <testcase name="AC_G_05_full_screen_short_list_pull_switches" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.325" />
+    <testcase name="AC_G_04_blank_area_right_swipe_opens_gtd_selector" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.342" />
+    <testcase name="AC_G_04_sub_threshold_right_swipe_does_not_open_gtd_selector" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.357" />
+    <testcase name="AC_G_05_full_screen_last_position_pull_up_does_not_wrap" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.331" />
+    <testcase name="AC_G_04_selector_lists_five_positions_and_click_switches" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.530" />
+    <testcase name="AC_G_05_full_screen_above_threshold_switches_previous" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.387" />
+    <testcase name="AC_G_05_selector_shows_empty_state" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.328" />
+    <testcase name="AC_G_05_full_screen_long_list_ordinary_scroll_does_not_switch" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.468" />
+    <testcase name="AC_G_04_selector_close_button_and_blank_left_swipe_close" classname="io.github.mazilin.nautile.verification.AcTodoT07Test" time="0.405" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcUiT071Test" tests="9" failures="0" errors="0" skipped="0" time="3.906" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="T_10_closed_row_does_not_swipe_and_opens_detail" classname="io.github.mazilin.nautile.verification.AcUiT071Test" time="0.496" />
+    <testcase name="T_07_project_form_creates_and_blank_is_blocked" classname="io.github.mazilin.nautile.verification.AcUiT071Test" time="0.460" />
+    <testcase name="T_02_gtd_entry_is_independent_from_title_text" classname="io.github.mazilin.nautile.verification.AcUiT071Test" time="0.396" />
+    <testcase name="T_07_blank_project_stays_with_error" classname="io.github.mazilin.nautile.verification.AcUiT071Test" time="0.368" />
+    <testcase name="T_01_todo_header_has_title_and_settings_entry" classname="io.github.mazilin.nautile.verification.AcUiT071Test" time="0.404" />
+    <testcase name="T_11_navigation_hides_and_shows_at_thresholds" classname="io.github.mazilin.nautile.verification.AcUiT071Test" time="0.399" />
+    <testcase name="D_03_task_detail_content_pull_requests_close" classname="io.github.mazilin.nautile.verification.AcUiT071Test" time="0.450" />
+    <testcase name="D_02_project_child_click_reports_task_id" classname="io.github.mazilin.nautile.verification.AcUiT071Test" time="0.404" />
+    <testcase name="T_09_ended_add_shows_four_target_positions_without_ended" classname="io.github.mazilin.nautile.verification.AcUiT071Test" time="0.529" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcUiT077T081Test" tests="8" failures="0" errors="0" skipped="0" time="4.007" timestamp="2026-11-25T09:30:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="T_077_invalid_project_name_shows_error" classname="io.github.mazilin.nautile.verification.AcUiT077T081Test" time="0.385" />
+    <testcase name="T_081_new_task_todo_mode_has_two_visible_rows" classname="io.github.mazilin.nautile.verification.AcUiT077T081Test" time="0.378" />
+    <testcase name="T_081_detail_short_content_pull_with_draft_requests_close" classname="io.github.mazilin.nautile.verification.AcUiT077T081Test" time="0.430" />
+    <testcase name="T_081_new_task_project_mode_hides_detail_row" classname="io.github.mazilin.nautile.verification.AcUiT077T081Test" time="0.358" />
+    <testcase name="T_077_task_detail_short_content_pull_closes" classname="io.github.mazilin.nautile.verification.AcUiT077T081Test" time="0.413" />
+    <testcase name="T_077_project_detail_short_content_pull_closes" classname="io.github.mazilin.nautile.verification.AcUiT077T081Test" time="0.388" />
+    <testcase name="T_081_title_and_detail_commit_when_focus_moves_between_fields" classname="io.github.mazilin.nautile.verification.AcUiT077T081Test" time="1.040" />
+    <testcase name="T_081_task_detail_shows_detail_field_and_commits_ime" classname="io.github.mazilin.nautile.verification.AcUiT077T081Test" time="0.615" />
+  </testsuite>
+</testsuites>
