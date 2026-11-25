@@ -1,0 +1,108 @@
+G4 闸门独立验证记录（面板下拉关闭 / insets / 设置退出动画）
+
+时间：2026-11-25 18:30—18:45（Asia/Shanghai）
+设备：emulator-5554（nautile_api36 AVD，API 36，x86_64 模拟器，非真机）
+代码版本：HEAD 1cba60c + 未提交 G4 改动（6 个业务文件，git status 已核对）
+依赖材料：docs/作业要求.md、docs/产品构想.md、docs/开发架构设计.md、
+          docs/需求基线.md v2.2（AC-D-06/07/08/09、AC-N-21）、
+          .plans/设计/01_视觉与动效标准.md（MOT-08、MOT-09.2、SPC-08、CMP-17、CMP-29）
+角色边界：本轮只新增/修订 app/src/test、app/src/androidTest 测试与证据，未修改业务代码、构建或依赖。
+
+一、检查对象
+1. NautileBottomSheet.kt（SheetDragMetrics / nautileSheetPullDown / SheetMotion / 28dp 形状 / ime∪navigationBars）
+2. NewTaskSheet.kt（新建面板下拉、输入框排除、固定两行、无效阻止）
+3. TaskDetailSheet.kt / ProjectDetailSheet.kt（下拉阈值、回弹、无效字段阻止、inset）
+4. AppRoot.kt（设置页 pop 保留至 200ms 结束；预测返回不叠加自绘）
+5. MainActivity.kt（宿主不再消费 systemBars padding；面板宿主 canLeave 接线）
+
+二、命令与实际结果
+1) bash scripts/check_ui_tokens.sh
+   EXIT=0，8 条规则命中 0，文件数 19，RESULT: PASS（2026-11-25T18:30:25）。
+2) bash scripts/verify.sh G4（--rerun-tasks，四步）
+   最终轮：docs/验证记录/门禁/verify_G4_20261125T184435.log
+   - assembleDebug EXIT=0
+   - assembleDebugAndroidTest(compile-only) EXIT=0
+   - testDebugUnitTest EXIT=0
+   - lintDebug EXIT=0
+   - 统计：suites=29 tests=163 failures=0 errors=0 skipped=0（含本轮新增 3 个 JVM 用例）
+   - schema：1.json 保留；2.json version 2，tasks/projects/detail，EXIT=0
+   - GATE RESULT: PASS
+   首轮（新增测试前）：verify_G4_20261125T183030.log，160/0/0，PASS。
+3) 全量 connected（上限 20 分钟）
+   ./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+   EXIT=1（Gradle 判定失败），耗时 56s；完整日志：g4_connected_20261125T183828.log
+   tests=128 failures=2 errors=0，失败集中在同一业务缺陷（见四）。
+4) 定点复跑（G4 两类）
+   AcSheetPullG4Test 20 例 + AcSettingsExitG4Test 3 例，18:39 运行：22 例 1 失败；
+   补充 2 个诊断用例后 20 例 2 失败（同一缺陷的 40dp 与 200dp 两个断言），其余全部通过。
+5) 先红证据（基线 HEAD，临时 worktree，不改当前工作区）
+   git worktree add /tmp/tride-g4-baseline 1cba60c + 复制同一测试文件
+   ./gradlew :app:connectedDebugAndroidTest --rerun-tasks -P...class=AcSheetPullG4Test
+   tests=20 failures=8 errors=0；日志：g4_red_baseline_20261125T184510.log
+   基线失败项（现行实现已通过）：40dp、70dp、拖拽柄 80dp、任务详情 100dp、项目详情 100dp、
+   输入框聚焦遮罩下拉/上滑/40dp；证明新增测试可区分“固定 64dp/无下拉”旧实现与新阈值实现。
+   worktree 已删除（git worktree list 仅剩主工作区）。
+
+三、新增/修订测试（文件名与用例编号）
+- app/src/test/.../verification/SheetDragMetricsG4Test.kt（新增，3 例，JVM）
+  G4_MOT08_threshold_is_max_of_96dp_and_25_percent_height
+  G4_MOT08_commit_needs_displacement_at_threshold_or_velocity_over_800dp_s
+  G4_MOT08_scrim_follows_drag_progress_one_to_one
+- app/src/androidTest/.../verification/AcSheetPullG4Test.kt（重写为 20 例）
+  新建：200dp 关闭一次、40dp 回弹、70dp（旧 64/新 96 之间）回弹、拖拽柄 80dp 回弹、
+        80dp/40ms 高速关闭、起点在输入框内不关、聚焦后遮罩 200dp/40dp/上滑不关、
+        键盘聚焦输入后仍可用、无效字段关闭请求被宿主阻止并提示
+  任务详情：200dp 关闭、100dp 回弹、起点在输入框内不关、聚焦遮罩不关、无效字段阻止
+  项目详情：200dp 关闭、100dp 回弹、起点在输入框内不关、无效字段阻止
+- app/src/androidTest/.../verification/AcSettingsExitG4Test.kt（重写为 3 例）
+  G4_MOT09_2_settings_pop_keeps_page_until_animation_ends（暂停时钟：100ms 仍存在、200ms 后移除）
+  G4_AC_N21_predictive_back_enabled_back_still_pops_with_same_stack（开关开启时返回栈不变）
+  G4_MOT09_2_settings_pop_mid_frame_screenshot（MediaStore 保存中间帧）
+- 未削弱任何既有断言；既有 AcDetailPullT088Test 的注释仍写 64dp，但其 70% 屏高滑动仍 ≥ 新阈值，
+  断言继续成立，本轮未修改。未删除有效断言，未跳过失败用例。
+
+四、实际失败（业务缺陷，1 项 / 2 个断言）
+现象：NewTaskSheet 输入框聚焦后，从遮罩区下拉会请求关闭。
+- 200dp 下拉：expected 0，actual 1（G4_T088_new_task_input_focused_scrim_drag_does_not_close）
+- 40dp 下拉（低于阈值）：expected 0，actual 1（G4_T088_new_task_input_focused_scrim_40dp_drag_does_not_close）
+- 对照：同一手势起点在输入框内不关；向上滑不关；TaskDetailSheet 聚焦后遮罩下拉不关（通过）。
+根因（事实 + 推断）：
+- 事实：聚焦时 nautileSheetPullDown 的 isExcluded 返回 true 并立即 return，拖动位移未被消费；
+  根 Box 的 detectTapGestures（NewTaskSheet.kt:168-172）把未消费的 down/up 序列判为点按，
+  调用 onDismissRequest。详情面板没有这个根级点按处理器，所以同类手势通过。
+- 推断：detectTapGestures 不以移动距离取消点按，缺少 slop 判定；属既有遮罩点按实现与新排除分支的交互缺陷。
+人工复现（真实应用、模拟器）：
+- 打开新建面板 → 点标题（键盘打开，mIsInputViewShown=true）→ 返回键收键盘（字段仍 focused）
+  → 在遮罩区 40dp 下拉 → 面板消失（uiautomator: 新建/标题不存在）。
+- 截图：g4_T088_focus_noime_scrim_40dp_20261125T183828.png（关闭后）
+        g4_T088_focus_scrim_40dp_after_20261125T183828.png（键盘打开时同手势未关闭，对照）
+影响：无键盘时聚焦状态（例如收键盘后）下拉 40dp 即误关面板，违反 T-088 与 MOT-08 的
+      “未超阈值回弹”；不影响阈值判定、键盘空隙与设置退出动画。
+范围说明：该点按处理器在 G4 前已存在；本轮新增排除分支后仍未被消费，故暴露。
+
+五、通过项（程序证据）
+- 阈值公式与速度边界（JVM 3 例）：max(25% 高度, 96dp)、速度严格 >800dp/s、遮罩 1:1。
+- 三面板：200dp 关闭一次；40/70/80/100dp 回弹；高速短位移关闭。
+- 输入框：起点在输入框内不关（三面板）；聚焦时详情/项目遮罩下拉不关。
+- 无效字段：超阈值仍只发一次请求，宿主 canLeave=false 时不移除并显示错误。
+- 新建面板打开隐藏底部导航（uiautomator 无导航节点）；键盘打开时标题可输入、创建按钮可见。
+- 设置页 pop：100ms 节点存在、200ms 后移除、一级页恢复；预测返回开启时返回栈不变。
+- 静态：颜色/圆角/动效/遮罩 alpha/无限动画 0 命中；28dp 由 theme extraLarge 提供；
+  宿主无 systemBars padding；面板只在 windowInsetsPadding(ime∪navigationBars) 消费一次。
+- 截图（1080x2400 PNG，file 已校验）：
+  g4_new_task_open_20261125T183828.png、g4_new_task_keyboard_20261125T183828.png（面板贴键盘无空隙）、
+  g4_new_task_pull_40dp_20261125T183828.png（40dp 后仍在）、
+  g4_detail_task_20261125T183828.png（28dp 顶角、24dp 内边距）、
+  g4_settings_pop_mid_20261125T183828.png（pop 中间帧）。
+
+六、未执行 / 不能自动判定（不计入通过）
+- 真机（非模拟器）上的 IME 空隙、28dp 圆角手感与拖拽 1:1 视觉：仅模拟器截图与语义树，未真机。
+- 拖拽柄位移是否严格 1:1（graphicsLayer 平移无语义坐标）：未做像素测量，仅以提交/回弹断言间接覆盖。
+- 系统预测返回手势的松手前预览与“不叠加自绘 pop”：公开 API 不可观测，未自动化。
+- 本轮连接测试只跑 1 次全量；无失败重试，未做稳定性重复（不声称无 flake）。
+- 变异抽查：本轮授权禁止改业务代码，未注入业务 bug；以基线 HEAD 复跑作为“先红”替代证据。
+
+七、结论
+静态检查 PASS；门禁 verify.sh PASS（163 单测 0 失败）；全量 connected 126/128 通过，
+2 个失败指向同一业务缺陷（T-088 新建面板聚焦后遮罩下拉误关），未达 0/0。
+本轮判定：未通过（1 项业务缺陷待开发修复后复测）；阈值、键盘、insets、设置退出动画均已通过。

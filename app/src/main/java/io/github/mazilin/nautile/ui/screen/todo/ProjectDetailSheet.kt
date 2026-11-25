@@ -2,9 +2,6 @@ package io.github.mazilin.nautile.ui.screen.todo
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,9 +12,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -32,6 +29,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,8 +42,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -54,24 +50,28 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.domain.model.TaskId
+import io.github.mazilin.nautile.ui.designsystem.dragScrimFactor
+import io.github.mazilin.nautile.ui.designsystem.nautileSheetBottomInsets
+import io.github.mazilin.nautile.ui.designsystem.nautileSheetPullDown
+import io.github.mazilin.nautile.ui.designsystem.nautileSheetShape
+import io.github.mazilin.nautile.ui.designsystem.rememberSheetMotion
+import io.github.mazilin.nautile.ui.designsystem.shouldCommit
 import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSheetMetrics
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import io.github.mazilin.nautile.ui.theme.NautileStates
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 /**
- * 项目半屏详情（S1-T08、T-071/D-02/D-03、AC-D-06、FR-V-08）。
+ * 项目半屏详情（S1-T08、T-071/D-02/D-03、AC-D-06、FR-V-08、MOT-08）。
  *
  * - 项目名称编辑即保存；子任务只读展示，点按先关项目详情再开任务详情（单主覆盖层）；
  * - 折叠状态由父层内存持有，不持久化；
- * - 拖柄或内容到顶继续下拉都先经父层 canLeave 检查，无效字段阻止并提示。
- *
- * 视觉与动效与 [TaskDetailSheet] 一致（§3.2/§4.2、MOT-08）；退出动效结束后才回调
- * [onExitFinished]。默认 visible = true，直接组合时保持既有静态行为。
+ * - 拖柄或内容到顶继续下拉都先经父层 canLeave 检查，无效字段阻止并提示；
+ * - 内边距与 inset 与 [TaskDetailSheet] 一致：24/8/24 + 导航栏 inset，面板唯一消费 inset；
+ * - 下拉阈值 max(25% 高度, 96dp) 或速度 800dp/s，未过阈值用 BoundaryRebound 回弹；
+ * 退出动效结束后才回调 [onExitFinished]。
  */
 @Composable
 fun ProjectDetailSheet(
@@ -85,20 +85,22 @@ fun ProjectDetailSheet(
     onExitFinished: () -> Unit = {},
 ) {
     val density = LocalDensity.current
-    val closeThreshold = with(density) { 64.dp.toPx() }
-    var dragTotal by remember { mutableFloatStateOf(0f) }
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val motion = rememberSheetMotion(visible = visible, onExitFinished = onExitFinished)
+    val currentVisible by rememberUpdatedState(visible)
 
     // T-088：输入框聚焦或手势起点落在输入框内时，不触发遮罩/内容的下拉关闭。
     val nameFocused = remember { mutableStateOf(false) }
     val nameBounds = remember { mutableStateOf<Rect?>(null) }
+    val handleBounds = remember { mutableStateOf<Rect?>(null) }
     val boxOrigin = remember { mutableStateOf(Offset.Zero) }
     val gestureFromInput = remember { mutableStateOf(false) }
 
+    fun inputActive(): Boolean = nameFocused.value
+
     var contentPull by remember { mutableFloatStateOf(0f) }
-    val contentConnection = remember(closeThreshold, visible) {
+    val contentConnection = remember(motion, scrollState, visible, density) {
         object : NestedScrollConnection {
             override fun onPostScroll(
                 consumed: Offset,
@@ -113,17 +115,20 @@ fun ProjectDetailSheet(
                 ) {
                     return Offset.Zero
                 }
+                if (contentPull == 0f) scope.launch { motion.takeOver() }
                 contentPull += available.y
                 if (visible) motion.dragBy(available.y)
                 return Offset(0f, available.y)
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (visible && !gestureFromInput.value && contentPull > closeThreshold) {
-                    onCloseRequested()
-                    motion.settle(scope, 0f, NautileMotion.StandardEffects)
-                } else if (visible && contentPull > 0f) {
-                    motion.settle(scope, 0f, NautileMotion.BoundaryRebound)
+                if (visible && !gestureFromInput.value && contentPull > 0f) {
+                    if (motion.shouldCommit(density, contentPull, available.y)) {
+                        onCloseRequested()
+                        motion.settle(scope, 0f, NautileMotion.StandardEffects)
+                    } else {
+                        motion.settle(scope, 0f, NautileMotion.BoundaryRebound)
+                    }
                 }
                 contentPull = 0f
                 return Velocity.Zero
@@ -134,75 +139,46 @@ fun ProjectDetailSheet(
     if (!motion.rendered) return
 
     val scrimColor = MaterialTheme.colorScheme.scrim
-    val sheetShape = MaterialTheme.shapes.extraLarge.copy(
-        bottomStart = CornerSize(0.dp),
-        bottomEnd = CornerSize(0.dp),
-    )
+    val sheetShape = nautileSheetShape()
+    val sheetInsets = nautileSheetBottomInsets()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned { boxOrigin.value = it.positionInRoot() }
-            // T-084：祖先层 Initial pass 观察下拉，不与 verticalScroll 竞争；
-            // 仅内容不可滚动且向下超过 64dp 时请求关闭，不消费事件、不遮挡子任务点击。
+            // 祖先层 Initial pass 观察下拉，不与 verticalScroll 竞争；拖拽柄由自身手势处理。
             // T-088：输入框聚焦或起点在输入框内时整段手势不参与下拉关闭。
-            .pointerInput(closeThreshold, visible) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(
-                        requireUnconsumed = false,
-                        pass = PointerEventPass.Initial,
-                    )
-                    gestureFromInput.value = nameFocused.value ||
-                        nameBounds.value?.contains(down.position + boxOrigin.value) == true
-                    var totalDown = 0f
-                    var started = false
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!gestureFromInput.value &&
-                            !scrollState.canScrollBackward &&
-                            !scrollState.canScrollForward
-                        ) {
-                            val dy = change.positionChange().y
-                            if (!started) {
-                                if (abs(dy) < viewConfiguration.touchSlop) {
-                                    if (!change.pressed) break
-                                    continue
-                                }
-                                started = true
-                                // 拖动开始即接管进入动画（在外部作用域执行，避免受限挂起作用域限制）。
-                                if (visible) scope.launch { motion.takeOver() }
-                            }
-                            if (dy > 0f) {
-                                totalDown += dy
-                                if (visible) motion.dragBy(dy)
-                            }
-                        }
-                        if (!change.pressed) {
-                            if (visible && !gestureFromInput.value && totalDown > closeThreshold) {
-                                onCloseRequested()
-                                motion.settle(scope, 0f, NautileMotion.StandardEffects)
-                            } else if (visible && !gestureFromInput.value && totalDown > 0f) {
-                                motion.settle(scope, 0f, NautileMotion.BoundaryRebound)
-                            }
-                            totalDown = 0f
-                            break
-                        }
-                    }
-                }
-            },
+            .nautileSheetPullDown(
+                motion = motion,
+                visible = { currentVisible },
+                scope = scope,
+                onCommitClose = onCloseRequested,
+                pass = PointerEventPass.Initial,
+                canStart = {
+                    !scrollState.canScrollBackward && !scrollState.canScrollForward
+                },
+                isExcluded = { point ->
+                    val excluded = inputActive() ||
+                        nameBounds.value?.contains(point + boxOrigin.value) == true ||
+                        handleBounds.value?.contains(point + boxOrigin.value) == true
+                    gestureFromInput.value = excluded
+                    excluded
+                },
+            ),
     ) {
-        // 遮罩 alpha 在图层中读取动效值，避免逐帧重组（MOT-08、COL-10）。
+        // 遮罩 alpha 在图层中读取动效值，并随拖拽位移联动（MOT-08.3、COL-10）。
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = motion.scrim.value }
+                .graphicsLayer { alpha = motion.scrim.value * motion.dragScrimFactor() }
                 .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA)),
         )
         Surface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                // inset 只在此消费一次：键盘与导航栏取较大者（SPC-08、CMP-17）。
+                .windowInsetsPadding(sheetInsets)
                 .fillMaxHeight(0.6f)
                 .onSizeChanged { motion.sheetHeightPx = it.height.toFloat() }
                 .graphicsLayer {
@@ -218,35 +194,15 @@ fun ProjectDetailSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(NautileSheetMetrics.HANDLE_AREA_DP)
-                        .pointerInput(closeThreshold, visible) {
-                            detectVerticalDragGestures(
-                                onDragStart = {
-                                    dragTotal = 0f
-                                    if (visible) scope.launch { motion.takeOver() }
-                                },
-                                onVerticalDrag = { _, dragAmount ->
-                                    dragTotal += dragAmount
-                                    if (visible) motion.dragBy(dragAmount)
-                                },
-                                onDragEnd = {
-                                    if (visible) {
-                                        if (dragTotal > closeThreshold) {
-                                            onCloseRequested()
-                                            motion.settle(scope, 0f, NautileMotion.StandardEffects)
-                                        } else if (dragTotal > 0f) {
-                                            motion.settle(scope, 0f, NautileMotion.BoundaryRebound)
-                                        }
-                                    }
-                                    dragTotal = 0f
-                                },
-                                onDragCancel = {
-                                    dragTotal = 0f
-                                    if (visible) {
-                                        motion.settle(scope, 0f, NautileMotion.BoundaryRebound)
-                                    }
-                                },
-                            )
-                        },
+                        .onGloballyPositioned { handleBounds.value = it.boundsInRoot() }
+                        .nautileSheetPullDown(
+                            motion = motion,
+                            visible = { currentVisible },
+                            scope = scope,
+                            onCommitClose = onCloseRequested,
+                            // 输入框聚焦时拖拽柄也不参与下拉（T-088）。
+                            isExcluded = { inputActive() },
+                        ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(
@@ -262,8 +218,12 @@ fun ProjectDetailSheet(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = NautileSpacing.space4)
-                        .padding(bottom = NautileSpacing.space4)
+                        .padding(
+                            start = NautileSpacing.space6,
+                            end = NautileSpacing.space6,
+                            top = NautileSpacing.space2,
+                            bottom = NautileSpacing.space6,
+                        )
                         .verticalScroll(scrollState)
                         .nestedScroll(contentConnection),
                 ) {
@@ -315,7 +275,7 @@ fun ProjectDetailSheet(
                                         .fillMaxWidth()
                                         .clickable { onOpenChild(child.id) }
                                         .testTag("project_child_${child.id.value}")
-                                        .padding(vertical = 6.dp),
+                                        .padding(vertical = NautileSpacing.space2),
                                 ) {
                                     Text(child.title, style = MaterialTheme.typography.bodyMedium)
                                     Text(

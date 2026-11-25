@@ -76,6 +76,7 @@ fun AppRoot(
     val fullScreenStack by navigation.fullScreenStack.collectAsStateWithLifecycle()
     val overlayEntry by overlays.top.collectAsStateWithLifecycle()
     val topFullScreen = fullScreenStack.lastOrNull()
+    val fullScreenDepth = fullScreenStack.size
     val predictiveBack = remember { PredictiveBackCoordinator() }
     val predictiveProgress by predictiveBack.progress.collectAsStateWithLifecycle()
 
@@ -90,13 +91,27 @@ fun AppRoot(
     val pushScrim = remember { Animatable(if (topFullScreen == null) 0f else 1f) }
     var baseRendered by remember { mutableStateOf(topFullScreen == null) }
     var fullScreenMotionInitialized by remember { mutableStateOf(false) }
-    LaunchedEffect(topFullScreen) {
+    var lastFullScreenDepth by remember { mutableStateOf(fullScreenDepth) }
+    // pop 时保留最后一页到退出动画结束再移除（CMP-29），返回栈语义不变。
+    var displayedFullScreen by remember { mutableStateOf(topFullScreen) }
+    // pop 到上一个全屏页（设置根↔默认页）时，动画期间在下方绘制目标页。
+    var underlayFullScreen by remember { mutableStateOf<FullScreenPage?>(null) }
+    // 预测性返回手势完成时由系统动画收尾，不叠加 200ms 自绘 pop（MOT-09.2）。
+    var skipPopAnimation by remember { mutableStateOf(false) }
+    LaunchedEffect(topFullScreen, fullScreenDepth) {
+        val previousDepth = lastFullScreenDepth
+        lastFullScreenDepth = fullScreenDepth
         if (!fullScreenMotionInitialized) {
             fullScreenMotionInitialized = true
+            displayedFullScreen = topFullScreen
             baseRendered = topFullScreen == null
             return@LaunchedEffect
         }
-        if (topFullScreen != null) {
+        if (topFullScreen != null && fullScreenDepth >= previousDepth) {
+            // push：新页从右侧滑入，旧页左移 0.3×宽度，遮罩淡入（MOT-09.2）。
+            displayedFullScreen = topFullScreen
+            underlayFullScreen = null
+            skipPopAnimation = false
             baseRendered = true
             pushEnter.snapTo(0f)
             pushScrim.snapTo(0f)
@@ -106,11 +121,53 @@ fun AppRoot(
             }
             // push 完成后释放下层，回到“全屏时只组合子页”的既有语义。
             baseRendered = false
+        } else if (topFullScreen != null) {
+            // pop 到上一个全屏页（如默认页 → 设置根）：保留离开页到动画结束，
+            // 目标页作为下层绘制；位移 StandardSpatial（约 200ms）。
+            if (displayedFullScreen == null) {
+                displayedFullScreen = topFullScreen
+                baseRendered = false
+                pushEnter.snapTo(1f)
+                pushScrim.snapTo(1f)
+                return@LaunchedEffect
+            }
+            underlayFullScreen = topFullScreen
+            baseRendered = false
+            if (skipPopAnimation) {
+                skipPopAnimation = false
+                pushEnter.snapTo(0f)
+                pushScrim.snapTo(0f)
+            } else {
+                coroutineScope {
+                    launch { pushEnter.animateTo(0f, NautileMotion.StandardSpatial) }
+                    launch { pushScrim.animateTo(0f, NautileMotion.StandardEffects) }
+                }
+            }
+            displayedFullScreen = topFullScreen
+            underlayFullScreen = null
+            // 回到目标页的静止态。
+            pushEnter.snapTo(1f)
+            pushScrim.snapTo(1f)
         } else {
-            // pop 时页面状态已移除，直接显示下层，不叠加自绘退出动画（MOT-09.2）。
-            pushEnter.snapTo(0f)
-            pushScrim.snapTo(0f)
+            if (displayedFullScreen == null) {
+                baseRendered = true
+                return@LaunchedEffect
+            }
+            // pop 到一级页：当前页 0 → width、旧页 -0.3×width → 0、遮罩 0.32 → 0，
+            // 位移用 StandardSpatial（约 200ms），页面保留到动画结束（MOT-09.2、CMP-29）。
+            underlayFullScreen = null
             baseRendered = true
+            if (skipPopAnimation) {
+                skipPopAnimation = false
+                pushEnter.snapTo(0f)
+                pushScrim.snapTo(0f)
+            } else {
+                coroutineScope {
+                    launch { pushEnter.animateTo(0f, NautileMotion.StandardSpatial) }
+                    launch { pushScrim.animateTo(0f, NautileMotion.StandardEffects) }
+                }
+            }
+            displayedFullScreen = null
         }
     }
 
@@ -120,13 +177,28 @@ fun AppRoot(
             FullScreenPage.DefaultPage -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
         }
     }
+    // pop 动画期间仍按最后一页渲染，结束后才移除（CMP-29）。
+    val displayBackdrop = displayedFullScreen?.let { page ->
+        when (page) {
+            FullScreenPage.Settings -> PreviewBackdrop.Tab(activeTab)
+            FullScreenPage.DefaultPage -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
+        }
+    }
+    // pop 到上一个全屏页时，动画期间用只读实例绘制目标页，避免触发导航/数据副作用。
+    val underlayBackdrop = underlayFullScreen?.let { PreviewBackdrop.FullScreen(it) }
     val previewEnabled = topFullScreen != null &&
         predictiveBackEnabled &&
         predictiveBack.shouldPreview(topFullScreen, canLeave = true)
     if (previewEnabled) {
         PredictiveBackHandler { progressFlow ->
+            var hadProgress = false
             try {
-                progressFlow.collect { event -> predictiveBack.onProgress(event.progress) }
+                progressFlow.collect { event ->
+                    if (event.progress > 0f) hadProgress = true
+                    predictiveBack.onProgress(event.progress)
+                }
+                // 手势完成：以系统动画为准，不再播 200ms 自绘 pop，避免双动画（MOT-09.2）。
+                if (hadProgress) skipPopAnimation = true
             } finally {
                 // 取消或完成都释放下层组合；取消时协程被取消，不会走到 back()。
                 predictiveBack.reset()
@@ -209,8 +281,18 @@ fun AppRoot(
             }
         }
 
-        if (topFullScreen != null && previewBackdrop != null) {
-            // 遮罩：push 用 StandardEffects 淡入；预测手势进行中按进度映射，不播自绘动画。
+        if (displayedFullScreen != null && displayBackdrop != null) {
+            // 下层目标页（pop 到设置根时）；预测手势另有 previewContent 路径。
+            if (underlayBackdrop != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background),
+                ) {
+                    previewContent(underlayBackdrop)
+                }
+            }
+            // 遮罩：push 用 StandardEffects 淡入；pop 同 spec 淡出；预测手势进行中按进度映射。
             val scrimColor = MaterialTheme.colorScheme.scrim
             Box(
                 modifier = Modifier
@@ -222,7 +304,7 @@ fun AppRoot(
             )
             // 仅手势进行中组合下层页面；progress 归零后立即释放。
             if (previewEnabled && predictiveProgress > 0f) {
-                previewContent(previewBackdrop)
+                previewBackdrop?.let { previewContent(it) }
             }
             Box(
                 modifier = Modifier
@@ -235,7 +317,7 @@ fun AppRoot(
                                 predictiveProgress * size.width * 0.3f
                     },
             ) {
-                fullScreenContent(topFullScreen)
+                displayedFullScreen?.let { fullScreenContent(it) }
             }
         }
     }

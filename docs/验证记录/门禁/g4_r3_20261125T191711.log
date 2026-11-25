@@ -1,0 +1,124 @@
+============================================================
+G4-R3 复测记录（键盘与面板底间隙 + G4 交互回归）
+时间：2026-11-25T19:17:39+08:00
+任务号：G4-R3
+验收入口：上轮唯一失败项“键盘与面板底有空隙 439px”；本轮判据见文末
+============================================================
+
+[1] 版本与工作区
+head=1cba60cbb6e02a6d87e7a6666848ce373a1273c2
+branch=main
+dirty_entries=70（含本目录未提交的证据文件）
+apk=app/build/outputs/apk/debug/app-debug.apk md5=10d9e3940c779391d4fef83df8a2a51a
+设备=emulator-5554 nautile_api36(AVD) API36 x86_64 1080x2400 density420（模拟器，非真机）
+安装时间=2026-11-25 19:12:57（dumpsys package lastUpdateTime），versionName=0.1.0
+
+[2] diff 核对（相对上轮 G4-R2 证据 19:00:48）
+git status 业务改动文件均为 G4 累计未提交改动；按 mtime 判断上轮之后有变动的只有两个：
+  app/src/main/AndroidManifest.xml            19:07
+  .../ui/designsystem/NautileBottomSheet.kt   19:07
+其余上轮已存在：MainActivity.kt/AppRoot.kt/ProjectDetailSheet.kt/TaskDetailSheet.kt 18:28；NewTaskSheet.kt 18:47；
+AcSheetPullG4Test.kt 18:52；AcSettingsExitG4Test.kt 18:33；SheetDragMetricsG4Test.kt 18:33。
+构建与依赖未变：app/build.gradle.kts 2026-11-21 16:22；build.gradle.kts 2026-11-15 16:22；gradle/libs.versions.toml 2026-11-21 16:21。
+Manifest 差异仅：activity 增加 android:windowSoftInputMode="adjustResize" 与 3 行注释；exported/intent-filter 未动。
+NautileBottomSheet 差异为 KDoc 注释（说明依赖宿主 adjustResize、adjustPan 会双倍留白），inset 代码 nautileSheetBottomInsets()=ime.union(navigationBars.bottom) 与上轮一致，无 softInputMode 运行时分叉。
+限制：上轮文件未提交/未留存字节快照，无法做逐字节 diff；上述范围依据 mtime、当前内容与实际窗口属性。
+运行期核对：MainActivity 窗口 mAttrs sim={adjust=resize forwardNavigation}（上轮 R2 记录为 adjust=pan）。
+
+[3] 静态检查
+命令：bash scripts/check_ui_tokens.sh
+结果：见下文 [3a]（19 文件、8 条规则、命中 0、PASS）
+
+[3a] 静态检查实际输出（复跑）
+G1-A2 设计 token 静态检查
+时间：2026-11-25T19:17:39+08:00
+HEAD：1cba60cbb6e02a6d87e7a6666848ce373a1273c2
+扫描路径：app/src/main/java/io/github/mazilin/nautile/ui/theme
+          app/src/main/java/io/github/mazilin/nautile/ui/designsystem
+          app/src/main/java/io/github/mazilin/nautile/ui/AppRoot.kt
+          app/src/main/java/io/github/mazilin/nautile/ui/screen/todo
+============================================================
+
+[规则 1] 颜色字面量：Color(0x / Color.Black / Color.White / Color.Red（COL-01、NO-01；豁免 theme/Color.kt 种子色板）
+  命中 0
+[规则 2] 圆角字面量：RoundedCornerShape(<数字>（SHP-01、NO-02；豁免 theme/Theme.kt）
+  命中 0
+[规则 3] 动效字面量：tween( / spring( / durationMillis（MOT-03、NO-03；豁免 theme/NautileMotion.kt）
+  命中 0
+[规则 4] 文本图标：Text("☰/+/✓/×")（ICO-02、ICO-08、NO-05）
+  命中 0
+[规则 5] 固定比例分栏：weight(0.38f/0.62f)（CMP-10、NO-10）
+  命中 0
+[规则 6] 遮罩 alpha 字面量：0.32f（COL-10；豁免 theme/NautileSpacing.kt）
+  命中 0
+[规则 7] 依赖：material-icons-extended 出现在构建/依赖声明文件（build.gradle.kts settings.gradle.kts app/build.gradle.kts gradle/libs.versions.toml；ICO-02、ICO-09、NO-13）
+  命中 0
+[规则 8] 无限动画 API：CircularProgressIndicator / infiniteRepeatable / rememberInfiniteTransition（MOT-13）
+  命中 0
+
+------------------------------------------------------------
+检查文件数：19（ui/theme + ui/designsystem + ui/screen/todo 的 .kt，另加 ui/AppRoot.kt）
+命中总数：0
+RESULT: PASS
+静态复跑 EXIT=0
+
+[4] 刚性门禁
+命令：bash scripts/verify.sh G4-R3
+日志：docs/验证记录/门禁/verify_G4-R3_20261125T190847.log
+元数据：docs/验证记录/门禁/verify_G4-R3_20261125T190847.meta.txt
+四步（均 --rerun-tasks）：
+  assembleDebug EXIT=0
+  assembleDebugAndroidTest(compile-only) EXIT=0
+  testDebugUnitTest EXIT=0
+  lintDebug EXIT=0
+JVM 单测统计：suites=29 tests=163 failures=0 errors=0 skipped=0
+schema 产物：version 2（tasks/projects/detail），1.json 保留
+GATE RESULT: PASS
+门禁脚本进程 EXIT=0
+
+[5] 全量 connected
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks（上限 20 分钟）
+日志：docs/验证记录/门禁/g4_r3_connected_20261125T191711.log
+结果：BUILD SUCCESSFUL in 56s；suites=1 tests=129 failures=0 errors=0 skipped=0；gradle EXIT=0
+
+[6] 键盘态实测（模拟器真机态复核，非只信开发结论）
+方法：adb 点击新建按钮→点标题聚焦；dumpsys input_method 确认 mInputShown；dumpsys window windows 取 IME 窗口
+      父帧 y=128 + mGivenContentInsets 1389 = IME 顶 1517（touchable region (0,1517)-(1080,2400)）；
+      截图逐行像素定位面板可见底边（面板底色 248,247,251 与键盘底色 238,237,244 的分界），密度 2.625。
+新建面板（标题聚焦，键盘弹出）：
+  panel_bottom_y=1512  ime_top=1517  gap=4px=1.52dp  （连续 3 张截图结果相同）
+  dp 换算：4 / 2.625 = 1.52dp ≤ 8dp
+收起键盘（第一次系统返回，mInputShown=false，面板仍在）：
+  panel_bottom_y=2336，导航栏窗口顶=2337，差值 1px=0.38dp；内容底部（取消/创建）2238，24dp 内边距后贴导航栏 inset
+任务详情抽查（标题聚焦，键盘弹出）：
+  panel_bottom_y=1512  ime_top=1517  gap=4px=1.52dp
+说明：4px 为面板底边抗锯齿/阴影过渡，不是布局空隙；上轮为 439px≈167dp。
+
+[7] 交互回归（本机实际执行）
+- 内容区 40dp 下拉（键盘隐藏）：面板保留（回弹）
+- 内容区 200dp 下拉：面板关闭，列表任务保留
+- 标题聚焦 + 内容区 40dp 下拉：面板保留
+- 标题聚焦 + 内容区 200dp 下拉：面板保留（输入态排除下拉）
+- 点按遮罩：面板关闭
+- 新建面板 IME 两步返回：第一次返回仅收键盘且面板保留；第二次返回关闭面板
+- 无效标题：空标题点“创建”→ 显示“标题不能为空”且面板保留；再按返回被阻止（面板仍保留）；输入 G4R3check 后 IME Done 创建成功，面板关闭并在原位插入
+- 详情 IME 两步返回：第一次返回收键盘、详情保留；第二次返回关闭详情
+
+[8] 证据截图（docs/验证记录/门禁/，未提交）
+g4_r3_keyboard_newtask_20261125T191711.png    新建面板键盘态（面板底≈IME 顶）
+g4_r3_keyboard_detail_20261125T191711.png     任务详情键盘态
+g4_r3_keyboard_collapsed_20261125T191711.png  收键盘后面板贴导航栏 inset
+g4_r3_ime_invalid_block_20261125T191711.png   无效标题阻止创建
+g4_r3_focus_pull_40dp_stays_20261125T191711.png 聚焦态 40dp 下拉后面板保留
+截图规格：PNG 1080x2400
+
+[9] 未自动化 / 限制（不计入自动化通过项）
+- 仅模拟器（Gboard IME、手势导航）；真机 IME/厂商导航栏差异未验证，需人工在场
+- 28dp 视觉观感、拖拽 1:1 跟手体感、预测性返回预览动画未自动化
+- 未做长时间重复抖动统计；未做变异抽查（不允许修改业务代码）
+
+[10] 判定
+result=PASS
+judge=静态 PASS + 门禁 PASS（163/0/0）+ 全量 connected 129/0/0 + 键盘差值 1.52dp≤8dp（新建/详情）+ 交互回归全部通过
+next=交用户验收；截图待用户确认保留后按第九节归档
+============================================================

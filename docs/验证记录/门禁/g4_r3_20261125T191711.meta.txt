@@ -1,0 +1,31 @@
+task=G4-R3
+title=键盘与面板底间隙复测（adjustResize）+ G4 交互回归
+time=2026-11-25T19:17:46+08:00
+head=1cba60cbb6e02a6d87e7a6666848ce373a1273c2
+dirty_entries=71
+diff_check=after R2 19:00:48 only AndroidManifest.xml(19:07, +windowSoftInputMode=adjustResize & comment) and NautileBottomSheet.kt(19:07, KDoc comment only; inset logic unchanged); no test/build/deps changes (gradle files 11-15/11-21, tests 18:33-18:52); byte-diff vs R2 not reconstructable (R2 uncommitted, no snapshot)
+runtime_window_attr=MainActivity mAttrs sim={adjust=resize forwardNavigation} (R2 was adjust=pan)
+device=emulator-5554 nautile_api36(AVD) API36 x86_64 density420 1080x2400 (emulator, not real device)
+apk_md5=10d9e3940c779391d4fef83df8a2a51a install=2026-11-25 19:12:57
+
+ui_tokens=EXIT 0; 19 files, 8 rules, 0 hits; PASS
+verify_gate=EXIT 0; 4 steps EXIT 0 (assembleDebug, assembleDebugAndroidTest, testDebugUnitTest, lintDebug); unit tests=163 failures=0 errors=0 skipped=0; schema v2 ok; GATE PASS
+verify_log=docs/验证记录/门禁/verify_G4-R3_20261125T190847.log
+
+connected_tests=129 failures=0 errors=0 skipped=0 duration=56s EXIT=0
+connected_log=docs/验证记录/门禁/g4_r3_connected_20261125T191711.log
+
+keyboard_new_task=panel_bottom_y=1512 ime_top=1517 gap=4px=1.52dp (3/3 screenshots identical)
+keyboard_collapsed=panel_bottom_y=2336 navbar_top=2337 gap=1px=0.38dp; content(取消/创建) bottom=2238
+keyboard_task_detail=panel_bottom_y=1512 ime_top=1517 gap=4px=1.52dp
+keyboard_measure_method=adb taps + dumpsys input_method(mInputShown) + dumpsys window(IME parent 128 + mGivenContentInsets 1389 = 1517; touchable (0,1517)-(1080,2400)) + PNG row-color boundary
+prev_fail_gap=439px (~167dp) -> now 4px (~1.5dp)
+
+regression=content 40dp stays(rebound); content 200dp closes; focused 40dp stays; focused 200dp stays; scrim tap closes; new-task IME two-step back (ime hide then panel close); invalid empty title blocked with hint and back blocked; typed title + IME Done creates "G4R3check" and closes; detail IME two-step back OK
+screenshots=docs/验证记录/门禁/g4_r3_keyboard_newtask_20261125T191711.png, g4_r3_keyboard_detail_20261125T191711.png, g4_r3_keyboard_collapsed_20261125T191711.png, g4_r3_ime_invalid_block_20261125T191711.png, g4_r3_focus_pull_40dp_stays_20261125T191711.png (not committed)
+
+pass_items=static tokens; gate 163/0/0; full connected 129/0/0; panel bottom vs IME top 1.52dp (new task + task detail); collapsed flush to navbar inset (0.38dp); 40/200dp pull rules; scrim tap; IME two-step back; invalid title block; create success
+unautomated=real-device IME/vendor navbar variation; 28dp feel; drag 1:1 pixels; predictive-back preview; long-run flake repetition; mutation spot-check (business code edit not authorized)
+result=PASS
+judge=static+gate+connected 0/0+keyboard gap<=8dp+regression all pass
+next=user acceptance; screenshots pending user retention before archiving

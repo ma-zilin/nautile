@@ -1,0 +1,108 @@
+G4 第二轮独立复测记录（新建面板聚焦后遮罩下拉误关 → 开发改为 awaitEachGesture）
+
+时间：2026-11-25 18:48—19:01（Asia/Shanghai）
+代码版本：HEAD 1cba60cbb6e02a6d87e7a6666848ce373a1273c2 + 未提交 G4 改动
+设备：emulator-5554（nautile_api36 AVD，API 36，x86_64，密度 420，1080x2400，非真机）
+需求依据：需求基线 v2.2 AC-D-06/07/08/09、AC-N-21；设计 MOT-08/MOT-09.2/SPC-08/CMP-17/CMP-29
+角色：独立验证。本轮未改业务代码、构建与依赖；仅新增 1 条验证回归断言（见三）。
+
+一、diff 核对（相对上一轮验证 18:45:10）
+- 业务文件 mtime：MainActivity 18:28:44、AppRoot 18:28:44、NautileBottomSheet 18:28:44、
+  ProjectDetailSheet 18:28:44、TaskDetailSheet 18:28:44、NewTaskSheet 18:47:12。
+  只有 NewTaskSheet.kt（18:47:12）晚于上一轮验证完成时间，其余业务文件未变。
+- 测试：AcSettingsExitG4Test 18:33:57、AcSheetPullG4Test 18:36:50、SheetDragMetricsG4Test 18:33:33，均早于上一轮验证。
+- 构建/依赖：git status 中无 build.gradle.kts、libs.versions.toml、settings.gradle.kts 改动。
+- 结论：开发本轮只改 app/.../ui/screen/todo/NewTaskSheet.kt（根手势 detectTapGestures → awaitEachGesture
+  + touch slop 判定 + 拖动消费），与交接一致。
+
+二、命令与结果
+1) bash scripts/check_ui_tokens.sh
+   EXIT=0；扫描 19 个文件，8 条规则命中 0；RESULT: PASS（2026-11-25T18:48:29）
+2) bash scripts/verify.sh G4-R2（四步，--rerun-tasks）
+   EXIT=0
+   - assembleDebug EXIT=0
+   - assembleDebugAndroidTest(compile-only) EXIT=0
+   - testDebugUnitTest EXIT=0
+   - lintDebug EXIT=0
+   - JVM：suites=29 tests=163 failures=0 errors=0 skipped=0
+   - schema：1.json 保留，2.json version 2（tasks/projects/detail），EXIT=0
+   - GATE RESULT: PASS
+   日志：docs/验证记录/门禁/verify_G4-R2_20261125T184856.log
+3) 定点复跑（上轮两个失败用例所在类 + 设置退出类）
+   ./gradlew :app:connectedDebugAndroidTest --rerun-tasks \
+     -Pandroid.testInstrumentationRunnerArguments.class=...AcSheetPullG4Test,...AcSettingsExitG4Test
+   EXIT=0；tests=23 failures=0 errors=0 skipped=0（20 + 3）
+   上轮两个失败用例：
+   - G4_T088_new_task_input_focused_scrim_drag_does_not_close（200dp）：PASS
+   - G4_T088_new_task_input_focused_scrim_40dp_drag_does_not_close（40dp）：PASS
+   日志：docs/验证记录/门禁/g4_r2_targeted_20261125T190048.log
+4) 全量 connected（--rerun-tasks）
+   run1 EXIT=0，耗时 56.3s；tests=128 failures=0 errors=0 skipped=0
+   日志：docs/验证记录/门禁/g4_r2_connected_run1_20261125T190048.log
+   （注：run1 后验证 Agent 补 1 条遮罩点按回归断言，见三；随后 run2 复跑全量）
+   run2 EXIT=0，耗时 55.9s；tests=129 failures=0 errors=0 skipped=0
+   日志：docs/验证记录/门禁/g4_r2_connected_run2_20261125T190048.log
+   逐类失败分类：无失败项。
+   Gradle 日志中 logcat reader failed（Stream closed）为测试框架日志采集线程提示，不影响结果与退出码。
+
+三、验证 Agent 新增断言（测试代码，不涉业务）
+- app/src/androidTest/.../AcSheetPullG4Test.kt 新增 1 例：
+  G4_T088_new_task_scrim_tap_still_closes —— 点按遮罩仍请求关闭一次并移除面板。
+  目的：本次把根级 detectTapGestures 换成带 slop 的手势循环后，需防止“点按被误判成拖动”。
+  单独运行该类：tests=21 failures=0；该用例 PASS。
+  说明：该行为改造前已存在，属回归保护，不适用“先红后绿”；未削弱或删除任何既有断言。
+
+四、真实应用交互抽查（emulator-5554，adb + uiautomator + 截图）
+设备状态：应用冷/热启动均可；Gboard 键盘可见（mInputShown=true，ime 顶点 y=1517，高 883px）。
+1) 原缺陷复现路径（聚焦 + 收键盘 + 遮罩下拉 40dp）
+   打开新建面板 → 点标题聚焦 → 返回键收键盘 → 遮罩区 (540,400)→(540,505) 200ms
+   结果：面板保留（uiautomator 仍有“新建/取消/创建”）。修复生效。
+   截图：docs/验证记录/门禁/g4_r2_focus_scrim_40dp.png
+2) 内容区下拉 40dp（低于阈值）
+   (540,1600)→(540,1705) 200ms；结果：面板保留（回弹）。
+   截图：docs/验证记录/门禁/g4_r2_content_40dp.png
+3) 内容区下拉 200dp（超阈值）
+   (540,1600)→(540,2125) 250ms；结果：面板关闭（uiautomator 无“新建”）。
+4) 点按遮罩
+   重开面板后点 (540,800)；结果：面板关闭。
+5) 键盘无空隙（截图判定）：不通过。
+   - 聚焦标题后等待 6—8s 的稳定态，逐行像素分析（x=20）：
+     遮罩 0—204 / 面板白 206—1074 / 遮罩 1075—1516 / 键盘 1517—2399。
+     面板底边与键盘顶边之间存在 439px 灰色遮罩，约 167dp（密度 420）。
+   - 复现次数：同进程 3 次 + 冷启动 1 次 = 4/4 全部出现同一空隙。
+   - 截图：docs/验证记录/门禁/g4_r2_new_task_keyboard_20261125T1856.png、
+           docs/验证记录/门禁/g4_r2_kb_coldstart.png
+   - 几何事实：MainActivity 窗口 frame=[0,0][1080,2400]，uiautomator 根节点=[0,0][1080,1958]；
+     系统 InsetsSource：ime=[0,1517][1080,2400]（底 883），navigationBars 底 63，
+     statusBars 顶 128；窗口 mAttrs 为 sim={adjust=pan ...}（adjustPan，非 adjustResize）、
+     EDGE_TO_EDGE_ENFORCED。
+   - 原因推测（待开发确认）：adjustPan 使窗口内容整体上移（约 442px），同时
+     NewTaskSheet 的 windowInsetsPadding(ime ∪ navigationBars) 再次按 883px 留白，
+     两者叠加导致面板被抬高约 167dp；属既有布局/窗口配置问题，本轮 NewTaskSheet 手势 diff 未改布局。
+   - 与上一轮证据的差异：上一轮 g4_new_task_keyboard_*.png 测得键盘仅 435px 且面板贴齐，
+     本轮同一操作在稳定态键盘高 883px 且出现空隙；上一轮“无空隙”结论本轮不可复现。
+
+五、通过项（程序证据）
+- 静态 token 检查 PASS（8 规则 0 命中）。
+- 门禁 PASS：JVM 163/0/0、lint EXIT=0、schema v2 正常、四步 EXIT=0。
+- 全量 connected 129/0/0（含新增回归断言），上轮两个失败断言均转 PASS。
+- 阈值/回弹/速度、输入框起手排除、无效字段阻止、设置 pop 200ms 等既有 20+3 例全部通过。
+- 真机交互抽查 1)—4) 通过。
+
+六、实际失败 / 未通过
+- 人工截图项“键盘与面板之间无空隙”不成立：稳定态空隙 439px（约 167dp），4/4 复现。
+  影响：输入时面板悬浮在键盘上方，遮罩从空隙露出，用户可点空隙误触关闭；违反 SPC-08/CMP-17
+  的“键盘与导航栏取较大者、只消费一次”预期。
+  归属：不是本轮 NewTaskSheet 手势 diff 引入（布局代码未变），需开发另开任务处理；本轮不修业务代码。
+
+七、未执行 / 不能自动判定
+- 真机（非模拟器）上的 IME 空隙、28dp 圆角手感、拖拽 1:1 像素：仅模拟器截图与语义树。
+- 系统预测返回手势松手前预览：公开 API 不可观测。
+- 稳定性重复：全量 connected 本轮 2 次（128、129 例）均 0 失败；未做更多轮 flake 统计。
+- 变异抽查：本轮未授权修改业务代码，未注入业务 bug。
+- TaskDetailSheet/ProjectDetailSheet 的键盘空隙未单独复测（无任务数据），推断同源。
+
+八、结论
+静态 PASS；门禁 PASS（163 单测 0 失败）；全量 connected 129/0/0，上轮 2 个失败用例已修复；
+真实应用交互 4 项抽查通过。但人工截图项“键盘无空隙”实测失败（439px 空隙，4/4 复现）。
+本轮判定：自动化判决 PASS；G4 整体因键盘空隙未达“全部通过”，待用户裁决是否阻断验收。

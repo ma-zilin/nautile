@@ -6,10 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -277,11 +274,7 @@ class MainActivity : ComponentActivity() {
                     var lastProjectDetail by remember { mutableStateOf(projectDetailState) }
                     if (projectDetailState != null) lastProjectDetail = projectDetailState
                     lastProjectDetail?.let { detail ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .windowInsetsPadding(WindowInsets.systemBars),
-                        ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
                             ProjectDetailSheet(
                                 state = detail,
                                 onNameChanged = todoViewModel::onProjectNameChanged,
@@ -309,11 +302,7 @@ class MainActivity : ComponentActivity() {
                     var lastTaskDetail by remember { mutableStateOf(taskDetailState) }
                     if (taskDetailState != null) lastTaskDetail = taskDetailState
                     lastTaskDetail?.let { detail ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .windowInsetsPadding(WindowInsets.systemBars),
-                        ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
                             TaskDetailSheet(
                                 state = detail,
                                 onTitleChanged = todoViewModel::onTaskTitleChanged,
@@ -330,11 +319,7 @@ class MainActivity : ComponentActivity() {
                     var lastNewTask by remember { mutableStateOf(newTaskState) }
                     if (newTaskState != null) lastNewTask = newTaskState
                     lastNewTask?.let { state ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .windowInsetsPadding(WindowInsets.systemBars),
-                        ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
                             NewTaskSheet(
                                 state = state,
                                 onKindChanged = todoViewModel::onNewTaskKindChanged,

@@ -1,0 +1,31 @@
+task=G4
+title=面板下拉关闭、insets 与设置退出动画
+time=2026-11-25T18:45:10+08:00
+head=1cba60cbb6e02a6d87e7a6666848ce373a1273c2
+worktree=uncommitted G4 changes (6 business files modified by developer; tests added by verifier)
+device=emulator-5554 nautile_api36(AVD) API36 x86_64 (emulator, not real device)
+requirements=需求基线 v2.2 AC-D-06/07/08/09, AC-N-21; 设计 MOT-08/MOT-09.2/SPC-08/CMP-17/CMP-29
+
+ui_tokens=EXIT 0; 8 rules 0 hits; PASS
+verify_gate=EXIT 0; 4 steps EXIT 0; unit tests=163 failures=0 errors=0; schema v2 ok; GATE PASS
+verify_log=docs/验证记录/门禁/verify_G4_20261125T184435.log
+connected_tests=128
+connected_failures=2
+connected_errors=0
+connected_duration=56s
+connected_log=docs/验证记录/门禁/g4_connected_20261125T183828.log
+red_baseline_tests=20
+red_baseline_failures=8
+red_baseline_log=docs/验证记录/门禁/g4_red_baseline_20261125T184510.log
+
+new_tests=SheetDragMetricsG4Test(3 JVM); AcSheetPullG4Test(20 UI); AcSettingsExitG4Test(3 UI)
+fail_class_business=NewTaskSheet focused + scrim drag dismisses (detectTapGestures treats drag as tap while pull excluded)
+fail_tests=G4_T088_new_task_input_focused_scrim_drag_does_not_close; G4_T088_new_task_input_focused_scrim_40dp_drag_does_not_close
+manual_repro=adb: focus title -> hide IME -> 40dp scrim swipe -> panel closed; uiautomator confirmed
+screenshots=docs/验证记录/门禁/g4_*.png (g4_new_task_open, g4_new_task_keyboard, g4_new_task_pull_40dp, g4_detail_task, g4_settings_pop_mid, g4_T088_focus_noime_scrim_40dp)
+screenshot_check=file: PNG 1080x2400 (RGBA/RGB), non-interlaced
+
+pass_items=threshold formula/velocity; 200dp close once; 40/70/80/100dp rebound; input-origin drag excluded; invalid field blocked; nav hidden; keyboard usable; settings pop keep-until-200ms; predictive-back stack unchanged; static tokens; 28dp shape; single inset consumption
+unautomated=real-device IME gap/28dp feel/drag 1:1 pixels; system predictive-back preview; flake repetition; mutation spot-check (business-code edit not authorized this round)
+verdict=NOT PASS (1 business defect, 2 assertions); static PASS, verify PASS, connected 126/128
+next=hand T-088 NewTaskSheet scrim tap vs drag defect to developer; re-test the 2 assertions after fix

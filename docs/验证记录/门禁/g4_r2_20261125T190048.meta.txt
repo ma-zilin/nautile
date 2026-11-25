@@ -1,0 +1,38 @@
+task=G4-R2
+title=新建面板聚焦后遮罩下拉误关修复复测
+time=2026-11-25T19:00:48+08:00
+head=1cba60cbb6e02a6d87e7a6666848ce373a1273c2
+dirty_entries=53
+diff_check=only NewTaskSheet.kt mtime 18:47:12 later than last round 18:45:10; other business files 18:28:44; tests 18:33-18:36; no build/deps changes
+device=emulator-5554 nautile_api36(AVD) API36 x86_64 density420 1080x2400 (emulator, not real device)
+
+ui_tokens=EXIT 0; 19 files, 8 rules 0 hits; PASS
+verify_gate=EXIT 0; 4 steps EXIT 0; unit tests=163 failures=0 errors=0 skipped=0; schema v2 ok; GATE PASS
+verify_log=docs/验证记录/门禁/verify_G4-R2_20261125T184856.log
+
+targeted_tests=23 failures=0 errors=0 (AcSheetPullG4Test 20 + AcSettingsExitG4Test 3)
+targeted_log=docs/验证记录/门禁/g4_r2_targeted_20261125T190048.log
+prev_fail_case_200dp=G4_T088_new_task_input_focused_scrim_drag_does_not_close PASS
+prev_fail_case_40dp=G4_T088_new_task_input_focused_scrim_40dp_drag_does_not_close PASS
+
+connected_run1_tests=128 failures=0 errors=0 skipped=0 duration=56.3s EXIT=0
+connected_run1_log=docs/验证记录/门禁/g4_r2_connected_run1_20261125T190048.log
+connected_run2_tests=129 failures=0 errors=0 skipped=0 duration=55.9s EXIT=0
+connected_run2_log=docs/验证记录/门禁/g4_r2_connected_run2_20261125T190048.log
+connected_fail_classes=none
+
+verifier_added_test=G4_T088_new_task_scrim_tap_still_closes (regression guard; class run 21/0/0 PASS)
+spotcheck_focus_scrim_40dp=panel stays (fix verified on device)
+spotcheck_content_40dp=panel stays (rebound)
+spotcheck_content_200dp=panel closes
+spotcheck_scrim_tap=panel closes
+keyboard_gap=FAIL: sheet bottom y=1074, keyboard top y=1517, scrim gap 439px (~167dp), 4/4 repro (3 in-process + 1 cold start)
+keyboard_gap_geometry=window frame 1080x2400, uia root 1080x1958, ime bottom 883, navbar 63, window softInputMode adjust=pan; double offset hypothesis
+screenshots=docs/验证记录/门禁/g4_r2_new_task_open_20261125T1856.png, g4_r2_new_task_keyboard_20261125T1856.png, g4_r2_focus_scrim_40dp.png, g4_r2_content_40dp.png, g4_r2_kb_coldstart.png (not committed)
+screenshot_check=PNG 1080x2400 RGBA non-interlaced
+
+pass_items=static tokens; gate 163/0/0; full connected 129/0/0; threshold formula/velocity; 40/70/80/100dp rebound; input-origin drag excluded; focused scrim pull does not close (200/40dp, real device + UI test); invalid field blocked; settings pop 200ms; predictive-back stack
+fail_items=keyboard no-gap acceptance (419px/167dp scrim gap), pre-existing layout/window-config issue, NOT introduced by this round NewTaskSheet gesture diff
+unautomated=real-device IME gap/28dp feel/drag 1:1 pixels; system predictive-back preview; extended flake repetition; mutation spot-check (business code edit not authorized)
+verdict=AUTOMATED PASS (static+gate+connected 0/0, both previous failures fixed); G4 overall NOT fully pass due to keyboard gap, awaiting user decision
+next=hand keyboard-gap defect (layout/softInputMode + ime padding double offset) to developer as separate task; screenshots pending user retention
