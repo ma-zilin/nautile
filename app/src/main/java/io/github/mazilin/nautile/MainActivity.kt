@@ -408,6 +408,7 @@ class MainActivity : ComponentActivity() {
  *
  * 选择器常驻组合，由 [open] 驱动开合：打开播放入场，覆盖层关闭后仍保留到退出动效结束再停止绘制，
  * 不改动 OverlayBackStack 的关闭时机与返回结果。
+ * G3 起为全屏左右分屏：inset 由选择器自身各消费一次，宿主不再加 padding（CMP-10、SPC-05）。
  */
 @Composable
 private fun GtdSelectorOverlay(
@@ -418,22 +419,15 @@ private fun GtdSelectorOverlay(
     onClose: () -> Unit,
     onExitFinished: () -> Unit,
 ) {
-    // 与 AppRoot 内容区一致地避开系统栏，保持“可用高度 60%”的既有形态（MOT-12）。
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.systemBars),
-    ) {
-        GtdSelector(
-            currentPosition = currentPosition,
-            tasks = tasks,
-            onSelect = onSelect,
-            onClose = onClose,
-            animateReveal = true,
-            visible = open,
-            onExitFinished = onExitFinished,
-        )
-    }
+    GtdSelector(
+        currentPosition = currentPosition,
+        tasks = tasks,
+        onSelect = onSelect,
+        onClose = onClose,
+        animateReveal = true,
+        visible = open,
+        onExitFinished = onExitFinished,
+    )
 }
 
 /** 启动期轻量占位（P-03）：不写业务数据，读取完成后进入默认/上次页。 */

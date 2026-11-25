@@ -1,0 +1,150 @@
+G3 闸门：GTD 选择器全屏左右分屏（独立验证）
+时间：2026-11-25 17:23—17:32（Asia/Shanghai）
+验证角色：独立验证 Agent；不改业务代码，只改测试定位与归档证据
+
+一、检查对象与版本
+- HEAD：c156fa202efe1dd68e1b85a973e66ffa87f56375（main，未提交改动如下）
+- 未提交业务改动：
+  - app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/GtdSelector.kt（全屏 Surface、左右分栏、insets 单次消费、开合 progress）
+  - app/src/main/java/io/github/mazilin/nautile/MainActivity.kt（GTD 宿主移到根级 Box，宿主不再加 systemBars padding）
+- 未提交测试改动：app/src/androidTest/java/io/github/mazilin/nautile/verification/AcTodoT07Test.kt（定位最小更新，见第三节）
+- 未提交证据/截图：docs/验证记录/门禁/g3_*、verify_G3_20261125T172343.*、g2_*（g2 为前序遗留，非本次）
+- 对应需求/设计：
+  - 用户 2026-11-25 决定：GTD 选择器全屏左右分屏（左列 max+24dp，右侧余下宽度，无遮罩、insets 一次）
+  - .plans/设计/01_视觉与动效标准.md：MOT-07 主方案、CMP-10/11/13/14、SPC-05、SHP-08、§1.2 颜色角色
+  - docs/需求基线.md v2.14：FR-G-15、AC-G-04/05、AC-N-21（注意：基线仍写“半屏”，见第九节）
+- 设备：emulator-5554（AVD nautile_api36，Android 16 / API 36，模拟器非真机）
+  - 分辨率 1080×2400，density 2.625（420dpi），fontScale 1.0
+  - statusBars 128px（48.76dp，含 cutout），navigationBars 63px（24dp），navigation_mode=2（手势）
+  - 执行时已唤醒、解锁、stayon；无人工弹窗。真机条件未覆盖。
+
+二、静态检查
+命令：bash scripts/check_ui_tokens.sh
+时间：2026-11-25T17:23:40+08:00
+退出码：0
+结果：RESULT: PASS；检查文件 19；命中总数 0
+- 规则 1 颜色字面量 0；规则 2 圆角字面量 0；规则 3 动效字面量 0；规则 4 文本图标 0；
+- 规则 5 固定比例分栏 0（无 weight(0.38f/0.62f)）；规则 6 遮罩 0.32f 0（旧 scrim 已移除）；
+- 规则 7 material-icons-extended 0；规则 8 无限动画 API 0。
+
+三、既有测试定位更新（授权范围内，最小）
+1) 触发原因（第一轮全量 connected）：
+   - tests=105 failures=2 errors=0 skipped=0（EXIT=1）
+   - 失败：
+     - AcTodoT07Test.AC_G_05_boundary_pull_on_empty_list_commits_to_adjacent
+       java.lang.AssertionError: expected:<NEXT_ACTION> but was:<null>（AcTodoT07Test.kt:286）
+     - AcTodoT07Test.AC_G_05_short_list_boundary_pull_commits_to_adjacent
+       java.lang.AssertionError: expected:<NEXT_ACTION> but was:<null>（AcTodoT07Test.kt:345）
+2) 分类：测试定位问题（非实现回归）。依据：
+   - 全屏后 GtdSelector 自身 `windowInsetsPadding(systemBars)`；Compose 测试默认 `swipeUp()/swipeDown()` 起手/收手在根节点物理边缘，
+     落在 statusBars(128px)/navigationBars(63px) inset 内，事件未进入选择器内容层；
+   - 同一手势在设备上从内容区（x=700，y=1900→700、700→1600）可正常切换（见第五节），说明业务手势与阈值未失效；
+   - 断言预期值、方向、距离均未降低。
+3) 修改内容（仅 AcTodoT07Test.kt，共 4 处）：
+   - 空清单上拉、短清单上拉：改为内容区内 `swipeUp(startY=center.y+height*0.25f, endY=center.y-height*0.25f)`；
+   - 首位下拉：改为内容区内 `swipeDown(startY=center.y-height*0.25f, endY=center.y+height*0.25f)`（原默认起手在状态栏 inset，之前是“未真正触发”的假通过，现恢复真实触发）；
+   - 失败提示“半屏未超阈值”改为“全屏未超阈值”（用户 2026-11-25 全屏决定）。
+   - 未改其它断言、未改业务代码/构建/依赖。
+4) 说明：第一轮 connected 的 XML/HTML 被第二轮 `--rerun-tasks` 覆盖；第一轮控制台日志已留存
+   `g3_connected_run1_20261125T172820.log`，上述失败用例与断言行来自第一轮实际输出，未重写。
+
+四、刚性门禁（scripts/verify.sh G3）
+命令：bash scripts/verify.sh G3
+日志：docs/验证记录/门禁/verify_G3_20261125T172343.log
+元数据：docs/验证记录/门禁/verify_G3_20261125T172343.meta.txt
+四步均 --rerun-tasks：
+- assembleDebug EXIT=0（BUILD SUCCESSFUL）
+- assembleDebugAndroidTest(compile-only) EXIT=0
+- testDebugUnitTest EXIT=0；统计 suites=28 tests=160 failures=0 errors=0 skipped=0
+- lintDebug EXIT=0
+- schema：1.json（历史）+2.json（当前）存在；version 2、tasks/projects/detail；内容检查 EXIT=0
+- connected 未在 verify.sh 内执行（脚本默认跳过），由下方单独执行
+- GATE RESULT: PASS
+
+五、全量 connected（模拟器）
+第一轮：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+- EXIT=1；tests=105 failures=2 errors=0 skipped=0；命令总耗时 49s（含构建）
+- 失败见第三节，已完成定位更新。
+第二轮（更新后复跑）：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+- EXIT=0；BUILD SUCCESSFUL in 49s；test-result-exit-code.txt=0
+- tests=105 failures=0 errors=0 skipped=0
+- 原始结果：docs/验证记录/门禁/g3_connected_results_20261125T172820.xml
+- 控制台：g3_connected_run2_20261125T172820.log
+- 说明：Gradle 在该次运行结束后卸载了应用包；功能核对已在第一轮后、复跑前用同一 app-debug.apk（17:25 构建）完成。
+
+六、全屏功能核对（设备程序化证据）
+应用：app-debug.apk（17:25 构建，与未提交业务代码一致）；启动 MainActivity，点 GTD 入口（74,217）。
+
+1) 全屏覆盖 / insets 一次 / 无遮罩
+- 选择器 Surface 覆盖 0..2399；左侧列底色从 y=128 开始（surfaceContainerLow），到 y=2336 结束；
+  y=0..127 与 y=2337..2399 为 Surface background，即状态栏上、导航栏下由 Surface 覆盖，内容区各避让一次。
+- 像素（浅色）：(20,60)=(254,251,255)；(20,1200)=(248,247,251)；(700,1200)=(254,251,255)；
+  (700,2380)=(254,251,255)。无半透明遮罩；打开时底部导航（待办/日程/日志/AI）不存在，关闭后恢复。
+- 关闭按钮 (954,128)-(1080,254)，紧贴状态栏下沿，说明 inset 只消费一次。
+2) 左列宽度 W_L
+- 五个可点击行 bounds 均为 x=0..280（280px=106.67dp），五项一致；
+- 最长标题“下一步行动”文本 bounds 宽 216px（82.29dp）；216px+2×12dp(63px)=279px；
+  实测 280px，差 1px=0.38dp ≤ 1dp；切换清单后仍为 280px。
+3) 右列宽度 W_R
+- 可用宽 W=1080（左右 systemBars inset 为 0）；W_R=1080−280=800px（304.76dp）；
+- y=1200 横扫 x=250..309：x=250..279 为左列色 (248,247,251)，x=280 起为右列色 (254,251,255)，
+  单步过渡，无空隙/重叠；右列标题左缘 x=322=280+42（16dp 内边距）。
+4) 点按切换与形态保持
+- 点“等待中”（140,563）：右列标题变为“等待中”；左列行仍 0..280；关闭按钮仍在 y=128..254；
+  底部导航不存在 → 切换后仍全屏。
+5) 边界拉动（从右列内容区起手）
+- 上拉提交：等待中 + (700,1900→700,700) → “将来／也许”（下一项）成功；
+- 上拉未超阈值：将来／也许 + (700,1500→700,1400，100px 原始位移，0.5 阻力≈19dp) → 仍“将来／也许”；
+- 首位下拉：收件箱 + (700,700→700,1600) → 仍“收件箱”（首尾不循环）；
+- 下拉提交：等待中 + (700,700→700,1600) → “下一步行动”（上一项）成功；
+- 下拉未超阈值：下一步行动 + (700,1500→700,1400) → 仍“下一步行动”。
+- 64dp 临界值：由 JVM AcGestureT07Test（63dp 不提交/64dp 提交，正负方向）与既有 Compose 用例覆盖，本节设备项只验证提交/不提交行为。
+6) 关闭三条路径
+- 关闭按钮（1017,191）：清单/“关闭”节点消失，底部导航恢复；
+- 空白左滑（900,1200→250,1200）：同上；
+- 系统返回 keyevent 4：同上。
+7) 无横向滚动
+- 打开态 uiautomator：scrollable=true 节点 0 个；所有节点最大 right=1080，无越界；
+- 既有 AcGtdHeaderT090Test 断言无 HorizontalScrollAxisRange（本轮 connected 通过）。
+8) 深色
+- 深色截图：左列 (31,31,35)、右列 (27,27,31)、边界 x=280；状态栏/导航栏带为右列背景色；分栏仍连续。
+9) 证据文件
+- 浅色截图：docs/验证记录/门禁/g3_gtd_fullscreen_20261125T172820.png
+  file: PNG image data, 1080 x 2400, 8-bit/color RGBA, non-interlaced
+- 深色截图：docs/验证记录/门禁/g3_gtd_fullscreen_dark_20261125T172820.png
+  file: PNG image data, 1080 x 2400, 8-bit/color RGBA, non-interlaced
+- uiautomator dump（同目录）：g3_uia_open、g3_uia_switch_waiting、g3_uia_pull_up_someday、
+  g3_uia_pull_small_up、g3_uia_pull_first_down、g3_uia_pull_down_prev、g3_uia_pull_small_down、
+  g3_uia_close_button、g3_uia_close_left_swipe、g3_uia_close_back（均含 _20261125T172820.xml）
+- 截图按用户要求不提交；当前为 untracked。
+
+七、判定
+- 静态：PASS（exit 0，0 命中）
+- 门禁：PASS（四步 EXIT=0；JVM 160/0/0；schema 内容 EXIT=0）
+- 全量回归：PASS（连接设备 105/0/0，EXIT=0）
+- 全屏功能核对：PASS（覆盖、左宽、右宽、切换、上下拉动提交/不提交、三条关闭、形态保持、无横向滚动）
+- G3 实现判决：PASS（模拟器范围）
+- 范围声明：以上为本次未提交改动在 emulator-5554 上的验证；不代表真机、其它设备、长清单与动效手感通过。
+
+八、未自动化 / 未覆盖（不计入通过项）
+1. 开合动效（Expressive spring、左列 alpha StandardEffects）、首帧终态、中途反向可打断、退出完成后移除：
+   仅代码与终态测试（AcGtdHeaderT090Test.acA2），未做逐帧/时序自动化。
+2. 动效观感、拉动阻力与手感、误触：需真机人工评审（规则要求人工在场；本次模拟器未据此声明通过）。
+3. 长清单普通滚动优先、到顶/到底后才预览：当前设备数据为空，未造长列表数据；既有用例为固定短数据。
+4. 200% 字体、窄屏、RTL、横屏下的左宽与五项完整性：未执行。
+5. 系统边缘返回手势与空白左滑/条目滑动的冲突（E-05a）：未自动化。
+6. 右列空态仍为 Text“该清单暂无任务”，未接 NautileEmptyState；右列未复用 TaskRow（设计 CMP-14、§11.1 第 7/8 项）。
+   不属本次全屏功能清单，未判为通过；需开发确认是否在 G3 收尾处理。
+7. 无遮罩/颜色层级为像素与静态规则证据，视觉层级最终观感仍属人工评审。
+
+九、材料冲突与待确认（交用户判断，不阻塞本次代码判决）
+- docs/需求基线.md v2.14 仍将 GTD 选择器称为“半屏页面”，FR-G-15/AC-G-04 为“半屏结构”，AC-G-05 仍有“半屏仍半屏”分支，AC-N-21 仍按半屏页面分类；
+  设计 .plans/设计/01_视觉与动效标准.md §11.2 第 6 项要求先登记需求变更 4.24，且“4.24 未落档前不据此判验收”。
+  当前 docs/需求变更记录.md 无 4.24。
+- 本次按用户 2026-11-25 全屏决定执行代码级验证；建议在交付/验收前由需求角色登记 4.24（全屏几何、术语、AC-G-04/05 与 AC-N-21 口径），
+  并经用户确认。代码 PASS 不等于需求基线已改。
+
+十、环境与可重复性
+- 命令、退出码、文件路径均在上文；日志不包含密钥或个人信息。
+- 模拟器状态：API36、1080×2400、420dpi、fontScale 1.0、手势导航、无锁屏。
+- 真实模型/网络/外部服务未使用；本次不涉及。

@@ -1,0 +1,20 @@
+task=G3
+time=2026-11-25T17:32:00+08:00
+head=c156fa202efe1dd68e1b85a973e66ffa87f56375
+dirty_entries=未提交：业务 2（GtdSelector.kt、MainActivity.kt）、测试 1（AcTodoT07Test.kt）、证据/截图若干（含前序 g2 两张）
+static=check_ui_tokens.sh EXIT=0，19 文件，0 命中，PASS
+verify=scripts/verify.sh G3；四步 EXIT=0；JVM suites=28 tests=160 failures=0 errors=0 skipped=0；schema EXIT=0；GATE PASS
+verify_log=docs/验证记录/门禁/verify_G3_20261125T172343.log
+connected_run1=EXIT=1；tests=105 failures=2 errors=0；失败均为 AcTodoT07Test 边界拉动在上拉时起手落在 systemBars inset 内（测试定位问题）
+connected_run2=EXIT=0；tests=105 failures=0 errors=0 skipped=0；BUILD SUCCESSFUL in 49s
+connected_results=docs/验证记录/门禁/g3_connected_results_20261125T172820.xml
+test_edit=app/src/androidTest/.../AcTodoT07Test.kt 4 处最小定位/文案更新（预期值与断言强度未降低；用户 2026-11-25 全屏决定）
+functional=PASS（全屏覆盖/insets 一次、W_L=280px 与 max+24dp 差 0.38dp、W_R=800px 边界 x=280、点按切换、上下拉动提交与不提交、首尾不循环、三条关闭路径、切换后仍全屏、无横向滚动、深色）
+screenshot_light=docs/验证记录/门禁/g3_gtd_fullscreen_20261125T172820.png（1080x2400 RGBA）
+screenshot_dark=docs/验证记录/门禁/g3_gtd_fullscreen_dark_20261125T172820.png（1080x2400 RGBA）
+device=emulator-5554 API36 1080x2400 420dpi fontScale=1.0 手势导航（模拟器，非真机）
+result=PASS
+judge=PASS（模拟器范围；静态+门禁+全量回归 0 failures/0 errors+全屏功能核对）
+not_automated=开合动效/可打断/首帧终态/退出移除、真机手感、长清单滚动优先、200%字体/窄屏/RTL/横屏、系统边缘手势冲突、右列空态与 TaskRow、视觉层级人工评审
+open_issue=需求基线 v2.14 仍为“半屏”，需求变更 4.24 未登记；设计 §11.2 第 6 项要求落档后再据此验收，建议交付前由需求角色登记并经用户确认
+log=docs/验证记录/门禁/g3_20261125T172820.log

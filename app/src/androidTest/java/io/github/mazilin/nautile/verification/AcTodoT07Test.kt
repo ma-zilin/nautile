@@ -281,7 +281,11 @@ class AcTodoT07Test {
             }
         }
 
-        composeRule.onRoot().performTouchInput { swipeUp() }
+        // 用户 2026-11-25 全屏决定：选择器自身消费 systemBars inset，
+        // 起手/收手落在 inset 内会丢失事件；改在内容区内拖动（方向与距离不变）。
+        composeRule.onRoot().performTouchInput {
+            swipeUp(startY = center.y + height * 0.25f, endY = center.y - height * 0.25f)
+        }
 
         composeRule.runOnIdle { assertEquals(GtdPosition.NEXT_ACTION, selected) }
     }
@@ -300,7 +304,10 @@ class AcTodoT07Test {
             }
         }
 
-        composeRule.onRoot().performTouchInput { swipeDown() }
+        // 全屏选择器自身消费 systemBars inset；起手/收手留在内容区内（方向不变）。
+        composeRule.onRoot().performTouchInput {
+            swipeDown(startY = center.y - height * 0.25f, endY = center.y + height * 0.25f)
+        }
 
         composeRule.runOnIdle { assertNull(selected) }
     }
@@ -323,7 +330,7 @@ class AcTodoT07Test {
             swipeDown(startY = center.y, endY = center.y + 30f)
         }
 
-        composeRule.runOnIdle { assertNull("半屏未超阈值不应切换清单", selected) }
+        composeRule.runOnIdle { assertNull("全屏未超阈值不应切换清单", selected) }
     }
 
     @Test
@@ -340,7 +347,10 @@ class AcTodoT07Test {
             }
         }
 
-        composeRule.onRoot().performTouchInput { swipeUp() }
+        // 全屏选择器自身消费 systemBars inset；起手/收手落在内容区内（方向与距离不变）。
+        composeRule.onRoot().performTouchInput {
+            swipeUp(startY = center.y + height * 0.25f, endY = center.y - height * 0.25f)
+        }
 
         composeRule.runOnIdle { assertEquals(GtdPosition.NEXT_ACTION, selected) }
     }
