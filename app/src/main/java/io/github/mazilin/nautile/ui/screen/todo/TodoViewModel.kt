@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.mazilin.nautile.domain.model.ClosedOutcome
 import io.github.mazilin.nautile.domain.model.GtdPosition
+import io.github.mazilin.nautile.domain.model.Priority
 import io.github.mazilin.nautile.domain.model.Project
 import io.github.mazilin.nautile.domain.model.ProjectId
+import io.github.mazilin.nautile.domain.model.ProjectStatus
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.domain.repository.ProjectRepository
@@ -20,11 +22,14 @@ import io.github.mazilin.nautile.domain.usecase.TaskCommandError
 import io.github.mazilin.nautile.domain.usecase.TaskCommandResult
 import io.github.mazilin.nautile.domain.usecase.TaskCommands
 import io.github.mazilin.nautile.domain.usecase.TaskFieldUpdate
+import java.time.LocalDate
+import java.time.LocalTime
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -68,6 +73,11 @@ class TodoViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val allProjects = projectRepository.observeAll()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** G6 项目菜单只列出活跃项目（CMP-34）：已结项/已放弃项目不可选。 */
+    val activeProjects: StateFlow<List<Project>> = allProjects
+        .map { projects -> projects.filter { it.status == ProjectStatus.ACTIVE } }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val confirmation = MutableStateFlow<ProjectConfirmation?>(null)
@@ -442,6 +452,69 @@ class TodoViewModel(
         newTaskState.update { current -> current?.copy(detail = text) }
     }
 
+    // ---- G6 属性选择（CMP-30—CMP-37）：选择即改内存状态，创建时一次写入 ----
+
+    /** 优先级清除即选择“无”（CMP-33）；不改其他属性。 */
+    fun onNewTaskPriorityChanged(priority: Priority) {
+        newTaskState.update { current -> current?.copy(priority = priority) }
+    }
+
+    /** 日期清除时一并清空时刻（时刻必须依附日期，CMP-32）。 */
+    fun onNewTaskDueDateChanged(date: LocalDate?) {
+        newTaskState.update { current ->
+            current?.copy(dueDate = date, dueTime = if (date == null) null else current.dueTime)
+        }
+    }
+
+    /** 无日期时忽略时刻写入，避免产生“只有时刻”的非法中间值。 */
+    fun onNewTaskDueTimeChanged(time: LocalTime?) {
+        newTaskState.update { current ->
+            if (current == null || current.dueDate == null) current else current.copy(dueTime = time)
+        }
+    }
+
+    /** 项目选择只改项目归属；null 表示无项目（CMP-34）。 */
+    fun onNewTaskProjectChanged(projectId: ProjectId?) {
+        newTaskState.update { current -> current?.copy(projectId = projectId) }
+    }
+
+    fun onNewTaskProjectDraftChanged(text: String) {
+        newTaskState.update { current ->
+            current?.copy(projectDraftName = text, projectDraftError = null)
+        }
+    }
+
+    /** 项目菜单内“新建项目”：成功后回填为当前项目并保留面板；失败保留名称与错误。 */
+    fun createProjectForNewTask() {
+        val current = newTaskState.value ?: return
+        if (current.creatingProject) return
+        if (ProjectRules.validateName(current.projectDraftName) != null) {
+            newTaskState.update { it?.copy(projectDraftError = "项目名称不能为空") }
+            return
+        }
+        viewModelScope.launch {
+            newTaskState.update { it?.copy(creatingProject = true, projectDraftError = null) }
+            when (val result = projectCommands.create(current.projectDraftName)) {
+                is ProjectCommandResult.Success -> newTaskState.update {
+                    it?.copy(
+                        projectId = result.project.id,
+                        projectDraftName = "",
+                        projectDraftError = null,
+                        creatingProject = false,
+                    )
+                }
+
+                is ProjectCommandResult.Invalid -> newTaskState.update {
+                    it?.copy(creatingProject = false, projectDraftError = "项目名称不能为空")
+                }
+
+                else -> newTaskState.update {
+                    it?.copy(creatingProject = false, projectDraftError = "创建失败，请重试")
+                }
+            }
+        }
+    }
+
     fun onNewProjectNameChanged(text: String) {
         newTaskState.update { current ->
             current?.copy(
@@ -495,10 +568,15 @@ class TodoViewModel(
         viewModelScope.launch {
             newTaskState.update { it?.copy(saving = true, error = null) }
             when (val result = taskCommands.create(
-                current.title,
-                current.targetPosition,
-                null,
-                current.detail,
+                title = current.title,
+                position = current.targetPosition,
+                projectId = current.projectId,
+                detail = current.detail,
+                priority = current.priority,
+                dueDate = current.dueDate,
+                // 防御：无日期时不写时刻，避免非法中间值。
+                dueTime = if (current.dueDate == null) null else current.dueTime,
+                manualOrder = null,
             )) {
                 is TaskCommandResult.Success -> {
                     newTaskState.value = null

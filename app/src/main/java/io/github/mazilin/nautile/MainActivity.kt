@@ -91,6 +91,7 @@ class MainActivity : ComponentActivity() {
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
                 val projectDetailState by todoViewModel.projectDetail.collectAsStateWithLifecycle()
                 val newTaskState by todoViewModel.newTask.collectAsStateWithLifecycle()
+                val newTaskProjects by todoViewModel.activeProjects.collectAsStateWithLifecycle()
                 val activeTab by container.navigationCoordinator.activeTab.collectAsStateWithLifecycle()
                 val imeVisible by container.keyboardCoordinator.imeVisible.collectAsStateWithLifecycle()
                 val overlayEntry by container.overlayBackStack.top.collectAsStateWithLifecycle()
@@ -322,11 +323,19 @@ class MainActivity : ComponentActivity() {
                         Box(modifier = Modifier.fillMaxSize()) {
                             NewTaskSheet(
                                 state = state,
+                                projects = newTaskProjects,
                                 onKindChanged = todoViewModel::onNewTaskKindChanged,
                                 onTargetChanged = todoViewModel::onNewTaskTargetChanged,
                                 onTitleChanged = todoViewModel::onNewTaskTitleChanged,
                                 onDetailChanged = todoViewModel::onNewTaskDetailChanged,
                                 onProjectNameChanged = todoViewModel::onNewProjectNameChanged,
+                                onPriorityChanged = todoViewModel::onNewTaskPriorityChanged,
+                                onDueDateChanged = todoViewModel::onNewTaskDueDateChanged,
+                                onDueTimeChanged = todoViewModel::onNewTaskDueTimeChanged,
+                                onProjectChanged = todoViewModel::onNewTaskProjectChanged,
+                                onProjectDraftChanged = todoViewModel::onNewTaskProjectDraftChanged,
+                                onCreateProjectForTask = todoViewModel::createProjectForNewTask,
+                                onClearDetail = { todoViewModel.onNewTaskDetailChanged("") },
                                 onCreate = {
                                     todoViewModel.createNewTask { closeNewTaskPanel() }
                                 },

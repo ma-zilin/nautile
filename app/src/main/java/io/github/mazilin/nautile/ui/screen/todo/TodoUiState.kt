@@ -2,9 +2,12 @@ package io.github.mazilin.nautile.ui.screen.todo
 
 import io.github.mazilin.nautile.domain.model.ClosedOutcome
 import io.github.mazilin.nautile.domain.model.GtdPosition
+import io.github.mazilin.nautile.domain.model.Priority
 import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.rule.TaskGroup
+import java.time.LocalDate
+import java.time.LocalTime
 
 /**
  * 待办页状态（S1-T07）：只承载当前 GTD 清单、默认分组与待确认的项目操作。
@@ -52,6 +55,19 @@ data class NewTaskUiState(
     val error: String? = null,
     val attempted: Boolean = false,
     val detail: String = "",
+    // ---- G6 属性（CMP-30—CMP-37）：新建面板未创建前只保存在内存，点“创建”一次性写入 ----
+    /** 优先级，默认无（CMP-33）。 */
+    val priority: Priority = Priority.NONE,
+    /** 截止日期；清除时同时清空 [dueTime]。 */
+    val dueDate: LocalDate? = null,
+    /** 可选时刻，必须依附 [dueDate]。 */
+    val dueTime: LocalTime? = null,
+    /** 所属项目；null 表示无项目。 */
+    val projectId: ProjectId? = null,
+    /** 项目菜单内“新建项目”的名称草稿（与 PROJECT 类型的 [projectName] 互不影响）。 */
+    val projectDraftName: String = "",
+    val projectDraftError: String? = null,
+    val creatingProject: Boolean = false,
 ) {
     val canLeave: Boolean get() = !(attempted && invalid)
 

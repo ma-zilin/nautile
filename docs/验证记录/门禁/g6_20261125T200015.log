@@ -1,0 +1,153 @@
+G6 闸门独立验证证据
+====================
+时间：2026-11-25T20:00:15+08:00
+角色：独立验证 Agent（只写测试/证据，不改业务代码）
+设备：emulator-5554 / nautile_api36(AVD) - Android 16 / API 36（模拟器，非真机）
+代码基线：HEAD 43d64a1553243e104c13d39fd2d1c8b8bcfebb58（G6 实现未提交，工作区 dirty）
+需求依据：docs/需求基线.md v2.14；.plans/设计/01_视觉与动效标准.md §13（CMP-30—CMP-37）；验收挂点 AC-D-07、AC-D-09、AC-T-13。
+
+一、检查对象
+------------
+实现（未提交）：
+- app/src/main/java/.../ui/screen/todo/NewTaskSheet.kt（五图标工具栏、锚定菜单、日期面板）
+- app/src/main/java/.../ui/screen/todo/TodoUiState.kt（G6 属性字段）
+- app/src/main/java/.../ui/screen/todo/TodoViewModel.kt（属性选择、新建项目回填、创建写入）
+- app/src/main/java/.../MainActivity.kt（接线）
+- app/src/main/res/drawable/ic_flag.xml、ic_folder.xml、ic_notes.xml
+本角色仅新增：
+- app/src/androidTest/java/.../verification/AcNewTaskToolbarG6Test.kt（11 例）
+- app/src/androidTest/java/.../verification/G6NewTaskScreenshotTest.kt（5 例，截图）
+未修改既有断言；全量 connected 通过说明既有断言未因工具栏布局失效。
+
+二、静态检查
+------------
+命令：bash scripts/check_ui_tokens.sh
+结果：RESULT: PASS；检查文件数 19；命中总数 0；退出码 0。
+核对：NewTaskSheet 未出现 Color(0x)/Color.Black/White/Red、RoundedCornerShape(<数字>)、
+tween/spring/durationMillis、0.32f、Text 文本图标、固定比例分栏、material-icons-extended、
+无限动画 API；颜色全部走 MaterialTheme.colorScheme，遮罩走 NautileStates.SCRIM_ALPHA。
+
+三、刚性门禁
+------------
+命令：bash scripts/verify.sh G6
+结果：GATE RESULT: PASS（日志 verify_G6_20261125T194559.log）
+步骤：
+  assembleDebug EXIT=0
+  assembleDebugAndroidTest(compile-only) EXIT=0
+  testDebugUnitTest EXIT=0
+  lintDebug EXIT=0
+  JVM 统计 EXIT=0：suites=32 tests=178 failures=0 errors=0 skipped=0
+  schema 内容检查 EXIT=0：version 3，tasks/projects/detail/manual_order；1/2.json 保留
+最终复跑（加入 G6 测试后）：bash scripts/verify.sh G6-FINAL
+结果：GATE RESULT: PASS（verify_G6-FINAL_20261125T195934.log）
+  assembleDebug / assembleDebugAndroidTest / testDebugUnitTest / lintDebug 均 EXIT=0
+  JVM：suites=32 tests=178 failures=0 errors=0 skipped=0
+  schema：EXIT=0（version 3，tasks/projects/detail/manual_order）
+说明：verify.sh 默认不跑 connected；connected 在下一节单独执行并记录。
+
+四、G6 新增 Compose UI 测试（模拟器实测）
+-----------------------------------------
+测试类：AcNewTaskToolbarG6Test
+运行：./gradlew :app:connectedDebugAndroidTest --rerun-tasks \
+      -Pandroid.testInstrumentationRunnerArguments.class=io.github.mazilin.nautile.verification.AcNewTaskToolbarG6Test
+结果：11 tests / 0 failures / 0 errors / 0 skipped；BUILD SUCCESSFUL；日志 g6_targeted_20261125T195015.log
+用例（均带 AC/设计编号）：
+1. G6_CMP30_toolbar_has_exactly_five_icon_entries
+   五项入口存在；无“标签/提醒/重复/更多/语音”文本入口。
+2. G6_CMP31_toolbar_items_are_at_least_48dp
+   五项触控边界宽度、高度均 ≥48dp（语义边界换算 dp）。
+3. G6_CMP32_date_and_time_summary_then_clear
+   打开日期面板；无日期时无可编辑时刻控件且显示“先选择日期，再填写时间”；
+   选今天并输入 09:30；返回后摘要“今天 09:30”；再次进入清除日期与时刻；
+   摘要恢复“未设置”。
+4. G6_CMP33_priority_four_levels_then_clear_to_none
+   菜单含高/中/低/无四项；选“高”后摘要“高”；再选“无”后摘要“无”。
+5. G6_CMP34_project_menu_only_active_and_selectable
+   菜单含“无项目”+活跃“课程项目”+“新建项目”；已结项项目不出现；
+   选择后摘要“课程项目”。
+6. G6_CMP34_new_project_from_menu_is_filled_back
+   菜单内只填项目名“研究项目”并创建；成功后回填为当前项目、摘要显示“研究项目”；
+   Room 内存库存在活跃项目“研究项目”。
+7. G6_CMP35_checklist_five_entries_and_ended_disabled
+   五项齐备（收件箱、下一步行动、等待中、将来／也许、已结束）；
+   ENDED 条目 disabled 且显示“已结束不可直接移入”；选择“等待中”后摘要更新。
+8. G6_CMP36_detail_edit_does_not_change_other_summaries
+   详情菜单含“编辑详情”“清空详情”；编辑后详情摘要变化；
+   优先级/日期/清单摘要保持不变；清空后详情摘要回到“当前为空”。
+9. G6_CMP31_menu_keeps_input_focus_and_panel_usable
+   标题输入框聚焦后打开优先级菜单；标题仍保持焦点；菜单与“新建/创建”仍可用。
+   （按任务要求不做键盘像素/空隙断言；IME 实际可见性列为未自动化。）
+10. G6_AC_T13_create_writes_all_attributes_once
+    设置标题、详情、优先级高、项目、清单等待中、日期今天 09:30 后点“创建”；
+    Room 内存库仅 1 条记录，priority=HIGH、dueDate=今天、dueTime=09:30、
+    projectId=课程项目、position=WAITING、detail=备注内容、manualOrder=null、
+    createdAt=固定时钟时间。
+11. G6_AC_D07_blank_title_blocks_create_and_shows_error
+    空白标题点“创建”：面板保留、显示“标题不能为空”、库中 0 条记录。
+
+五、全量 connected
+------------------
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+结果（两次完整执行均成功）：
+- g6_connected_20261125T195559.log：151 tests / 0 failures / 0 errors / 0 skipped；71s；BUILD SUCCESSFUL
+- g6_connected_20261125T195717.log：151 tests / 0 failures / 0 errors / 0 skipped；71s；BUILD SUCCESSFUL
+设备：nautile_api36(AVD) - 16（emulator-5554，模拟器，非真机）。
+失败分类：无。
+备注：AGP 在 connected 结束后会卸载应用；截图测试随后通过手动安装并运行
+`adb shell am instrument -w -r -e class ...G6NewTaskScreenshotTest ...` 采集，日志
+g6_screenshots_20261125T200015.log：OK (5 tests)，Time 3.539s。
+
+六、截图与视觉核对（不提交）
+----------------------------
+渲染：Compose 测试宿主（NautileTheme + NewTaskSheet），1080×2400。
+文件（docs/验证记录/门禁/）：
+- g6_toolbar_initial.png：五图标工具栏；日期无摘要；旗标“无”；文件夹无摘要；
+  清单“收件箱”；详情图标；标题/详情两行可见；创建/取消可用。
+- g6_priority_menu.png：锚定菜单；四项“彩旗图标+中文（高/中/低/无）”；当前“无”有 check；
+  无第二层遮罩；面板与工具栏仍在。
+- g6_date_panel.png：同一面板内日期选择；“Select date/Selected date”标题；
+  时间输入禁用并显示“先选择日期，再填写时间”；“清除截止日期”禁用；返回可用。
+- g6_project_menu.png：无项目（check）+ 课程项目 + 新建项目；无已结项项目。
+- g6_summary_state.png：工具栏摘要“今天 09:30 / 高 / 课程项目 / 等待中”，详情图标。
+file 校验：5 个文件均为 PNG image data, 1080 x 2400, 8-bit/color RGBA, non-interlaced。
+sha256：
+c3a0cf955e1c67d29acba2b3bb52d3b46396947e22fbbb6ea217f31a1e3288c7  g6_date_panel.png
+94423c21c8b5079de0dd6da29fa1f69731749818489d04e55fab9e65e4c43d81  g6_priority_menu.png
+81038b5626132744d84c1dc46dd58bd0dd68cf7ff703ebefe5b569e8f8ea8b9f  g6_project_menu.png
+b22e8b4217ef46574f2e18fe7aaebd4a653e87edf411fa20b4b7cf7baafb792f  g6_summary_state.png
+d6ebe79f7af3b6f6043c0535cd773af069a7b2a27752eecab48d743fa2465ff3  g6_toolbar_initial.png
+
+七、设计核对结论
+----------------
+通过：
+- 工具栏恰五个图标入口，顺序日期/优先级/项目/清单/详情；无标签/提醒/重复/更多/语音。
+- 菜单为面板内浮层；截图中无新增遮罩；打开菜单后标题输入框仍保持焦点，面板可用。
+- 优先级四项彩旗图标 + 中文文字，颜色不是唯一区分；摘要“高/中/低/无”。
+- 项目菜单为无项目 + 活跃项目 + 新建项目；已结项项目不显示；新建项目可回填。
+- GTD 五项齐备，ENDED 禁用并附说明。
+- 摘要文字存在且随选择/清除更新；日期与时刻可清除。
+- 五项触控 ≥48dp；静态检查颜色/圆角/动效/遮罩等字面量 0 命中。
+- 创建一次写入 priority/dueDate/dueTime/projectId/position/detail；空白标题阻止并提示。
+观察（不改变本轮判定）：
+1. 日期选择器的“Select date/Selected date/星期缩写”来自 Material3 默认字符串，跟随系统
+   语言；当前模拟器 en-US，因此中文界面中出现英文。未在中文系统核对；不是本轮 AC 失败。
+2. “新建项目”在名称为空时“创建”按钮为 disabled，未触发可见错误文案；CMP-34 原文要求
+   “阻止创建并提示”。阻止创建已满足，提示未观察到；属设计默认项的实现差异，建议开发确认。
+3. 截图来自 Compose 测试宿主，未叠加真实待办列表背景；视觉位置与面板结构可核对，
+   不等同于整机应用截图。
+
+八、未自动化/限制
+------------------
+- 真实键盘的 IME 可见性、键盘与面板间距、菜单锚定像素位置：未做像素断言；只断言焦点保持、
+  菜单可用、面板可用。列为人工评审/真机体验项。
+- 颜色对比度、深色主题、200% 字体、动画观感：本轮未执行，列为人工评审。
+- 真机（vivo/OriginOS）行为：未执行；本轮仅模拟器 emulator-5554（API 36）。
+- 整进程重启后的新建属性持久化：由 Room 内存库断言创建写入，未做进程重启 UI 恢复。
+- 已结项项目“不可选”通过不显示验证；未构造“点击被结项项目”的负面路径（菜单不呈现该项）。
+
+九、判决
+--------
+PASS（限定范围：模拟器 + 本轮 G6 实现与测试）。
+依据：静态 PASS；verify G6 与 G6-FINAL 均 PASS（四步 EXIT=0、JVM 178/0、schema v3）；
+G6 定向 11/0；全量 connected 两次 151/0/0/0；截图 5 张 file 校验通过；关键交互核对通过。
+未解决/未执行项见第八节；观察项见第七节，不构成本轮闸门 FAIL。
