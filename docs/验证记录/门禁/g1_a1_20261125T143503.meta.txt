@@ -1,0 +1,46 @@
+task=G1-A1
+gate=设计 token 与基础组件
+time=2026-11-25T14:36:19+08:00
+head=f6168a03e34fff4bc375d0050dc8efd192a0b220
+dirty_entries_at_verify=24
+dirty_entries_at_evidence=28
+scope=ui/theme + ui/designsystem + 16 drawable；无页面/测试/构建改动（diff --stat 仅 Theme.kt +90/-3）
+
+static_script=scripts/check_ui_tokens.sh
+static_rules=7
+static_files=8
+static_hits=0
+static_exit=0
+static_result=PASS
+static_redcheck_exit=1
+static_redcheck_hits=9
+static_redcheck_note=隔离夹具 /tmp/tride_g1a1_fixture；7 条规则均命中，豁免文件未误报
+static_rerun_after_evidence_exit=0
+
+verify_command=bash scripts/verify.sh G1-A1
+verify_log=docs/验证记录/门禁/verify_G1-A1_20261125T143503.log
+verify_assembleDebug_exit=0
+verify_assembleDebugAndroidTest_exit=0
+verify_testDebugUnitTest_exit=0
+verify_lintDebug_exit=0
+jvm_suites=28
+jvm_tests=160
+jvm_failures=0
+jvm_errors=0
+jvm_skipped=0
+schema_check_exit=0
+schema_note=1.json 与 2.json 存在；version 2、tasks/projects/detail
+
+connected_test=not_run（需真机/模拟器与人工在场）
+manual_items=浅/深色截图、200% 字体截图、TalkBack/Accessibility Scanner、GTD/面板动效手感
+
+observations=
+  loading_uses_CircularProgressIndicator_vs_MOT-13（设计口径冲突，待澄清）;
+  NautileErrorState 缺 retryLabel 参数;
+  NautileTopBar GTD 入口无 testTag 参数（A2 需 gtd_entry）;
+  drawable 内 strokeColor=@android:color/black（被 Compose tint 覆盖，字面偏差）;
+  NautileTheme 已被 MainActivity 使用，主题改动已生效（非零行为影响）
+
+result=PASS
+judge=PASS（编译、lint、JVM 测试、静态检查全部通过）
+evidence_log=docs/验证记录/门禁/g1_a1_20261125T143503.log

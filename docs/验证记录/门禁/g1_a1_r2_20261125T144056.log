@@ -1,0 +1,105 @@
+===== G1-A1-R2 复验（架构裁定：移除 indeterminate 进度环）=====
+时间：2026-11-25T14:40:56+08:00
+HEAD：f6168a03e34fff4bc375d0050dc8efd192a0b220
+
+----- 1. 较上次验证(14:35:03)后变动的 app/src/main 文件 -----
+app/src/main/java/io/github/mazilin/nautile/ui/designsystem/NautileButtons.kt
+app/src/main/java/io/github/mazilin/nautile/ui/designsystem/NautileStateViews.kt
+
+----- 2. git status --porcelain -----
+ M app/src/main/java/io/github/mazilin/nautile/ui/theme/Theme.kt
+?? app/src/main/java/io/github/mazilin/nautile/ui/designsystem/
+?? app/src/main/java/io/github/mazilin/nautile/ui/theme/NautileMotion.kt
+?? app/src/main/java/io/github/mazilin/nautile/ui/theme/NautileSpacing.kt
+?? app/src/main/res/drawable/ic_add.xml
+?? app/src/main/res/drawable/ic_arrow_back.xml
+?? app/src/main/res/drawable/ic_auto_awesome.xml
+?? app/src/main/res/drawable/ic_calendar_today.xml
+?? app/src/main/res/drawable/ic_cancel.xml
+?? app/src/main/res/drawable/ic_check.xml
+?? app/src/main/res/drawable/ic_checklist.xml
+?? app/src/main/res/drawable/ic_chevron_right.xml
+?? app/src/main/res/drawable/ic_close.xml
+?? app/src/main/res/drawable/ic_expand_more.xml
+?? app/src/main/res/drawable/ic_inbox.xml
+?? app/src/main/res/drawable/ic_menu.xml
+?? app/src/main/res/drawable/ic_schedule.xml
+?? app/src/main/res/drawable/ic_search.xml
+?? app/src/main/res/drawable/ic_settings.xml
+?? app/src/main/res/drawable/ic_tune.xml
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/emulator_boot_20261125T132329.png"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g1_a1_20261125T143503.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g1_a1_20261125T143503.meta.txt"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/g1_a1_r2_20261125T144056.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G1-A1-R2_20261125T143956.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G1-A1-R2_20261125T143956.meta.txt"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G1-A1-R2_20261125T144022.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G1-A1-R2_20261125T144022.meta.txt"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G1-A1_20261125T143433.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G1-A1_20261125T143433.meta.txt"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G1-A1_20261125T143503.log"
+?? "docs/\351\252\214\350\257\201\350\256\260\345\275\225/\351\227\250\347\246\201/verify_G1-A1_20261125T143503.meta.txt"
+?? scripts/check_ui_tokens.sh
+
+----- 3. 无限动画 API 全仓 app/src/main 检索 -----
+grep_exit=1
+
+----- 4. 静态检查（scripts/check_ui_tokens.sh，含新增规则 8）-----
+============================================================
+G1-A1 设计 token 静态检查
+时间：2026-11-25T14:39:50+08:00
+HEAD：f6168a03e34fff4bc375d0050dc8efd192a0b220
+扫描目录：app/src/main/java/io/github/mazilin/nautile/ui/theme
+          app/src/main/java/io/github/mazilin/nautile/ui/designsystem
+============================================================
+
+[规则 1] 颜色字面量：Color(0x / Color.Black / Color.White / Color.Red（COL-01、NO-01）
+  命中 0
+[规则 2] 圆角字面量：RoundedCornerShape(<数字>（SHP-01、NO-02；豁免 theme/Theme.kt）
+  命中 0
+[规则 3] 动效字面量：tween( / spring( / durationMillis（MOT-03、NO-03；豁免 theme/NautileMotion.kt）
+  命中 0
+[规则 4] 文本图标：Text("☰/+/✓/×")（ICO-02、ICO-08、NO-05）
+  命中 0
+[规则 5] 固定比例分栏：weight(0.38f/0.62f)（CMP-10、NO-10）
+  命中 0
+[规则 6] 遮罩 alpha 字面量：0.32f（COL-10；豁免 theme/NautileSpacing.kt）
+  命中 0
+[规则 7] 依赖：material-icons-extended 全仓库出现（排除 build/.gradle/.plans/materials）
+  命中 0
+[规则 8] 无限动画 API：CircularProgressIndicator / infiniteRepeatable / rememberInfiniteTransition（MOT-13）
+  命中 0
+
+------------------------------------------------------------
+检查文件数：8（ui/theme + ui/designsystem 的 .kt）
+命中总数：0
+RESULT: PASS
+static_exit=0（规则 8 命中 0）
+
+----- 5. 规则 8 红检（隔离夹具 /tmp/tride_g1a1r2_fixture）-----
+import androidx.compose.foundation.rememberScrollState
+// fixture
+val x = rememberInfiniteTransition(label = "f")
+val y = CircularProgressIndicator()
+/tmp/tride_g1a1r2_fixture/Bad.kt:3:val x = rememberInfiniteTransition(label = "f")
+/tmp/tride_g1a1r2_fixture/Bad.kt:4:val y = CircularProgressIndicator()
+redcheck_rg_exit=0（0=命中，说明规则可红）
+
+----- 6. verify.sh 关键结果 -----
+任务号：G1-A1-R2
+工作区未提交条目数：30
+[STEP] assembleDebug EXIT=0
+[STEP] assembleDebugAndroidTest(compile-only) EXIT=0
+[STEP] testDebugUnitTest EXIT=0
+[STEP] lintDebug EXIT=0
+suites=28 tests=160 failures=0 errors=0 skipped=0
+[STEP] 测试结果统计 EXIT=0
+[STEP] schema 内容检查 EXIT=0（version 2，tasks/projects/detail；1.json 保留）
+GATE RESULT: PASS
+verify_script_exit=0
+
+----- 7. lint 摘要 -----
+BUILD SUCCESSFUL in 4s
+BUILD SUCCESSFUL in 4s
+Wrote HTML report to file:///home/wordwoods/Projects/Tride/app/build/reports/lint-results-debug.html
+BUILD SUCCESSFUL in 8s

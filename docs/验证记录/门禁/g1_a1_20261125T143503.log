@@ -1,0 +1,76 @@
+G1-A1 闸门独立验证记录（设计 token 与基础组件）
+================================================================
+记录时间：2026-11-25T14:36:19+08:00
+执行角色：独立验证 Agent
+代码版本：HEAD f6168a03e34fff4bc375d0050dc8efd192a0b220（工作区未提交改动，见第 5 节）
+需求/设计依据：docs/需求基线.md v2.14（工作区版本）；.plans/设计/01_视觉与动效标准.md（G0.2 校订稿，COL/TYP/SHP/SPC/MOT/ICO/CMP/A11Y/NO/RDY 编号）
+说明：本记录只覆盖 G1-A1（token + 基础组件 + 16 drawable），不含页面接线与真机/截图验收。
+
+1. 检查对象
+----------------------------------------------------------------
+- 修改：app/src/main/java/io/github/mazilin/nautile/ui/theme/Theme.kt（+90/-3）
+- 新增：ui/theme/NautileMotion.kt、ui/theme/NautileSpacing.kt
+- 新增：ui/designsystem/{NautileTopBar,NautileButtons,NautileListRow,NautileBottomSheet,NautileStateViews}.kt
+- 新增：app/src/main/res/drawable/ic_*.xml 共 16 个
+- 新增（本轮验证产物）：scripts/check_ui_tokens.sh
+
+2. 静态检查（新增脚本，可执行）
+----------------------------------------------------------------
+脚本：/home/wordwoods/Projects/Tride/scripts/check_ui_tokens.sh（-rwxrwxr-x，4742 字节）
+规则数：7 条；扫描范围：ui/theme/ 与 ui/designsystem/ 的 .kt（规则 7 为全仓库依赖扫描）
+命令：bash scripts/check_ui_tokens.sh
+时间：2026-11-25T14:34:17+08:00
+结果：检查文件数 8；命中总数 0；RESULT: PASS；退出码 0
+逐条：规则1 颜色字面量 0；规则2 圆角字面量 0；规则3 动效字面量 0；规则4 文本图标 0；规则5 固定比例 0；规则6 遮罩 alpha 0；规则7 禁止的图标扩展库依赖 0（关键字见脚本规则 7）
+备注：规则 7 排除检查脚本自身（其规则文本包含关键字，非依赖声明），其余排除项 build/.gradle/.plans/materials 未放宽；本证据文件只用“图标扩展库依赖”指代，避免记录文本自身触发规则 7。
+
+红检（脚本检出能力自检，隔离夹具 /tmp/tride_g1a1_fixture，不触碰仓库）
+命令：bash scripts/check_ui_tokens.sh（夹具副本）
+时间：2026-11-25T14:34:27+08:00
+结果：命中 9（规则1=2、规则2=1、规则3=2、规则4=1、规则5=1、规则6=1、规则7=1），RESULT: FAIL，退出码 1
+豁免验证：夹具中的 theme/Theme.kt、theme/NautileMotion.kt、theme/NautileSpacing.kt 均未被误报。
+归档后复跑（工作区已含本脚本与证据文件）：2026-11-25T14:36:57+08:00，命令 bash scripts/check_ui_tokens.sh，检查文件数 8，命中 0，RESULT: PASS，退出码 0。
+
+3. 刚性门禁 verify.sh
+----------------------------------------------------------------
+命令：bash scripts/verify.sh G1-A1
+时间：2026-11-25T14:35:03+08:00 起；完整日志：docs/验证记录/门禁/verify_G1-A1_20261125T143503.log
+步骤与退出码（日志原文）：
+  [STEP] assembleDebug EXIT=0
+  [STEP] assembleDebugAndroidTest(compile-only) EXIT=0
+  [STEP] testDebugUnitTest EXIT=0
+  [STEP] lintDebug EXIT=0
+JVM 统计：suites=28 tests=160 failures=0 errors=0 skipped=0（[STEP] 测试结果统计 EXIT=0）
+schema：1.json 与 2.json 存在；version 2、tasks/projects/detail；[STEP] schema 内容检查 EXIT=0
+GATE RESULT: PASS；脚本退出码 0（VERIFY_EXIT=0）
+编译告警（非失败）：MainActivity.kt:291 'when' 冗余 else（既有代码）；androidTest 中 createComposeRule 弃用（既有测试）。
+connectedDebugAndroidTest：未执行（需真机/模拟器与人工在场，VERIFY_CONNECTED 未设为 1）。
+
+4. 组件设计核对（只读）
+----------------------------------------------------------------
+- 触控 ≥48dp：NautileIconButton 触控 Box 48dp、视觉 40dp、图标 24dp（NautileButtons.kt:130/138/148）；列表行 heightIn(min=56dp)（NautileListRow.kt:138）；M3 Button 由库保证 48dp 最小交互区；FAB/Chip/BottomBar 本轮未实现。
+- contentDescription：NautileTopBarAction 与 NautileIconButton 的 contentDescription 为非空 String 参数；chevron_right、空态图标显式传 null（装饰性）；底部导航尚未接线（A2）。
+- 颜色：组件只读 MaterialTheme.colorScheme 角色与 LocalContentColor；唯一非角色颜色是 Color.Transparent（NO-01 允许的“无容器”），未见 Color(0x/Black/White/Red。
+- 动效：组件内无 tween/spring/durationMillis，全部动效 token 只在 NautileMotion.kt；未见 rememberInfiniteTransition/infiniteRepeatable/自定义 Animatable。
+- shape：Theme.kt 用公开五档 Shapes（4/8/12/16/28dp）；底部面板由 extraLarge.copy(bottom=0) 派生，CircleShape 表达 Full；无 RoundedCornerShape 字面量散落。
+- 深色模式：isSystemInDarkTheme 仅出现在 Theme.kt:94；组件不直接读系统深浅色，只消费 colorScheme 角色（COL-02、NO-14）。
+- 图标：16 个 ic_*.xml 均为 vector，24dp/24 viewport；命名与设计 §6.2 清单一一对应（checklist、calendar_today、schedule、auto_awesome、menu、search、tune、settings、add、arrow_back、close、check、cancel、chevron_right、expand_more、inbox）；无第 17 个常驻图标；无禁止的图标扩展库依赖。
+- 需要说明的观察（不作为本轮 FAIL）：
+  1) NautileLoadingState 与 NautileButton 加载态使用 M3 indeterminate CircularProgressIndicator（NautileStateViews.kt:122、NautileButtons.kt:61）。CMP-22 明确要求该控件，但 MOT-13 字面禁止“无限循环动画作为加载/空态”，设计口径存在冲突，需架构/需求澄清后再定是否保留或降级为静态骨架。
+  2) NautileErrorState 的 API 用固定“重试”文字，未保留设计 §7.6 的 retryLabel 参数；不阻塞本轮静态 token 验收。
+  3) NautileTopBar 的 GTD 入口未暴露 testTag 参数（设计 §11.1 第 3 项要求保留 testTag("gtd_entry") 语义），A2 接线时若沿用该组件将无法设置该 tag，建议 A2 前补参数。
+  4) 16 个 drawable 内含 android:strokeColor="@android:color/black" 与 android:tint="?android:attr/colorControlNormal"（如 ic_menu.xml）；运行时 Compose Icon tint 会覆盖，静态检查不命中，但与 ICO-03“图标不写死颜色”的字面表述存在偏差，建议记录或清理。
+
+5. 改动范围核对
+----------------------------------------------------------------
+git status --porcelain：仅 Theme.kt（M）、ui/designsystem/、NautileMotion.kt、NautileSpacing.kt、16 个 ic_*.xml、既有未跟踪 emulator_boot PNG、门禁证据、scripts/check_ui_tokens.sh；无既有页面/测试/构建配置改动。
+git diff --stat：1 file changed, 90 insertions(+), 3 deletions(-)（仅 Theme.kt）。
+补充事实：NautileTheme 已被 MainActivity.kt:45/61/126 使用，因此本轮 Theme.kt 改动会立即影响全应用主题（深浅色选择、Typography、Shapes），并非“零行为影响”；现有 JVM 测试与编译/lint 未发现回归，深色模式外观属人工/截图项。
+另：证据目录存在另一份 verify_G1-A1_20261125T143433（dirty_entries=22，PASS），非本次执行（本次为 143503），仅登记不混用。
+
+6. 判决
+----------------------------------------------------------------
+静态检查 PASS（退出码 0，7 规则 0 命中，检查 8 文件）
+编译 PASS / AndroidTest 编译 PASS / JVM 测试 PASS（160/0/0/0）/ lintDebug PASS（均 EXIT=0）
+改动范围符合本任务；G1-A1 判决：PASS
+未执行/未自动化：connectedDebugAndroidTest、真机与截图（浅/深色、200% 字体、GTD/面板外观）、TalkBack/Accessibility Scanner、动效手感；不计入本轮代码验证通过项。
