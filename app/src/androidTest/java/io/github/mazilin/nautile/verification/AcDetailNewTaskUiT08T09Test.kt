@@ -1,9 +1,11 @@
 package io.github.mazilin.nautile.verification
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -232,7 +234,10 @@ class AcDetailNewTaskUiT08T09Test {
         }
 
         composeRule.onNodeWithText("新建").assertIsDisplayed()
-        composeRule.onNodeWithText("清单：收件箱").assertIsDisplayed()
+        // R4 G4：不再有独立“清单：X”块，当前清单由工具栏“清单”项显示（AC-D-07、4.25）。
+        composeRule.onNodeWithContentDescription("移动到 GTD 清单，当前：收件箱")
+            .assertIsDisplayed()
+        composeRule.onAllNodesWithText("清单：", substring = true).assertCountEquals(0)
         composeRule.onNodeWithText("创建").performClick()
         composeRule.onNodeWithText("取消").performClick()
 

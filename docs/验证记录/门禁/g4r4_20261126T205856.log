@@ -1,0 +1,113 @@
+G4 / R4 闸门验证证据（创建面板重构：四项属性工具栏 + 详情固定第二行）
+生成时间：2026-11-26T21:06+08:00
+HEAD：6dec86c2b853642ff5d33788664b6fa6649dd46b（实现与测试改动均未提交）
+工作区未提交条目：84（收尾，含门禁证据与截图）
+适用需求：docs/需求基线.md v2.15（AC-D-07、FR-D-02/03、CMP-30/31/32/33/34/35/36；
+          需求变更记录 4.25「创建/编辑面板、弹层标准与手动排序暂缓」）
+适用设计：.plans/设计/01_视觉与动效标准.md（CMP-30/31 图标＋文字与属性摘要）
+执行角色：独立验证 Agent（只写测试、证据与截图；未改业务代码/构建/依赖）
+
+一、环境
+- 设备：emulator-5554，Android API 36（sdk 36），1080x2400，density 420（约 411x914dp），模拟器，非真机。
+- 语言/字体：系统默认（简体中文 Locale，fontScale 1.0）；200% 字体与大字号视觉未在本轮自动化范围。
+- JVM：Gradle 9.6.0 + JUnit4；时间固定 Clock（2026-11-26T09:00Z），数据为 Room 内存库夹具。
+- 说明：无真实模型/网络依赖；动画手感、TalkBack、真机输入法为人工评审项（见第八节）。
+
+二、静态检查
+命令：bash scripts/check_ui_tokens.sh
+结果：EXIT=0，RESULT: PASS，命中总数 0（颜色/圆角/动效/文本图标/固定分栏/遮罩 alpha/
+      material-icons-extended/无限动画 8 条规则），检查文件 20。
+日志：docs/验证记录/门禁/g4r4_static_20261126T205856.log
+
+三、刚性门禁
+命令：bash scripts/verify.sh G4（四步均 --rerun-tasks）
+日志：docs/验证记录/门禁/verify_G4_20261126T205810.log
+元数据：docs/验证记录/门禁/verify_G4_20261126T205810.meta.txt
+- assembleDebug EXIT=0
+- assembleDebugAndroidTest(compile-only) EXIT=0
+- testDebugUnitTest EXIT=0；统计 suites=37 tests=216 failures=0 errors=0 skipped=0
+- lintDebug EXIT=0
+- schema：1.json/2.json 保留，3.json 含 tasks/projects/detail/manual_order，内容检查 EXIT=0
+- GATE RESULT: PASS
+- 备注：本次终端两次触发同一命令，产生 verify_G4_20261126T205715 与 ...T205810 两份日志，
+  HEAD 相同、结果均 PASS；采用较新的 T205810 作为证据。
+
+四、UI（模拟器）自动化：新增与旧断言更新
+新增 app/src/androidTest/.../verification/AcNewTaskSheetR4G4Test.kt（10 条，10/10 PASS）：
+1) R4G4_toolbar_has_exactly_four_entries_with_visible_labels：恰四个入口（日期/优先级/项目/清单），
+   每个描述唯一；四项同一行且从左到右；每项文字在未合并语义树可见且完整落在按钮内
+   （日期=“日期”、优先级=“优先级”、项目=“项目”、清单=“收件箱”）；无“编辑详情”节点；
+   无标签/提醒/重复/更多/语音。
+2) R4G4_no_detail_icon_no_target_picker_and_detail_is_second_row：无详情图标、无“目标清单（已结束不可选）”、
+   无“清单：”块、无“调整详情”；待办模式恰有标题+详情两个输入，详情与标题间距 0dp（容差 2dp）
+   且位于工具栏上方。
+3) R4G4_date_label_switches_between_name_and_summary_then_back：未设置=“日期”；选今天 09:30 后=“今天 09:30”
+   （“日期”文字消失）；清除后回到“日期”，语义描述同步“当前：未设置”。
+4) R4G4_priority_label_switches_between_name_and_summary：未设置=“优先级”；选高=“高”；选无=“优先级”。
+5) R4G4_project_label_switches_between_name_and_summary：未设置=“项目”；选课程项目=“课程项目”；
+   选无项目=“项目”。
+6) R4G4_checklist_defaults_to_current_position_and_menu_selects：当前清单=等待中时默认等待中；
+   菜单五项中 ENDED 禁用并提示；选将来／也许后摘要同步。
+7) R4G4_ended_position_defaults_checklist_to_inbox_and_blocks_ended：当前位置 ENDED 时新建默认收件箱；
+   ENDED 项禁用；可改选下一步行动。
+8) R4G4_keyboard_stays_open_and_typing_continues_after_menu：标题聚焦输入“任务”后打开优先级菜单，
+   标题仍聚焦，继续输入得到“任务续写”（键盘/焦点保持）。
+9) R4G4_blank_title_blocks_create_and_shows_error：空白标题点创建 → 提示“标题不能为空”，0 条写入。
+10) R4G4_project_create_only_name_and_blank_blocks：项目模式仅 1 个输入（项目名称），无详情行、
+    无属性工具栏；空名称阻止并提示、不写库；填“研究项目”后创建 1 条活跃项目。
+
+旧断言更新（按 v2.15 / 4.25 口径，未削弱其余断言）：
+- AcNewTaskToolbarG6Test：工具栏由“五项（含详情）”改为四项；新增每项文字可见（未合并语义树）
+  与按钮内边界断言；CMP-36 由“详情菜单编辑”改为“详情固定第二行编辑且不改其他摘要”，
+  删除详情菜单入口断言，保留优先级/日期/清单摘要不变的回归；CMP-31 48dp 循环改为四项。
+- AcUiT071Test.T_09：由“目标清单选择块 FilterChip”改为“默认收件箱 + 工具栏清单菜单”，
+  保留“ENDED 不可选”与“切换目标生效”断言，并新增“无目标清单块”断言。
+- AcDetailNewTaskUiT08T09Test.AC_D_07：删除“清单：收件箱”文本断言，改为工具栏清单项
+  描述“移动到 GTD 清单，当前：收件箱”+ “清单：”块数量 0。
+- 未改动：G7DetailAttributeUiTest（对象为半屏任务详情，详情工具栏口径不在本次变更内）、
+  G10ScreenshotTest（仅用属性描述作前置断言）。
+
+定向运行：
+- 新增类：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+  -Pandroid.testInstrumentationRunnerArguments.class=...AcNewTaskSheetR4G4Test → tests=10 failures=0
+- 受影响四类（G6/T071/AC-D-07/截图）：tests=32 failures=0 errors=0
+- 自测修正记录：首次定向运行 2 条失败（checklist 默认当前、ENDED 默认收件箱），原因是本测试
+  未订阅 vm.uiState（WhileSubscribed 5s，无订阅者时保持初值），属测试夹具错误；已改为在 setContent
+  内订阅 uiState（与生产页面一致）后通过，原失败日志保留：g4r4_failrun1_fixture_20261126T205856.log。
+
+五、全量 connected（模拟器，上限 20 分钟）
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+结果：EXIT=0，BUILD SUCCESSFUL in 2m 18s；tests=231 failures=0 errors=0 skipped=0 suites=1
+日志：docs/验证记录/门禁/g4r4_connected_20261126T205856.log
+XML：docs/验证记录/门禁/g4r4_connected_20261126T205856.xml
+失败分类：无失败。相较上一轮 217 条增加 14 条（新增 10 条 + G4R4 截图 4 条）。
+
+六、变异抽查（验证新断言能变红，已还原）
+- 变异：NewTaskSheet.kt 中 `val dueLabel = dueSummary ?: "日期"` 临时改为 `?: "截止"`
+  （哈希记录 fd6a9dca9a0d6b3a42ddba77af73e545ea711b3c016fa5d6e2e1ee53f58b589d）。
+- 结果：AcNewTaskSheetR4G4Test 10 条中 2 条变红
+  （R4G4_toolbar_has_exactly_four_entries_with_visible_labels、R4G4_date_label_switches_...）；
+  日志：g4r4_mutation_20261126T205856.log。
+- 还原：改回“日期”后 sha256sum -c 通过（同哈希），复跑 10/10 通过；
+  日志：g4r4_restore_20261126T205856.log。
+
+七、截图（不提交，证据目录 docs/验证记录/门禁/）
+- g4r4_toolbar_unset_20261126T205856.png：未设置态四项“图标＋文字”（日期/优先级/项目/收件箱），
+  详情为标题下第二行，无详情图标与目标清单块。
+- g4r4_toolbar_summary_20261126T205856.png：摘要态（今天 09:30 / 高 / 课程项目 / 等待中）。
+- g4r4_checklist_menu_20261126T205856.png：清单菜单五项，ENDED 灰显并注“已结束不可直接移入”。
+- g4r4_project_create_20261126T205856.png：项目模式仅“项目名称”，无属性工具栏。
+说明：全量 run 结束会卸载应用，截图由同一 G4R4NewTaskScreenshotTest 类在安装后单独运行再拉取
+（该类在全量 run 中也已通过 4/4），未使用图像生成工具、未改图。
+
+八、未自动化 / 人工评审项
+- 图标与文字的实际字形、颜色对比与触控手感（截图为视觉核对依据）；
+- 200% 字体与超大字号下的工具栏换行/截断、横向滚动体验；
+- TalkBack 朗读完整语义与顺序；真实输入法弹出/收起过程（本轮只断言焦点与可继续输入）；
+- 真机（vivo/OriginOS）安装、IME 与动画帧率；本轮为模拟器结果，不声明真机通过。
+
+九、判定
+- 静态 PASS + 门禁 PASS（JVM 216/0、lint 0、schema EXIT=0）+ 全量 connected 231/0/0 + 关键交互与截图核对一致
+  → G4 R4 判定：PASS（模拟器范围）。
+- 未覆盖：任务/项目详情“编辑图标 + 同构编辑面板”属 4.25 其余条目，不在本次创建面板重构改动内，
+  本轮未验证，保持待验状态。

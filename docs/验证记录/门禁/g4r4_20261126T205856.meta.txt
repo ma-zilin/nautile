@@ -1,0 +1,35 @@
+task=G4-R4
+phase=验证
+time=2026-11-26T21:06:00+08:00
+head=6dec86c2b853642ff5d33788664b6fa6649dd46b
+dirty_entries=84
+device=emulator-5554 (Android API 36, 1080x2400, density 420) NOT_REAL_DEVICE
+requirements=docs/需求基线.md v2.15 (AC-D-07, FR-D-02/03, CMP-30/31/32/33/34/35/36; 需求变更记录 4.25)
+design=.plans/设计/01_视觉与动效标准.md (CMP-30/31 图标＋文字与属性摘要)
+static_command=bash scripts/check_ui_tokens.sh
+static_result=PASS hits=0 files=20
+static_log=docs/验证记录/门禁/g4r4_static_20261126T205856.log
+gate_command=bash scripts/verify.sh G4
+gate_result=PASS
+gate_jvm=suites 37 tests 216 failures 0 errors 0 skipped 0
+gate_lint=EXIT 0
+gate_schema=EXIT 0 (1/2 保留, 3.json version3 tasks/projects/detail/manual_order)
+gate_log=docs/验证记录/门禁/verify_G4_20261126T205810.log
+gate_meta=docs/验证记录/门禁/verify_G4_20261126T205810.meta.txt
+gate_note=同命令产生 205715 与 205810 两份日志，HEAD 相同且均 PASS；采用 205810
+ui_new=AcNewTaskSheetR4G4Test 10/10 PASS
+ui_updated=AcNewTaskToolbarG6Test 五项→四项+标签+详情第二行; AcUiT071Test T_09 改清单菜单; AcDetailNewTaskUiT08T09Test AC_D-07 去“清单：X”块
+ui_targeted=AcNewTaskSheetR4G4Test 10/0; G6+T071+AC-D-07+截图 32/0
+ui_failrun1=2 条因测试夹具未订阅 uiState(WhileSubscribed) 失败，已修正并保留日志 g4r4_failrun1_fixture_20261126T205856.log
+connected_command=./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_result=PASS tests=231 failures=0 errors=0 skipped=0 suites=1 duration=2m18s exit=0
+connected_log=docs/验证记录/门禁/g4r4_connected_20261126T205856.log
+connected_xml=docs/验证记录/门禁/g4r4_connected_20261126T205856.xml
+mutation=dueLabel 未设置文案“日期”→“截止” → 2 条用例变红；已还原，sha256 fd6a9dca9a0d6b3a42ddba77af73e545ea711b3c016fa5d6e2e1ee53f58b589d 校验通过，复跑 10/10 绿
+mutation_log=docs/验证记录/门禁/g4r4_mutation_20261126T205856.log
+restore_log=docs/验证记录/门禁/g4r4_restore_20261126T205856.log
+screenshots=docs/验证记录/门禁/g4r4_toolbar_unset_20261126T205856.png;g4r4_toolbar_summary_20261126T205856.png;g4r4_checklist_menu_20261126T205856.png;g4r4_project_create_20261126T205856.png
+manual_items=字形与颜色视觉;200%字体;TalkBack;真实输入法弹出收起;真机安装与动画帧率
+not_in_scope=任务/项目详情“编辑图标+同构编辑面板”(4.25 其余条目，本轮未改未验)
+verdict=PASS
+notes=实现与测试改动未提交；截图不提交；本证据由独立验证 Agent 生成

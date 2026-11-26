@@ -10,7 +10,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -23,6 +25,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.printToString
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
@@ -66,13 +69,16 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * G6 闸门：新建面板属性图标工具栏与锚定菜单（CMP-30—CMP-37）。
+ * G6 闸门：新建面板属性工具栏与锚定菜单（CMP-30—CMP-37）。
  *
- * 预期依据（`docs/需求基线.md` v2.14、`.plans/设计/01_视觉与动效标准.md` §13）：
- * - CMP-30：恰五个入口（日期、优先级、项目、清单、详情），只图标 + 语义，无标签/提醒/重复/更多/语音；
+ * 预期依据（`docs/需求基线.md` v2.15 的 AC-D-07、`docs/需求变更记录.md` 4.25、
+ * `.plans/设计/01_视觉与动效标准.md` §13）：
+ * - CMP-30（R4 G4 口径）：恰四个入口（日期、优先级、项目、清单），始终“图标＋文字”；
+ *   未设置显示属性名、设置后显示所选值摘要；无详情图标、无标签/提醒/重复/更多/语音；
  * - CMP-31：菜单为面板内浮层、无遮罩、点击不收起键盘；单项触控 ≥48×48dp；
- * - CMP-32/33/34/35/36：日期与可选时间可清除；优先级四级；项目为无 + 活跃项目 + 新建项目；
- *   清单五项且 ENDED 禁用；详情输入不改变其他摘要；
+ * - CMP-32/33/34/35：日期与可选时间可清除；优先级四级；项目为无 + 活跃项目 + 新建项目；
+ *   清单五项且 ENDED 禁用；
+ * - CMP-36（R4 口径）：详情固定标题下方第二行，编辑详情不改变其他摘要；
  * - AC-T-13：优先级与截止日期创建后保存；AC-D-07：空白标题阻止创建并提示。
  *
  * 使用 Room 内存库 + 真实 [TodoViewModel] 验证“创建一次写入”，不复制业务规则。
@@ -97,7 +103,6 @@ class AcNewTaskToolbarG6Test {
         "设置优先级",
         "设置项目",
         "移动到 GTD 清单",
-        "编辑详情",
     )
 
     @Before
@@ -193,20 +198,52 @@ class AcNewTaskToolbarG6Test {
         clickable.onFirst().performClick()
     }
 
-    // ---- CMP-30：工具栏五项 + 无额外入口 + 48dp ----
+    // ---- CMP-30（R4 G4 口径）：工具栏恰四项、图标＋文字、无额外入口、无详情图标 ----
 
     @Test
-    fun G6_CMP30_toolbar_has_exactly_five_icon_entries() {
+    fun G6_CMP30_toolbar_has_exactly_four_entries_with_labels() {
         createViewModel()
         setSheet()
         openSheet()
 
         toolbarDescriptions.forEach { prefix ->
             composeRule.onNodeWithContentDescription(prefix, substring = true).assertIsDisplayed()
+            // 每个入口只有一个节点，没有重复入口。
+            composeRule.onAllNodes(hasContentDescription(prefix, substring = true))
+                .assertCountEquals(1)
         }
+        // R4 G4：四项始终“图标＋文字”，未设置显示属性名（AC-D-07、4.25）。
+        assertToolbarLabel("设置截止日期", "日期")
+        assertToolbarLabel("设置优先级", "优先级")
+        assertToolbarLabel("设置项目", "项目")
+        assertToolbarLabel("移动到 GTD 清单", "收件箱")
+        // 详情不再是工具栏入口。
+        composeRule.onAllNodes(hasContentDescription("编辑详情", substring = true))
+            .assertCountEquals(0)
         listOf("标签", "提醒", "重复", "更多", "语音").forEach { forbidden ->
             composeRule.onAllNodesWithText(forbidden).assertCountEquals(0)
         }
+    }
+
+    /** 工具栏“图标＋文字”的文字节点位于清空语义的按钮内，只在未合并语义树中可见。 */
+    private fun assertToolbarLabel(description: String, label: String) {
+        val node = composeRule.onNode(
+            hasText(label) and hasAnyAncestor(hasContentDescription(description, substring = true)),
+            useUnmergedTree = true,
+        )
+        node.assertIsDisplayed()
+        val itemBounds = composeRule
+            .onNodeWithContentDescription(description, substring = true)
+            .fetchSemanticsNode()
+            .boundsInRoot
+        val textBounds = node.fetchSemanticsNode().boundsInRoot
+        assertTrue(
+            "标签“$label”应渲染在 $description 按钮内：text=$textBounds item=$itemBounds",
+            textBounds.left >= itemBounds.left - 1f &&
+                textBounds.right <= itemBounds.right + 1f &&
+                textBounds.top >= itemBounds.top - 1f &&
+                textBounds.bottom <= itemBounds.bottom + 1f,
+        )
     }
 
     @Test
@@ -358,10 +395,10 @@ class AcNewTaskToolbarG6Test {
             .assertIsDisplayed()
     }
 
-    // ---- CMP-36：详情编辑不改变其他摘要 ----
+    // ---- CMP-36（R4 G4 口径）：详情固定第二行，编辑详情不改变其他摘要 ----
 
     @Test
-    fun G6_CMP36_detail_edit_does_not_change_other_summaries() {
+    fun G6_CMP36_detail_second_row_edit_does_not_change_other_summaries() {
         createViewModel()
         setSheet()
         openSheet()
@@ -370,22 +407,32 @@ class AcNewTaskToolbarG6Test {
         composeRule.onNodeWithContentDescription("优先级：高").performClick()
         composeRule.onNodeWithContentDescription("设置优先级，当前：高").assertIsDisplayed()
 
-        composeRule.onNodeWithContentDescription("编辑详情，当前为空").performClick()
-        composeRule.onNodeWithText("编辑详情").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("清空详情，当前为空").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("编辑详情").performClick()
+        // 详情固定为标题下方第二行，不作为工具栏入口（AC-D-07、4.25）。
+        val editable = composeRule.onAllNodes(hasSetTextAction())
+        editable.assertCountEquals(2)
+        val titleBounds = editable.onFirst().fetchSemanticsNode().boundsInRoot
+        val detailBounds = composeRule.onNodeWithTag("new_task_detail")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(
+            "详情应为标题下一行：title=$titleBounds detail=$detailBounds",
+            detailBounds.top >= titleBounds.bottom - 1f,
+        )
+        composeRule.onNodeWithTag("new_task_detail").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("new_task_detail").performClick()
         composeRule.onNodeWithTag("new_task_detail").assertIsFocused()
         composeRule.onNodeWithTag("new_task_detail").performTextInput("第一行详情")
+        composeRule.waitUntil(5_000) { vm.newTask.value?.detail == "第一行详情" }
 
-        composeRule.onNodeWithContentDescription("编辑详情").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("设置优先级，当前：高").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("设置截止日期，当前：未设置").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("移动到 GTD 清单，当前：收件箱")
             .assertIsDisplayed()
+        composeRule.onAllNodes(hasContentDescription("编辑详情", substring = true))
+            .assertCountEquals(0)
 
-        composeRule.onNodeWithContentDescription("编辑详情").performClick()
-        composeRule.onNodeWithText("清空详情").performClick()
-        composeRule.onNodeWithContentDescription("编辑详情，当前为空").assertIsDisplayed()
+        composeRule.onNodeWithTag("new_task_detail").performTextReplacement("")
+        composeRule.waitUntil(5_000) { vm.newTask.value?.detail == "" }
         composeRule.onNodeWithContentDescription("设置优先级，当前：高").assertIsDisplayed()
     }
 

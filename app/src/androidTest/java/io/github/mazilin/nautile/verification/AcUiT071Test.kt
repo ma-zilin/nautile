@@ -1,10 +1,13 @@
 package io.github.mazilin.nautile.verification
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -119,25 +122,39 @@ class AcUiT071Test {
     }
 
     @Test
-    fun T_09_ended_add_shows_four_target_positions_without_ended() {
+    fun T_09_ended_add_defaults_to_inbox_and_menu_has_no_selectable_ended() {
+        // R4 G4（AC-D-07、4.25）：已结束清单内新建时清单默认收件箱，
+        // 目标清单只由工具栏“清单”菜单修改，ENDED 不可选；不再有独立目标清单选择块。
         var target = GtdPosition.ENDED
         composeRule.setContent {
             NautileTheme {
                 NewTaskSheet(
                     state = NewTaskUiState(
                         kind = NewTaskKind.TODO,
+                        position = GtdPosition.ENDED,
                         targetPosition = GtdPosition.INBOX,
-                        showTargetPicker = true,
                     ),
                     onTargetChanged = { target = it },
                 )
             }
         }
 
-        composeRule.onNodeWithText("目标清单（已结束不可选）").assertIsDisplayed()
-        composeRule.onNodeWithText("下一步行动").performClick()
+        composeRule.onAllNodesWithText("目标清单（已结束不可选）").assertCountEquals(0)
+        composeRule.onNodeWithContentDescription("移动到 GTD 清单，当前：收件箱")
+            .performClick()
+        listOf(
+            "移动到 GTD 清单：收件箱",
+            "移动到 GTD 清单：下一步行动",
+            "移动到 GTD 清单：等待中",
+            "移动到 GTD 清单：将来／也许",
+        ).forEach { description ->
+            composeRule.onNodeWithContentDescription(description).assertIsDisplayed()
+        }
+        composeRule.onNodeWithContentDescription("已结束，已结束不可直接移入")
+            .assertIsDisplayed()
+            .assertIsNotEnabled()
+        composeRule.onNodeWithContentDescription("移动到 GTD 清单：下一步行动").performClick()
         composeRule.runOnIdle { assertEquals(GtdPosition.NEXT_ACTION, target) }
-        composeRule.onNodeWithText("已结束").assertDoesNotExist()
     }
 
     @Test
