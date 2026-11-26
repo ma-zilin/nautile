@@ -33,6 +33,11 @@ data class TodoUiState(
     val viewOptionsError: String? = null,
     /** 手动排序写入失败提示；失败时列表已回滚到原顺序。 */
     val manualOrderError: String? = null,
+    /**
+     * 切换清单持久化失败提示（CMP-14）：失败时保留本地新清单，不回滚。
+     * 仅记录错误，不阻塞页面使用。
+     */
+    val positionError: String? = null,
 ) {
     val isEmpty: Boolean get() = visibleTasks.isEmpty()
 }

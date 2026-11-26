@@ -10,6 +10,7 @@ import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.ProjectStatus
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.TaskId
+import io.github.mazilin.nautile.domain.model.UserSettings
 import io.github.mazilin.nautile.domain.model.ViewClassification
 import io.github.mazilin.nautile.domain.model.ViewOptions
 import io.github.mazilin.nautile.domain.model.ViewSort
@@ -60,6 +61,15 @@ private data class ProjectDetailBase(
 private data class SearchInput(
     val active: Boolean = false,
     val query: String = "",
+)
+
+/**
+ * 生效清单与设置快照：清单位置优先取本地覆盖值，其次取持久化的上次 GTD（CMP-14）。
+ * 本地值先同步生效，避免下一次拉拽读到异步回流的旧 position。
+ */
+private data class EffectiveSettings(
+    val position: GtdPosition,
+    val settings: UserSettings,
 )
 
 /** 当前清单的未过滤事实，供搜索再派生分组，避免重复订阅数据源。 */
@@ -144,24 +154,46 @@ class TodoViewModel(
 
     private val search = MutableStateFlow(SearchInput())
 
+    /**
+     * 切换清单的本地权威值（CMP-14）：[selectPosition] 先同步更新这里，再异步持久化；
+     * 持久化失败不回滚本地值，保证页面仍按新清单可用。null 表示沿用设置里的上次 GTD。
+     */
+    private val positionOverride = MutableStateFlow<GtdPosition?>(null)
+
+    /** 切换清单持久化失败提示；保留本地新值，只记录错误不改写清单。 */
+    private val positionError = MutableStateFlow<String?>(null)
+
     /** G9 视图选项本地状态：选择即生效，写入失败再回退（CMP-41）。 */
     private val viewPreferences = MutableStateFlow(ViewPreferences())
 
-    private val todoListBase = combine(
+    /** 生效清单：本地覆盖优先于持久化的上次 GTD，位置变化时先更新 UI 再写库。 */
+    private val effectiveSettings = combine(
         settingsRepository.settings,
+        positionOverride,
+    ) { settings, override ->
+        EffectiveSettings(
+            position = override ?: settings.lastGtdPosition ?: GtdPosition.INBOX,
+            settings = settings,
+        )
+    }
+
+    private val todoListBase = combine(
+        effectiveSettings,
         allTasks,
         allProjects,
         confirmation,
         projectReopenPrompt,
-    ) { settings, tasks, projects, pending, reopenPrompt ->
-        val position = settings.lastGtdPosition ?: GtdPosition.INBOX
+    ) { effective, tasks, projects, pending, reopenPrompt ->
         TodoListBase(
-            position = position,
-            tasks = tasks.filter { it.position == position },
+            position = effective.position,
+            tasks = tasks.filter { it.position == effective.position },
             projects = projects,
             confirmation = pending,
             reopenPrompt = reopenPrompt,
-            savedViewOptions = ViewOptions.fromSettings(settings.perModuleViewOptions, position),
+            savedViewOptions = ViewOptions.fromSettings(
+                effective.settings.perModuleViewOptions,
+                effective.position,
+            ),
         )
     }
 
@@ -169,7 +201,8 @@ class TodoViewModel(
         todoListBase,
         search,
         viewPreferences,
-    ) { base, input, preferences ->
+        positionError,
+    ) { base, input, preferences, positionErrorValue ->
         val options = preferences.optionsOverride
             ?.takeIf { it.position == base.position }
             ?.options
@@ -205,6 +238,7 @@ class TodoViewModel(
             viewOptions = options,
             viewOptionsError = preferences.viewError,
             manualOrderError = preferences.manualError,
+            positionError = positionErrorValue,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodoUiState())
 
@@ -277,9 +311,26 @@ class TodoViewModel(
 
     // ---- 列表命令 ----
 
-    /** 点按左侧清单或边界拉动后切换；持久化上次 GTD（AC-N-14）。 */
+    /**
+     * 点按左侧清单或边界拉动后切换（AC-N-14、CMP-14）。
+     *
+     * 先同步更新本地 position，再异步持久化：连续拉拽不会读到异步回流的旧值；
+     * 同一 position 幂等；持久化失败保留新值并记录错误，不回滚、不显示成功。
+     */
     fun selectPosition(position: GtdPosition) {
-        viewModelScope.launch { settingsRepository.setLastGtdPosition(position) }
+        val current = positionOverride.value ?: uiState.value.position
+        if (current == position) return
+        positionOverride.value = position
+        viewModelScope.launch {
+            val result = runCatching { settingsRepository.setLastGtdPosition(position) }
+            // 只记录属于本次选择的错误，避免旧请求覆盖新选择的提示。
+            if (positionOverride.value != position) return@launch
+            positionError.value = if (result.isFailure) {
+                "清单切换未能保存，本次仍按新清单显示"
+            } else {
+                null
+            }
+        }
     }
 
     // ---- 搜索（G8、CMP-38）：只改可见性，不写任务字段、不改排序 ----

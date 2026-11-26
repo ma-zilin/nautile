@@ -90,6 +90,7 @@ import io.github.mazilin.nautile.domain.rule.TaskGroup
 import io.github.mazilin.nautile.interaction.GestureArbiter
 import io.github.mazilin.nautile.ui.designsystem.NautileEmptyState
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
+import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import kotlin.math.abs
 
 /**
@@ -167,21 +168,31 @@ fun TodoScreen(
         wasNewTaskOpen = newTaskOpen
     }
     val maxPullPx = with(LocalDensity.current) { 120.dp.toPx() }
+    val hintThresholdPx = with(LocalDensity.current) { NautileSpacing.space2.toPx() }
     var gtdSwipe by remember { mutableFloatStateOf(0f) }
     var blockedByRow by remember { mutableStateOf(false) }
     var rowDragging by remember { mutableStateOf(false) }
 
-    val previousPosition = GestureArbiter.adjacentPosition(state.position, -1)
-    val nextPosition = GestureArbiter.adjacentPosition(state.position, 1)
+    // 本地清单位置（CMP-14）：提交后先同步这里，避免下一次快速拉拽读到旧 position。
+    var localPosition by remember { mutableStateOf(state.position) }
+    // 本次手势首次进入预览时的位置快照；previous/next/target 全部基于快照。
+    var pullBasePosition by remember { mutableStateOf<GtdPosition?>(null) }
     var pullOffset by remember { mutableFloatStateOf(0f) }
     var pullTarget by remember { mutableStateOf<GtdPosition?>(null) }
     var pullActive by remember { mutableStateOf(false) }
+    var pullCommitted by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.position) {
-        listState.scrollToItem(0)
-        pullOffset = 0f
-        pullTarget = null
-        pullActive = false
+        // 外部（含点按抽屉切换与异步回流）位置变化：同步本地值并回到列表顶部。
+        if (state.position != localPosition) {
+            localPosition = state.position
+            listState.scrollToItem(0)
+            pullBasePosition = null
+            pullOffset = 0f
+            pullTarget = null
+            pullActive = false
+            pullCommitted = false
+        }
     }
 
     // 导航隐藏：累计位移阈值 24dp＋16dp 滞后；仅普通纵向滚动触发（AC-N-15、T-11）。
@@ -189,11 +200,12 @@ fun TodoScreen(
     var navigationAccumulator by remember { mutableFloatStateOf(0f) }
     val hideThresholdPx = with(LocalDensity.current) { 24.dp.toPx() }
     val showThresholdPx = with(LocalDensity.current) { 16.dp.toPx() }
+    val latestOnNavigationVisibilityChanged by rememberUpdatedState(onNavigationVisibilityChanged)
+    val latestOnSwitchPosition by rememberUpdatedState(onSwitchPosition)
 
-    // 全屏边界拉动（FR-G-18、BR-61）：普通滚动优先，到顶/底后继续拉才预览；
-    // 松手过阈值切换相邻清单并保持全屏，否则回弹；首尾不循环。
+    // 全屏边界拉动（FR-G-18、BR-61、CMP-14）：普通滚动优先，到顶/底后继续拉才预览；
+    // 首次预览记录位置快照，松手过阈值按快照目标最多提交一次；首尾不循环。
     val boundaryConnection = remember(
-        state.position,
         maxPullPx,
         density,
         navigationUpdatesEnabled,
@@ -215,7 +227,7 @@ fun TodoScreen(
                             if (navigationAccumulator > hideThresholdPx) {
                                 navigationVisible = false
                                 navigationAccumulator = 0f
-                                onNavigationVisibilityChanged(false)
+                                latestOnNavigationVisibilityChanged(false)
                             }
                         } else {
                             // 方向反转：重置累计，避免抖动。
@@ -228,7 +240,7 @@ fun TodoScreen(
                             if (navigationAccumulator > showThresholdPx) {
                                 navigationVisible = true
                                 navigationAccumulator = 0f
-                                onNavigationVisibilityChanged(true)
+                                latestOnNavigationVisibilityChanged(true)
                             }
                         } else {
                             navigationAccumulator = 0f
@@ -236,11 +248,13 @@ fun TodoScreen(
                     }
                 }
                 if (available.y == 0f) return Offset.Zero
+                // 首次进入预览即锁定本次手势的基准位置，后续 target 不再随 UI 回流变化。
+                val base = pullBasePosition ?: localPosition.also { pullBasePosition = it }
                 val atTop = !listState.canScrollBackward
                 val atBottom = !listState.canScrollForward
                 val target = when {
-                    available.y > 0f && atTop -> previousPosition
-                    available.y < 0f && atBottom -> nextPosition
+                    available.y > 0f && atTop -> GestureArbiter.adjacentPosition(base, -1)
+                    available.y < 0f && atBottom -> GestureArbiter.adjacentPosition(base, 1)
                     else -> return Offset.Zero
                 }
                 pullActive = true
@@ -251,15 +265,27 @@ fun TodoScreen(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (pullActive) {
+                if (pullActive && !pullCommitted) {
+                    pullCommitted = true
                     val target = pullTarget
-                    if (target != null && GestureArbiter.isBoundaryPullCommit(pullOffset, density)) {
-                        onSwitchPosition(target)
+                    // 快照仍是当前本地位置、目标有效且超阈值才提交；每次手势最多一次。
+                    if (target != null &&
+                        target != localPosition &&
+                        pullBasePosition == localPosition &&
+                        GestureArbiter.isBoundaryPullCommit(pullOffset, density)
+                    ) {
+                        // 先同步本地 position 与滚动位置，再异步持久化（CMP-14）。
+                        localPosition = target
+                        latestOnSwitchPosition(target)
+                        listState.scrollToItem(0)
                     }
-                    pullOffset = 0f
-                    pullTarget = null
-                    pullActive = false
                 }
+                // 提交后立即重置，连续两次快速拉拽不会跳过或跳错清单。
+                pullBasePosition = null
+                pullOffset = 0f
+                pullTarget = null
+                pullActive = false
+                pullCommitted = false
                 return Velocity.Zero
             }
         }
@@ -481,9 +507,17 @@ fun TodoScreen(
                 }
 
                 // MOT-15：预览层不透明并裁剪；空间不足时隐藏文字，不溢出到列表交界。
-                pullTarget?.let { target ->
+                // CMP-14：中间清单提示“松手切换到 X”；首/尾无相邻时提示已到边界。
+                val pullHint = when {
+                    !pullActive || abs(pullOffset) < hintThresholdPx -> null
+                    pullTarget != null -> "松手切换到 ${pullTarget?.title}"
+                    pullOffset > 0f -> "已是第一个清单"
+                    else -> "已是最后一个清单"
+                }
+                if (pullHint != null) {
                     val reveal = with(LocalDensity.current) { abs(pullOffset).toDp() }
-                    if (reveal >= 32.dp) {
+                    // 空间不足时隐藏文字而不是溢出（MOT-15）。
+                    if (reveal >= NautileSpacing.space8) {
                         val atTop = pullOffset > 0f
                         Box(
                             modifier = Modifier
@@ -497,7 +531,7 @@ fun TodoScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = "松手切换到 ${target.title}",
+                                text = pullHint,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,

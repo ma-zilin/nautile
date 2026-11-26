@@ -1,0 +1,34 @@
+task=G3-R4
+phase=验证
+time=2026-11-26T20:41:00+08:00
+head=6c4cdaee48f3907b6b38bed03c15f37758219492
+dirty_entries=73
+device=emulator-5554 (Android API 36, sdk_gphone64_x86_64, 1080x2400, density 420) NOT_REAL_DEVICE
+requirements=docs/需求基线.md v2.15 (FR-G-15/16/18, AC-G-04, AC-G-05, BR-61, CMP-10..14)
+design=.plans/设计/01_视觉与动效标准.md (CMP-10..14, MOT-07, A11Y-03/07/15/20/21/24)
+static_command=bash scripts/check_ui_tokens.sh
+static_result=PASS hits=0 files=20
+gate_command=bash scripts/verify.sh G3
+gate_result=PASS
+gate_jvm=suites 37 tests 216 failures 0 errors 0 skipped 0
+gate_lint=EXIT 0
+gate_schema=EXIT 0 (1/2 保留, 3.json version3 tasks/projects/detail/manual_order)
+gate_log=docs/验证记录/门禁/verify_G3_20261126T204001.log
+gate_meta=docs/验证记录/门禁/verify_G3_20261126T204001.meta.txt
+jvm_new=AcGtdDrawerR4Test 5/5 PASS
+mutation=selectPosition 删除同步覆盖 -> 2 条用例变红；已还原，sha256 af0c370164db875e8f17942209ef236c89808a47490f8613ab2b47872f16c9fe 校验通过，复跑 5/5 绿
+ui_class=AcGtdHeaderT090Test 5/5 PASS
+ui_class2=AcTodoT07Test 25/25 PASS
+screenshot_class=G3R4ScreenshotTest 4/4 PASS
+connected_first_run=217 tests 1 failure (本验证自身截图用例过严断言；现场保留)
+connected_command=./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_result=PASS tests=217 failures=0 errors=0 skipped=0 suites=36 duration=2m5s exit=0
+connected_log=docs/验证记录/门禁/g3r4_connected_20261126T203746.log
+connected_xml=docs/验证记录/门禁/g3r4_connected_20261126T203746.xml
+connected_failrun_log=docs/验证记录/门禁/g3r4_connected_failrun1_20261126T203042.log
+connected_failrun_xml=docs/验证记录/门禁/g3r4_connected_failrun1_20261126T203042.xml
+mutation_log=docs/验证记录/门禁/g3r4_mutation_20261126T202556.log
+screenshots=docs/验证记录/门禁/g3r4_drawer_open_20261126T203746.png;g3r4_first_hint_20261126T203746.png;g3r4_last_hint_20261126T203746.png;g3r4_switch_preview_20261126T203746.png
+manual_items=200%字体视觉;TalkBack/Accessibility Scanner;真机手势与动画手感;动画逐帧;性能
+verdict=PASS
+notes=实现与测试改动未提交；截图不提交；本证据由独立验证 Agent 生成

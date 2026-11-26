@@ -1,0 +1,109 @@
+G3 / R4 闸门验证证据（GTD 左抽屉 + 主页面边界切换修复）
+生成时间：2026-11-26T20:41+08:00
+HEAD：6c4cdaee48f3907b6b38bed03c15f37758219492（实现与测试改动均未提交）
+工作区未提交条目：65（门禁时） / 66（收尾，含本证据与截图）
+适用需求：docs/需求基线.md v2.15（FR-G-15/16/18、AC-G-04、AC-G-05、BR-61、S1 CMP-10—14）
+适用设计：.plans/设计/01_视觉与动效标准.md（CMP-10/11/12/13/14、MOT-07、A11Y-03/07/15/24、SHP-08、SPC-05）
+执行角色：独立验证 Agent（只写测试、证据与截图；未改业务代码/构建/依赖）
+
+一、环境
+- 设备：emulator-5554，Android API 36（sdk_gphone64_x86_64），1080x2400，density 420（约 411x914dp），非真机。
+- JVM：Gradle 9.6.0 + JUnit；Main 调度器由测试替换为 UnconfinedTestDispatcher。
+- 时间、随机：无真实时钟/随机依赖；测试数据均为内存夹具。
+- 说明：模拟器在线、自动化执行；触感、动画流畅度与大字视觉为人工评审项，见第七节。
+
+二、静态检查
+命令：bash scripts/check_ui_tokens.sh
+结果：EXIT=0，RESULT: PASS，命中总数 0（颜色/圆角/动效/文本图标/固定分栏/遮罩 alpha/material-icons-extended/无限动画 8 条规则），检查文件 20。
+
+三、刚性门禁
+命令：bash scripts/verify.sh G3（四步均 --rerun-tasks）
+日志：docs/验证记录/门禁/verify_G3_20261126T204001.log
+元数据：docs/验证记录/门禁/verify_G3_20261126T204001.meta.txt
+- assembleDebug EXIT=0
+- assembleDebugAndroidTest(compile-only) EXIT=0
+- testDebugUnitTest EXIT=0；统计 suites=37 tests=216 failures=0 errors=0 skipped=0
+- lintDebug EXIT=0
+- schema：1.json/2.json 保留，3.json 含 tasks/projects/detail/manual_order，内容检查 EXIT=0
+- GATE RESULT: PASS
+
+四、JVM 新增/更新测试
+新增 app/src/test/java/io/github/mazilin/nautile/verification/AcGtdDrawerR4Test.kt（5 条，全通过）：
+1) AC_G_05_adjacent_position_direction_and_edges：五个清单相邻方向正确；首位下拉/末位上拉返回 null（不循环）。
+2) AC_G_04_select_position_updates_ui_before_persistence：阻塞持久化替身下，UI 已同步为新清单；
+   连续两次快速选择读到的仍是本地新值（NEXT_ACTION→WAITING），两次均发起持久化，最终落库为最后一次。
+3) AC_G_04_two_rapid_selections_end_on_second_target：连续选择最终为目标 B，持久化记录 [A,B]。
+4) AC_G_04_same_position_is_idempotent：与当前清单相同不重复写设置。
+5) AC_G_04_persistence_failure_keeps_new_position_and_reports_error：失败保留新清单并显示
+   “清单切换未能保存，本次仍按新清单显示”，不回滚；用例加 5s 超时，避免异常时悬挂。
+系统返回关闭抽屉由既有 JVM 返回栈用例 AC_G_04_system_back_closes_gtd_selector_without_selection 覆盖。
+
+变异抽查（验证测试能变红，记录后已还原）：
+- 变异：临时删除 TodoViewModel.selectPosition 的同步覆盖语句（文件哈希 af0c370164db875e8f17942209ef236c89808a47490f8613ab2b47872f16c9fe）。
+- 结果：2 条用例失败——select_position_updates_ui_before_persistence（expected NEXT_ACTION but was INBOX）、
+  persistence_failure...（5s 超时）。日志：g3r4_mutation_20261126T202556.log。
+- 还原后 sha256sum -c 通过（同哈希），复跑 5/5 通过。
+
+五、UI（模拟器）自动化
+更新/替换：
+- AcGtdHeaderT090Test：旧“左右分屏/右列/左宽 W_L”断言按 v2.15 改为左抽屉口径，未削弱 AC-G-04/05。
+  * 宽度公式：labelLarge、fontScale=1.0 独立测量五项标题；断言抽屉宽 = min(max(最长文本+48dp,180dp),280dp) ±1dp，且落在 180—280dp；
+  * 全高：未合并语义树取抽屉 Surface 节点，高度 = 根高（±1dp）；
+  * 贴左：左边缘 = 0（±1dp）；抽屉窄于屏幕（右侧留遮罩区）；
+  * 五项不截断：每项渲染文本宽 ≈ 自然文本宽（±1.5px）；切换清单前后宽度不变；无横向滚动节点；无“日历”；
+  * 仅点按切换：五项各 1 个可点击行；抽屉内上下拉不切换、不关闭、不出现“松手切换到 …”；右滑不切换、不关闭；点按后保持打开；
+  * 关闭三路径：关闭图标、点按右侧遮罩、抽屉上左滑（各计 1 次，均不切换清单）；系统返回由 JVM 覆盖；
+  * 打开/关闭终态：打开后五项可见，关闭动画结束后“清单”节点消失。
+- AcTodoT07Test：删除旧“全屏选择器/半屏选择器内边界拉动切换”断言（新方案抽屉内不切换），改为：
+  * AC_G_04_drawer_vertical_pull_does_not_switch（反向覆盖，不降低要求）；
+  * AC_G_04_drawer_has_no_right_column_task_list（右列已移除，不渲染任务/空态）；
+  * AC_G_04_main_page_shows_only_current_gtd_list（主页面只显示当前一个清单）；
+  * 保留并补充主页面：上下拉切换相邻、连续两次快速上拉依次到 NEXT_ACTION→WAITING、
+    首位“已是第一个清单”、末位“已是最后一个清单”、中间“松手切换到 下一步行动”、未超阈值回弹、长列表普通滚动不切换。
+- 新增截图夹具 G3R4ScreenshotTest（4 张，见第六节）。
+
+已执行结果：
+- AcGtdHeaderT090Test 5/5 通过；AcTodoT07Test 25/25 通过（定向运行，XML 已含在最终全量里）。
+- 主页面切换中间态用“按住不放（down+moveBy）+ 断言 + up()”覆盖，而非事后终态；首尾提示各断言 1 次且清单不变。
+
+六、全量 connected（模拟器）
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+- 首轮（20261126T203042）：217 tests，1 failure。唯一失败为本验证自身截图用例的过严断言
+  （“下一步行动”在头部副标题与抽屉选中项各出现 1 次，onNodeWithText 要求唯一）。属测试错误，不是业务缺陷。
+  现场保留：g3r4_connected_failrun1_20261126T203042.log/.xml。
+  纠正依据：改为 onAllNodesWithText(...).onFirst() 断言可见；不改业务代码、不删有效断言。
+- 复跑（20261126T203746）：217 tests，failures=0，errors=0，skipped=0，36 suites，BUILD SUCCESSFUL，耗时 2m5s，EXIT=0。
+  原始日志/XML：g3r4_connected_20261126T203746.log/.xml。
+- 覆盖范围含既有 AC（待办、详情、设置、搜索、视图、手动排序、迁移与仓库契约）与旧 G10 截图用例；均未回归。
+
+七、截图（不提交，已实际查看）
+- g3r4_drawer_open_20261126T203746.png：左侧全高抽屉，标题“清单”+关闭图标，五项，
+  “下一步行动”为选中态；右侧整屏遮罩覆盖待办页（含 FAB 被遮罩压暗）。
+- g3r4_first_hint_20261126T203746.png：收件箱空清单顶部显示“已是第一个清单”。
+- g3r4_last_hint_20261126T203746.png：已结束空清单底部显示“已是最后一个清单”。
+- g3r4_switch_preview_20261126T203746.png：收件箱底部显示“松手切换到 下一步行动”。
+说明：截图为 Compose 夹具渲染，不代表真实数据库状态；截图只作人工视觉核对，不替代断言。
+
+八、设计核对（代码与设计文本逐项对照）
+1) 宽度公式：GtdSelector 以 labelLarge 测量五项、取最大文本宽 + 2×24dp，coerceIn(180,280)；无固定比例、无 320dp。
+2) 全高贴左：Surface align CenterStart + fillMaxHeight + 形状默认 None；宽不做动画。
+3) insets 一次：抽屉内容 windowInsetsPadding(systemBars.only(Top+Bottom))；宿主不加 padding（MainActivity 已同步注释），背景延伸到屏幕边缘。
+4) 遮罩：整屏 scrim.fillMaxSize + SCRIM_ALPHA 0.32，点按关闭；位于抽屉之下、页面之上。
+5) 关闭四路径：关闭图标 onClick；遮罩点按；系统返回（OverlayBackStack/BackDispatcher）；抽屉上左滑复用 GTD_OPEN_SWIPE_DP=48dp（方向相反）。
+6) 仅点按：行 Surface(onClick)；抽屉内无上下拉切换逻辑、无“松手切换到 …”；遮罩消费点击/滚动，底层不滚动。
+7) 上下拉限制：TodoScreen 边界拉动仅在抽屉关闭时可达；抽屉内仅纵向滚动浏览。
+8) 动效来源：位移 Expressive、alpha StandardEffects；首帧直接终态；animateTo 从当前值重定向（可打断）；退出结束才 onExitFinished。
+9) 无字面量：check_ui_tokens 0 命中；颜色/圆角/动效/alpha 均走 token。
+10) 右列移除：GtdSelector 不再渲染任务列表（tasks 参数保留兼容签名并抑制未用告警）。
+
+九、未自动化 / 人工评审项
+- A11Y-15/21：200% 字体下五项完整、主页面不横向滚动——需人工大字截图核对。
+- A11Y-20/24：TalkBack/Accessibility Scanner 读出（选中态、关闭按钮、遮罩隔离底层语义）——人工。
+- 真机手势体验、开合动画流畅度与可打断的“手感”——本轮为模拟器，未做真机与人工体验判定。
+- 开合动画的中间帧视觉效果只断言终态；未做逐帧截图。
+- 性能（列表规模、内存）未纳入本轮。
+
+十、判定
+静态 PASS + 门禁 PASS（216 JVM 0/0）+ 全量 connected 217/0/0/0 + 关键交互（宽度公式/全高/遮罩/四关闭路径/仅点按/禁上下拉/主页面切换与首尾提示/快速两次方向）均核对通过
+=> R4 G3 判定 PASS。
+遗留限制：模拟器而非真机；200%/TalkBack/动画手感为人工评审项；实现与测试改动仍未提交，最终提交由协调 Agent 执行。

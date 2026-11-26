@@ -3,8 +3,14 @@ package io.github.mazilin.nautile.verification
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -27,6 +33,7 @@ import io.github.mazilin.nautile.ui.screen.todo.GtdSelector
 import io.github.mazilin.nautile.ui.screen.todo.ProjectConfirmation
 import io.github.mazilin.nautile.ui.screen.todo.TodoScreen
 import io.github.mazilin.nautile.ui.screen.todo.TodoUiState
+import io.github.mazilin.nautile.ui.screen.todo.title
 import io.github.mazilin.nautile.ui.theme.NautileTheme
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -132,6 +139,27 @@ class AcTodoT07Test {
         composeRule.runOnIdle { assertFalse("低于阈值的右滑不应打开选择器", opened) }
     }
 
+    /** AC-G-04：主待办页只显示当前一个 GTD 清单，不同时并排显示两个清单。 */
+    @Test
+    fun AC_G_04_main_page_shows_only_current_gtd_list() {
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = TodoUiState(
+                        position = GtdPosition.NEXT_ACTION,
+                        searchAvailable = true,
+                        viewOptionsAvailable = true,
+                    ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("下一步行动").assertIsDisplayed()
+        GtdPosition.entries
+            .filter { it != GtdPosition.NEXT_ACTION }
+            .forEach { composeRule.onNodeWithText(it.title).assertDoesNotExist() }
+    }
+
     @Test
     fun AC_G_04_item_swipe_abandons_item_and_does_not_open_selector() {
         var opened = false
@@ -191,14 +219,15 @@ class AcTodoT07Test {
     }
 
     @Test
-    fun AC_G_04_selector_close_button_and_blank_left_swipe_close() {
+    fun AC_G_04_drawer_close_icon_scrim_tap_and_left_swipe_close() {
+        var selected: GtdPosition? = null
         var closed = 0
         composeRule.setContent {
             NautileTheme {
                 GtdSelector(
                     currentPosition = GtdPosition.INBOX,
                     tasks = emptyList(),
-                    onSelect = {},
+                    onSelect = { selected = it },
                     onClose = { closed += 1 },
                 )
             }
@@ -206,9 +235,21 @@ class AcTodoT07Test {
 
         // 设计 §6.2 #11：关闭为 ic_close 图标按钮，按 contentDescription“关闭”定位。
         composeRule.onNodeWithContentDescription("关闭").performClick()
-        composeRule.onRoot().performTouchInput { swipeLeft() }
+        composeRule.runOnIdle { assertEquals(1, closed) }
 
-        composeRule.runOnIdle { assertEquals(2, closed) }
+        // 点按抽屉右侧遮罩关闭。
+        composeRule.onRoot().performTouchInput {
+            click(Offset(width - 8f, height / 2f))
+        }
+        composeRule.runOnIdle { assertEquals("点按遮罩应关闭抽屉", 2, closed) }
+
+        // 抽屉上左滑关闭（不是空白区右滑）。
+        composeRule.onAllNodes(hasText("等待中") and hasClickAction()).onFirst()
+            .performTouchInput { swipeLeft() }
+        composeRule.runOnIdle {
+            assertEquals("抽屉上左滑应关闭抽屉", 3, closed)
+            assertNull("关闭不应切换清单", selected)
+        }
     }
 
     @Test
@@ -251,108 +292,63 @@ class AcTodoT07Test {
         composeRule.onNodeWithText("清单").assertIsDisplayed()
     }
 
+    /**
+     * AC-G-04 / CMP-12：抽屉内上下拉只浏览，不切换清单，也不显示“松手切换到 …”。
+     *
+     * v2.15（2026-11-26 决策）把 GTD 选择器改为左侧全高抽屉，抽屉内不再有边界拉动；
+     * 旧“全屏选择器边界拉动切换”的断言由本条按新口径替换，不削弱 AC-G-04/05 覆盖。
+     */
     @Test
-    fun AC_G_05_selector_shows_empty_state() {
+    fun AC_G_04_drawer_vertical_pull_does_not_switch() {
+        var selected: GtdPosition? = null
+        var closed = 0
         composeRule.setContent {
             NautileTheme {
                 GtdSelector(
                     currentPosition = GtdPosition.INBOX,
                     tasks = emptyList(),
+                    onSelect = { selected = it },
+                    onClose = { closed += 1 },
+                )
+            }
+        }
+
+        val row = { composeRule.onAllNodes(hasText("等待中") and hasClickAction()).onFirst() }
+        row().performTouchInput { swipeUp() }
+        row().performTouchInput { swipeDown() }
+
+        composeRule.runOnIdle {
+            assertNull("抽屉内上下拉不应切换清单", selected)
+            assertEquals("抽屉内上下拉不应关闭抽屉", 0, closed)
+        }
+        assertTrue(
+            "抽屉打开时不应出现“松手切换到 …”",
+            composeRule.onAllNodesWithText("松手切换到", substring = true)
+                .fetchSemanticsNodes().isEmpty(),
+        )
+    }
+
+    /** AC-G-04：抽屉不再渲染右列任务列表（右列已移除），只剩标题与五项。 */
+    @Test
+    fun AC_G_04_drawer_has_no_right_column_task_list() {
+        composeRule.setContent {
+            NautileTheme {
+                GtdSelector(
+                    currentPosition = GtdPosition.INBOX,
+                    tasks = listOf(task(1L, "唯一任务")),
                     onSelect = {},
                     onClose = {},
                 )
             }
         }
 
-        composeRule.onNodeWithText("该清单暂无任务").assertIsDisplayed()
-    }
-
-    @Test
-    fun AC_G_05_boundary_pull_on_empty_list_commits_to_adjacent() {
-        var selected: GtdPosition? = null
-        composeRule.setContent {
-            NautileTheme {
-                GtdSelector(
-                    currentPosition = GtdPosition.INBOX,
-                    tasks = emptyList(),
-                    onSelect = { selected = it },
-                    onClose = {},
-                )
-            }
+        composeRule.onNodeWithText("清单").assertIsDisplayed()
+        GtdPosition.entries.forEach { position ->
+            composeRule.onAllNodes(hasText(position.title) and hasClickAction())
+                .onFirst().assertIsDisplayed()
         }
-
-        // 用户 2026-11-25 全屏决定：选择器自身消费 systemBars inset，
-        // 起手/收手落在 inset 内会丢失事件；改在内容区内拖动（方向与距离不变）。
-        composeRule.onRoot().performTouchInput {
-            swipeUp(startY = center.y + height * 0.25f, endY = center.y - height * 0.25f)
-        }
-
-        composeRule.runOnIdle { assertEquals(GtdPosition.NEXT_ACTION, selected) }
-    }
-
-    @Test
-    fun AC_G_05_first_position_pull_down_does_not_wrap() {
-        var selected: GtdPosition? = null
-        composeRule.setContent {
-            NautileTheme {
-                GtdSelector(
-                    currentPosition = GtdPosition.INBOX,
-                    tasks = emptyList(),
-                    onSelect = { selected = it },
-                    onClose = {},
-                )
-            }
-        }
-
-        // 全屏选择器自身消费 systemBars inset；起手/收手留在内容区内（方向不变）。
-        composeRule.onRoot().performTouchInput {
-            swipeDown(startY = center.y - height * 0.25f, endY = center.y + height * 0.25f)
-        }
-
-        composeRule.runOnIdle { assertNull(selected) }
-    }
-
-    @Test
-    fun AC_G_05_half_screen_below_threshold_rebounds_and_keeps_position() {
-        var selected: GtdPosition? = null
-        composeRule.setContent {
-            NautileTheme {
-                GtdSelector(
-                    currentPosition = GtdPosition.INBOX,
-                    tasks = emptyList(),
-                    onSelect = { selected = it },
-                    onClose = {},
-                )
-            }
-        }
-
-        composeRule.onRoot().performTouchInput {
-            swipeDown(startY = center.y, endY = center.y + 30f)
-        }
-
-        composeRule.runOnIdle { assertNull("全屏未超阈值不应切换清单", selected) }
-    }
-
-    @Test
-    fun AC_G_05_short_list_boundary_pull_commits_to_adjacent() {
-        var selected: GtdPosition? = null
-        composeRule.setContent {
-            NautileTheme {
-                GtdSelector(
-                    currentPosition = GtdPosition.INBOX,
-                    tasks = listOf(task(1L, "唯一任务")),
-                    onSelect = { selected = it },
-                    onClose = {},
-                )
-            }
-        }
-
-        // 全屏选择器自身消费 systemBars inset；起手/收手落在内容区内（方向与距离不变）。
-        composeRule.onRoot().performTouchInput {
-            swipeUp(startY = center.y + height * 0.25f, endY = center.y - height * 0.25f)
-        }
-
-        composeRule.runOnIdle { assertEquals(GtdPosition.NEXT_ACTION, selected) }
+        composeRule.onNodeWithText("唯一任务").assertDoesNotExist()
+        composeRule.onNodeWithText("该清单暂无任务").assertDoesNotExist()
     }
 
     @Test
@@ -504,6 +500,118 @@ class AcTodoT07Test {
         composeRule.onRoot().performTouchInput { swipeUp() }
 
         composeRule.runOnIdle { assertNull("普通滚动不应触发边界切换", switched) }
+    }
+
+    /**
+     * CMP-14 / BR-61：主待办页连续两次快速上拉，方向正确（依次到相邻两个清单），不跳错。
+     *
+     * 用状态回写模拟宿主：提交后 position 变化，第二次手势必须基于新位置继续向后一个清单。
+     */
+    @Test
+    fun AC_G_05_main_page_rapid_two_pulls_move_two_positions() {
+        var position by mutableStateOf(GtdPosition.INBOX)
+        val switches = mutableListOf<GtdPosition>()
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(emptyList()).copy(position = position),
+                    onSwitchPosition = {
+                        switches += it
+                        position = it
+                    },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput { swipeUp() }
+        composeRule.waitForIdle()
+        composeRule.onRoot().performTouchInput { swipeUp() }
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle {
+            assertEquals(
+                "连续两次快速上拉应依次到下一步行动、等待中",
+                listOf(GtdPosition.NEXT_ACTION, GtdPosition.WAITING),
+                switches,
+            )
+            assertEquals(GtdPosition.WAITING, position)
+        }
+    }
+
+    /** CMP-14 / BR-61：首位继续下拉显示“已是第一个清单”，且不切换。 */
+    @Test
+    fun AC_G_05_main_page_first_position_shows_hint_and_does_not_switch() {
+        var switched: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(emptyList()),
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        // 手动持住下拉，覆盖预览中间态；空清单阻力 0.15，需拉足够距离才显示提示。
+        composeRule.onRoot().performTouchInput {
+            down(center)
+            repeat(30) { moveBy(Offset(0f, 30f)) }
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("已是第一个清单").assertIsDisplayed()
+        composeRule.onRoot().performTouchInput { up() }
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle { assertNull("首位下拉不应切换清单", switched) }
+    }
+
+    /** CMP-14 / BR-61：末位继续上拉显示“已是最后一个清单”，且不切换。 */
+    @Test
+    fun AC_G_05_main_page_last_position_shows_hint_and_does_not_switch() {
+        var switched: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(emptyList()).copy(position = GtdPosition.ENDED),
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput {
+            down(center)
+            repeat(30) { moveBy(Offset(0f, -30f)) }
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("已是最后一个清单").assertIsDisplayed()
+        composeRule.onRoot().performTouchInput { up() }
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle { assertNull("末位上拉不应切换清单", switched) }
+    }
+
+    /** CMP-14：中间清单拉动预览显示“松手切换到 X”，松手超阈值才切换。 */
+    @Test
+    fun AC_G_05_main_page_preview_shows_target_before_release() {
+        var switched: GtdPosition? = null
+        composeRule.setContent {
+            NautileTheme {
+                TodoScreen(
+                    state = stateWith(emptyList()),
+                    onSwitchPosition = { switched = it },
+                )
+            }
+        }
+
+        composeRule.onRoot().performTouchInput {
+            down(center)
+            repeat(20) { moveBy(Offset(0f, -30f)) }
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("松手切换到 下一步行动").assertIsDisplayed()
+        composeRule.onRoot().performTouchInput { up() }
+        composeRule.waitForIdle()
+
+        composeRule.runOnIdle { assertEquals(GtdPosition.NEXT_ACTION, switched) }
     }
 
     @Test
