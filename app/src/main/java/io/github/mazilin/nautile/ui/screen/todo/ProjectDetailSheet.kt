@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -48,8 +50,10 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Velocity
+import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.ui.designsystem.dragScrimFactor
 import io.github.mazilin.nautile.ui.designsystem.nautileSheetBottomInsets
@@ -81,6 +85,7 @@ fun ProjectDetailSheet(
     onToggleCollapsed: () -> Unit,
     onOpenChild: (TaskId) -> Unit = {},
     onCloseRequested: () -> Unit,
+    onOpenEdit: () -> Unit = {},
     visible: Boolean = true,
     onExitFinished: () -> Unit = {},
 ) {
@@ -227,7 +232,23 @@ fun ProjectDetailSheet(
                         .verticalScroll(scrollState)
                         .nestedScroll(contentConnection),
                 ) {
-                    Text("项目详情", style = MaterialTheme.typography.titleMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "项目详情",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // 头部“编辑”入口（CMP-37.1）：打开只含名称的编辑面板。
+                        IconButton(onClick = onOpenEdit) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_edit),
+                                contentDescription = "编辑项目",
+                            )
+                        }
+                    }
                     OutlinedTextField(
                         value = state.nameValue,
                         onValueChange = onNameChanged,

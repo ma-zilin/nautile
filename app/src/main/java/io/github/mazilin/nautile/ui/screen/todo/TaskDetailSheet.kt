@@ -23,6 +23,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -57,6 +59,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
@@ -117,6 +120,7 @@ fun TaskDetailSheet(
     onProjectDraftChanged: (String) -> Unit = {},
     onCreateProjectForTask: () -> Unit = {},
     onClearDetail: () -> Unit = {},
+    onOpenEdit: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val scrollState = rememberScrollState()
@@ -137,6 +141,13 @@ fun TaskDetailSheet(
     // 系统返回先关菜单/日期面板，不关闭面板（CMP-31）。
     BackHandler(enabled = visible && (openMenu != null || datePanelOpen)) {
         if (openMenu != null) openMenu = null else datePanelOpen = false
+    }
+    // 编辑面板打开时详情让位（单宿主切换）；关闭残留的菜单/日期面板，避免回来后停在子面板。
+    LaunchedEffect(visible) {
+        if (!visible) {
+            openMenu = null
+            datePanelOpen = false
+        }
     }
     LaunchedEffect(state.task.projectId) {
         if (awaitingProjectCreate) {
@@ -314,7 +325,23 @@ fun TaskDetailSheet(
                         .verticalScroll(scrollState)
                         .nestedScroll(contentConnection),
                 ) {
-                    Text("任务详情", style = MaterialTheme.typography.titleMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "任务详情",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        // 头部“编辑”入口（CMP-37.1）：打开与创建同构的编辑面板。
+                        IconButton(onClick = onOpenEdit) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_edit),
+                                contentDescription = "编辑任务",
+                            )
+                        }
+                    }
                     Spacer(modifier = Modifier.height(NautileSpacing.space2))
                     if (datePanelOpen) {
                         // 日期为同一面板内的选择面板，不叠第二层遮罩（CMP-31.2、CMP-32）。

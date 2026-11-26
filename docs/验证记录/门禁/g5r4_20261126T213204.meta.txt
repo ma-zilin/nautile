@@ -1,0 +1,45 @@
+task=G5-R4
+phase=验证
+time=2026-11-26T21:45:00+08:00
+head=bb5f9ba87e5e1010f18ddb16b27835edb30dfbf2
+worktree=代码实现未提交（开发者 5 个 M + 4 个新文件）；本闸门只新增 androidTest 与证据
+device=emulator-5554 (Android API 36, 1080x2400, density 420) NOT_REAL_DEVICE
+requirements=docs/需求基线.md v2.15 (AC-D-07 编辑图标与同构编辑面板、FR-D-02/03、CMP-35/36/37.1；需求变更记录 4.25)
+design=.plans/设计/01_视觉与动效标准.md（CMP-30/31 图标＋文字、CMP-37.1 编辑面板、G4 面板规格沿用）
+scope=任务/项目详情头部 ic_edit → 同构下半屏编辑面板（预填、单次保存、无效阻止、返回顺序、ENDED 拦截、项目重开守卫）
+static_command=bash scripts/check_ui_tokens.sh
+static_result=PASS hits=0 files=22
+static_log=docs/验证记录/门禁/g5r4_static_20261126T213204.log;docs/验证记录/门禁/g5r4_static_final_20261126T213204.log
+gate_command=bash scripts/verify.sh G5（四步均 --rerun-tasks）
+gate_result=PASS
+gate_steps=assembleDebug EXIT0; assembleDebugAndroidTest EXIT0; testDebugUnitTest EXIT0; lintDebug EXIT0
+gate_jvm=suites 37 tests 216 failures 0 errors 0 skipped 0
+gate_schema=EXIT 0 (1/2 保留, 3.json version3 tasks/projects/detail/manual_order)
+gate_log=docs/验证记录/门禁/verify_G5_20261126T213101.log
+gate_meta=docs/验证记录/门禁/verify_G5_20261126T213101.meta.txt
+gate_note=同命令另产生 213019 一份日志（HEAD 相同，均 PASS）；采用 213101
+ui_new=AcDetailEditR4G5Test 10 例（任务 7 / 项目 2 / 已结项任务 1）
+ui_new_result=10/10 PASS（模拟器）
+ui_new_cases=编辑图标语义+预填+同构四属性；单次保存全字段落库且详情一致；空标题阻止保存/取消/返回并提示；返回先关菜单再关面板且草稿不落库；保存失败(NotFound)保留输入；项目结项→重开确认后重试一次成功；重试仍失败只重试一次且不再弹确认；已结项任务清单入口禁用且 ENDED 被忽略；项目编辑预填+改名同步详情/列表；项目空名阻止且返回只关面板
+ui_failrun1=首轮 2 失败，均为测试自身错误：①已结项任务工具栏文案按 CMP-35 为“已结项，请在详情重新打开”，初始预期写成“移动到 GTD 清单，当前：已结束”；②重试一次用例的替身仓库在初始结项前即强制“已完成”，导致结项被 ALREADY_CLOSED 拒绝。修正期望与替身开关后复跑 10/10；未删除或削弱任何断言（首轮日志未单独归档，结果与本说明一并记录）
+ui_screenshot_cases=G5R4EditScreenshotTest 2 例（任务/项目编辑面板）
+ui_screenshot_result=2/2 PASS（am instrument -w, OK (2 tests)）
+connected_command=./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_result=PASS tests=243 failures=0 errors=0 skipped=0 suites=1 duration=2m31s exit=0
+connected_log=docs/验证记录/门禁/g5r4_connected_final_20261126T213204.log
+connected_xml=docs/验证记录/门禁/g5r4_connected_final_20261126T213204.xml
+connected_note=同 HEAD 早前一次全量 243/0/0/0（2m31s）见 g5r4_connected_20261126T213204.log；变异注入前/还原后源码 sha256 一致，故结果同源
+connected_failrun2=243 例中 1 失败：既有 AcSettingsExitG4Test.G4_MOT09_2_settings_pop_mid_frame_screenshot 向 MediaStore 写入固定文件名 g4_settings_pop_mid.png，模拟器已累积 32 个同名副本，MediaStore buildUniqueFile 达上限后抛 IllegalStateException；属既有测试夹具非幂等/设备残留，与 G5 代码无关。保留日志 g5r4_connected_failrun2_20261126T213204.log/.xml，清理模拟器 Pictures/nautile_g4 32 个测试副本（仓库已有 G4 归档图，未影响证据）后复跑 243/0/0/0
+connected_fixture_issue=AcSettingsExitG4Test 截图用例使用固定 DISPLAY_NAME，重复运行会累积副本并最终失败；建议由该测试负责人改为唯一文件名。本轮不改动该用例（超出 G5 授权范围）
+mutation=TaskEditSheet.kt checklist enabled = !state.closed → true；AcDetailEditR4G5Test 变为 10/1（失败用例 G5R4_closed_task_blocks_checklist_entry_and_ended_target，assertIsNotEnabled 失败）；已还原
+mutation_hash_before_after=6de7528a7d7f3cf3852360be4115190fcd2d3e16f862cd9e3372c70e66d981bc
+mutation_log=docs/验证记录/门禁/g5r4_mutation_20261126T213204.log
+restore_log=docs/验证记录/门禁/g5r4_restore_20261126T213204.log
+restore_result=还原后 10/10 PASS；随后全量 243/0/0/0
+screenshots=docs/验证记录/门禁/g5r4_task_edit_20261126T213204.png;docs/验证记录/门禁/g5r4_project_edit_20261126T213204.png
+design_check=ic_edit 为 24dp 线性 vector，仅详情头部一处，语义“编辑任务/编辑项目”；编辑面板与创建同构（标题+固定第二行详情+日期/优先级/项目/清单四项图标＋文字），预填当前值；空标题/空名阻止保存与关闭；返回顺序 菜单→编辑面板→详情（编辑关闭后详情仍在）；无颜色/圆角/动效/文本图标字面量（静态检查 0 命中）
+manual_items=面板视觉（28dp 圆角、32% 遮罩、动效帧率）；200% 字体；TalkBack 朗读；真实输入法弹出/收起；真机安装与手势
+not_automated=①生产 MainActivity 覆盖层返回栈与编辑面板组合（本闸门在 ComponentActivity 宿主上触发真实 BackHandler，未跑 MainActivity 全覆盖层路径）；②数据库 IO 异常时的“保存失败保留”（save 路径无 try/catch，未注入异常避免崩溃；仅验证 NotFound 失败保留）；③整进程重启后编辑草稿/详情恢复
+risks=保存使用单次用户动作但逐字段多次写库（非事务）；中途 DB 异常可能留下部分字段写入，且异常未捕获。属既有保存模式，未见 AC 要求事务，交开发/架构判断，不计本轮失败
+verdict=PASS
+notes=实现与测试改动未提交；截图不提交；本证据由独立验证 Agent 生成

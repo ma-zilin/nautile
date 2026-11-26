@@ -44,7 +44,9 @@ import io.github.mazilin.nautile.ui.screen.settings.StartupState
 import io.github.mazilin.nautile.ui.screen.todo.GtdSelector
 import io.github.mazilin.nautile.ui.screen.todo.NewTaskSheet
 import io.github.mazilin.nautile.ui.screen.todo.ProjectDetailSheet
+import io.github.mazilin.nautile.ui.screen.todo.ProjectEditSheet
 import io.github.mazilin.nautile.ui.screen.todo.TaskDetailSheet
+import io.github.mazilin.nautile.ui.screen.todo.TaskEditSheet
 import io.github.mazilin.nautile.ui.screen.todo.TodoScreen
 import io.github.mazilin.nautile.ui.screen.todo.TodoViewModel
 import io.github.mazilin.nautile.ui.theme.NautileTheme
@@ -116,6 +118,8 @@ class MainActivity : ComponentActivity() {
                 val startup by settingsViewModel.startup.collectAsStateWithLifecycle()
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
                 val projectDetailState by todoViewModel.projectDetail.collectAsStateWithLifecycle()
+                val taskEditState by todoViewModel.taskEdit.collectAsStateWithLifecycle()
+                val projectEditState by todoViewModel.projectEdit.collectAsStateWithLifecycle()
                 val newTaskState by todoViewModel.newTask.collectAsStateWithLifecycle()
                 val newTaskProjects by todoViewModel.activeProjects.collectAsStateWithLifecycle()
                 val activeTab by container.navigationCoordinator.activeTab.collectAsStateWithLifecycle()
@@ -347,7 +351,8 @@ class MainActivity : ComponentActivity() {
                                     if (!opened) todoViewModel.closeDetail()
                                 },
                                 onCloseRequested = requestCloseDetail,
-                                visible = projectDetailState != null,
+                                onOpenEdit = todoViewModel::openProjectEdit,
+                                visible = projectDetailState != null && projectEditState == null,
                                 onExitFinished = { lastProjectDetail = null },
                             )
                         }
@@ -364,7 +369,7 @@ class MainActivity : ComponentActivity() {
                                 onCloseRequested = requestCloseDetail,
                                 onDetailChanged = todoViewModel::onTaskDetailChanged,
                                 onCommitDetail = todoViewModel::commitTaskDetail,
-                                visible = taskDetailState != null,
+                                visible = taskDetailState != null && taskEditState == null,
                                 onExitFinished = { lastTaskDetail = null },
                                 projects = newTaskProjects,
                                 onPriorityChanged = todoViewModel::onTaskPriorityChanged,
@@ -376,6 +381,52 @@ class MainActivity : ComponentActivity() {
                                 onCreateProjectForTask =
                                     todoViewModel::createProjectForTaskDetail,
                                 onClearDetail = todoViewModel::clearTaskDetail,
+                                onOpenEdit = todoViewModel::openTaskEdit,
+                            )
+                        }
+                    }
+                    // 任务编辑面板：与新建同构；返回顺序为菜单→编辑面板→详情（R4 G5）。
+                    var lastTaskEdit by remember { mutableStateOf(taskEditState) }
+                    if (taskEditState != null) lastTaskEdit = taskEditState
+                    lastTaskEdit?.let { edit ->
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            TaskEditSheet(
+                                state = edit,
+                                projects = newTaskProjects,
+                                onTitleChanged = todoViewModel::onTaskEditTitleChanged,
+                                onDetailChanged = todoViewModel::onTaskEditDetailChanged,
+                                onPriorityChanged = todoViewModel::onTaskEditPriorityChanged,
+                                onDueDateChanged = todoViewModel::onTaskEditDueDateChanged,
+                                onDueTimeChanged = todoViewModel::onTaskEditDueTimeChanged,
+                                onProjectChanged = todoViewModel::onTaskEditProjectChanged,
+                                onProjectDraftChanged =
+                                    todoViewModel::onTaskEditProjectDraftChanged,
+                                onCreateProjectForTask =
+                                    todoViewModel::createProjectForTaskEdit,
+                                onPositionChanged = todoViewModel::onTaskEditPositionChanged,
+                                onSave = todoViewModel::saveTaskEdit,
+                                onDismissRequest = {
+                                    todoViewModel.requestTaskEditDismiss()
+                                },
+                                visible = taskEditState != null,
+                                onExitFinished = { lastTaskEdit = null },
+                            )
+                        }
+                    }
+                    // 项目编辑面板：仅名称；同样由覆盖层内部承载，不新增覆盖层类型。
+                    var lastProjectEdit by remember { mutableStateOf(projectEditState) }
+                    if (projectEditState != null) lastProjectEdit = projectEditState
+                    lastProjectEdit?.let { edit ->
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            ProjectEditSheet(
+                                state = edit,
+                                onNameChanged = todoViewModel::onProjectEditNameChanged,
+                                onSave = todoViewModel::saveProjectEdit,
+                                onDismissRequest = {
+                                    todoViewModel.requestProjectEditDismiss()
+                                },
+                                visible = projectEditState != null,
+                                onExitFinished = { lastProjectEdit = null },
                             )
                         }
                     }
@@ -462,11 +513,12 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * GTD 覆盖层宿主（G1-A2、CMP-19）。
+ * GTD 覆盖层宿主（CMP-19）。
  *
  * 选择器常驻组合，由 [open] 驱动开合：打开播放入场，覆盖层关闭后仍保留到退出动效结束再停止绘制，
  * 不改动 OverlayBackStack 的关闭时机与返回结果。
- * G3 起为全屏左右分屏：inset 由选择器自身各消费一次，宿主不再加 padding（CMP-10、SPC-05）。
+ * R4 起为左侧全高抽屉：状态栏上、导航栏下 inset 由抽屉内容自身消费一次，宿主不再加 padding
+ * （CMP-10/13、SPC-05）。
  */
 @Composable
 private fun GtdSelectorOverlay(

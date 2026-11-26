@@ -1,0 +1,38 @@
+===== G5-R4 证据摘要（由实际输出汇总；原始日志见各节路径） =====
+时间：2026-11-26T22:02:35+08:00
+设备：emulator-5554	device  API=36
+
+===== 1) 静态 token 检查 scripts/check_ui_tokens.sh =====
+------------------------------------------------------------
+检查文件数：22（ui/theme + ui/designsystem + ui/screen/todo 的 .kt，另加 ui/AppRoot.kt）
+命中总数：0
+RESULT: PASS
+
+===== 2) 刚性门禁 bash scripts/verify.sh G5 =====
+[STEP] assembleDebug EXIT=0
+[STEP] assembleDebugAndroidTest(compile-only) EXIT=0
+[STEP] testDebugUnitTest EXIT=0
+[STEP] lintDebug EXIT=0
+suites=37 tests=216 failures=0 errors=0 skipped=0
+[STEP] 测试结果统计 EXIT=0
+===== [STEP] schema 产物 =====
+schema 存在：app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/1.json（历史）、app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/2.json（历史）与 app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/3.json（当前）
+[STEP] schema 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）
+GATE RESULT: PASS
+
+===== 3) 全量 connected（最终代码） =====
+BUILD SUCCESSFUL in 2m 31s
+tests 243 failures 0 errors 0 skipped 0
+失败重跑说明：上一轮 243/1 为既有 AcSettingsExitG4Test 固定 MediaStore 文件名累积 32 副本所致（夹具非幂等），清理模拟器测试副本后复跑 243/0/0/0；保留 g5r4_connected_failrun2_20261126T213204.log/.xml
+
+===== 4) 变异抽查（注入 → 红） =====
+注入前 sha256：6de7528a7d7f3cf3852360be4115190fcd2d3e16f862cd9e3372c70e66d981bc  app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/TaskEditSheet.kt
+mutation-result tests 10 failures 1 errors 0
+FAILED G5R4_closed_task_blocks_checklist_entry_and_ended_target
+--- 还原（sha256 与注入前一致）→ 绿 ---
+6de7528a7d7f3cf3852360be4115190fcd2d3e16f862cd9e3372c70e66d981bc  app/src/main/java/io/github/mazilin/nautile/ui/screen/todo/TaskEditSheet.kt
+restore-result tests 10 failures 0 errors 0
+
+===== 5) 截图（不提交） =====
+-rw-r--r-- 1 wordwoods wordwoods 38867 Nov 26 21:32 docs/验证记录/门禁/g5r4_project_edit_20261126T213204.png
+-rw-r--r-- 1 wordwoods wordwoods 71629 Nov 26 21:32 docs/验证记录/门禁/g5r4_task_edit_20261126T213204.png
