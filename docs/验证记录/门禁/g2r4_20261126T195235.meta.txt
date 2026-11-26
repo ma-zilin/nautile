@@ -1,0 +1,43 @@
+task=G2-R4 设置页深色与系统栏（SPC-09、CMP-50、CMP-51）
+time=2026-11-26T19:52:35+08:00
+head=a90d04d0787acc8c010018654aabba1a5d8328bf
+implementation_commit=none（MainActivity.kt、ui/AppRoot.kt 未提交）
+dirty_entries_verify=40
+dirty_entries_archive=49
+device=emulator-5554 API36 AVD nautile_api36（模拟器，非真机）
+new_test=app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSettingsFullScreenG2R4Test.kt tests=4
+static_command=bash scripts/check_ui_tokens.sh
+static_result=PASS exit=0 hits=0 rules1-8
+verify_command=bash scripts/verify.sh G2
+verify_log=docs/验证记录/门禁/verify_G2_20261126T194637.log
+assembleDebug_exit=0
+assembleDebugAndroidTest_exit=0
+testDebugUnitTest_exit=0
+lintDebug_exit=0
+jvm_stats=suites=36 tests=211 failures=0 errors=0 skipped=0
+schema=1/2/3.json 存在；version3 tasks/projects/detail/manual_order EXIT=0
+gate_result=PASS
+targeted_command=./gradlew :app:connectedDebugAndroidTest --rerun-tasks -Pandroid.testInstrumentationRunnerArguments.class=...AcSettingsFullScreenG2R4Test
+targeted_stats=tests=4 failures=0 errors=0 skipped=0
+connected_command=./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_duration=BUILD SUCCESSFUL in 2m 3s
+connected_exit=0
+connected_stats=tests=210 failures=0 errors=0 skipped=0 classes=35
+connected_log=docs/验证记录/门禁/g2r4_connected_20261126T195235.log
+connected_xml=docs/验证记录/门禁/g2r4_connected_20261126T195235.xml
+screenshot_light=docs/验证记录/门禁/g2r4_settings_light_20261126T195235.png（PNG 1080x2400）
+screenshot_dark=docs/验证记录/门禁/g2r4_settings_dark_20261126T195235.png（PNG 1080x2400）
+ui_xml_light=docs/验证记录/门禁/g2r4_settings_light_20261126T195235.xml
+ui_xml_dark=docs/验证记录/门禁/g2r4_settings_dark_20261126T195235.xml
+check_script=docs/验证记录/门禁/g2r4_check_20261126T195235.py
+statusbar_inset_px=128（dumpsys window InsetsSource statusBars frame [0,0][1080,128] visible）
+content_top_min_px=161（浅/深一致，>128，未压状态栏）
+dark_text_bg_p50=0.108 light_px_min=1038
+light_text_bg_p50=0.990 dark_px_min=889
+statusbar_pixels=浅色 dark_ratio=0.0170；深色 light_ratio=0.0231
+statusbar_evidence=像素抽样；本 build dumpsys window windows 无 appearance 字段
+design_deviation=SettingsScreen/DefaultPageScreen 标题仍 titleLarge，CMP-50 子项要求 headlineSmall（非本闸门判定项，交用户决定）
+unautomated=真机/预测手势观感/TalkBack/200%字体/深色长期观感/标题字号/变异抽查
+result=PASS
+judge=静态PASS + verify G2 PASS + 全量connected 210/0/0 + 浅深设置页 insets 与文字/状态栏像素核对PASS
+log=docs/验证记录/门禁/g2r4_20261126T195235.log

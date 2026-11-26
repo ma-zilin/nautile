@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -68,7 +69,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            NautileTheme {
+            // 深浅色只有一处来源：既传给根主题（COL-02），也用于状态栏图标明暗（CMP-51）。
+            val darkTheme = isSystemInDarkTheme()
+            // 状态栏图标随主题切换：浅色用深色图标、深色用浅色图标；系统切换时随重组更新。
+            SideEffect {
+                WindowInsetsControllerCompat(window, window.decorView).apply {
+                    isAppearanceLightStatusBars = !darkTheme
+                }
+            }
+            NautileTheme(darkTheme = darkTheme) {
                 val todoViewModel: TodoViewModel = viewModel(
                     factory = remember {
                         viewModelFactory {

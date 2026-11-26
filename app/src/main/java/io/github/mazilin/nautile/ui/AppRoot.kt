@@ -8,13 +8,17 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -284,11 +288,8 @@ fun AppRoot(
         if (displayedFullScreen != null && displayBackdrop != null) {
             // 下层目标页（pop 到设置根时）；预测手势另有 previewContent 路径。
             if (underlayBackdrop != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                ) {
+                // 全屏页统一容器：背景铺满 + 内容区只消费一次 safeDrawing（SPC-09、CMP-50）。
+                FullScreenPageContainer {
                     previewContent(underlayBackdrop)
                 }
             }
@@ -304,21 +305,53 @@ fun AppRoot(
             )
             // 仅手势进行中组合下层页面；progress 归零后立即释放。
             if (previewEnabled && predictiveProgress > 0f) {
-                previewBackdrop?.let { previewContent(it) }
+                previewBackdrop?.let { backdrop ->
+                    // 全屏页预览沿用同一容器与 insets（只读预览，不新增副作用）；
+                    // 一级页预览由页面自身 Scaffold 处理 inset，不在此重复加。
+                    if (backdrop is PreviewBackdrop.FullScreen) {
+                        FullScreenPageContainer { previewContent(backdrop) }
+                    } else {
+                        previewContent(backdrop)
+                    }
+                }
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .graphicsLayer {
-                        // 系统返回手势自左向右；当前页右移，逐步露出下层页面。
-                        translationX =
-                            (1f - pushEnter.value) * size.width +
-                                predictiveProgress * size.width * 0.3f
-                    },
+            FullScreenPageContainer(
+                modifier = Modifier.graphicsLayer {
+                    // 系统返回手势自左向右；当前页右移，逐步露出下层页面。
+                    translationX =
+                        (1f - pushEnter.value) * size.width +
+                            predictiveProgress * size.width * 0.3f
+                },
             ) {
                 displayedFullScreen?.let { fullScreenContent(it) }
             }
+        }
+    }
+}
+
+/**
+ * 全屏子页统一容器（SPC-09、CMP-50）。
+ *
+ * Surface 绘制 `background` 并铺满屏幕（含状态栏/导航栏区域），`contentColor = onBackground`
+ * 保证深色下文字可读；内容区 `safeDrawing`（状态栏上 + 导航栏下）只在此消费一次，
+ * 页面内部不再重复 padding。宿主其余分支（Scaffold/抽屉/面板）各自既有策略不变。
+ */
+@Composable
+private fun FullScreenPageContainer(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+        ) {
+            content()
         }
     }
 }
