@@ -56,8 +56,8 @@ import org.junit.runner.RunWith
 /**
  * R4 G3 闸门：GTD 左侧全高抽屉（AC-G-04、FR-G-15/16、CMP-10—13、MOT-07）。
  *
- * 预期从需求基线 v2.15 与设计 `.plans/设计/01_视觉与动效标准.md` 派生，不照抄实现：
- * - `W_D = min(max(五项清单名标题最长文本宽 + 2×24dp, 180dp), 280dp)`，测量口径为 `labelLarge`、`fontScale = 1.0`；
+ * 预期从需求基线 v2.16（4.26）与设计 `.plans/设计/03_交互与动效规格.md` 派生，不照抄实现：
+ * - `W_D = min(max(五项清单名标题最长文本宽 + 2×24dp, 240dp), 320dp)`，测量口径为 `labelLarge`、`fontScale = 1.0`；
  * - 抽屉全高、贴左、右侧遮罩；五项完整显示；切换前后宽度不变；切换后不自动关闭；
  * - 抽屉内只有点按切换，上下拉不切换、不出现“松手切换到 …”；
  * - 关闭路径：关闭图标、点按遮罩、抽屉上左滑（系统返回由 JVM 返回栈测试覆盖）。
@@ -140,10 +140,10 @@ class AcGtdHeaderT090Test {
             ).size.width.toFloat()
         }
         val expectedWidthDp =
-            (naturalWidthPx.values.max() / density.density + 48f).coerceIn(180f, 280f)
+            (naturalWidthPx.values.max() / density.density + 48f).coerceIn(240f, 320f)
         assertTrue(
-            "公式结果应落在 180—280dp，实际 $expectedWidthDp",
-            expectedWidthDp in 180f..280f,
+            "公式结果应落在 240—320dp，实际 $expectedWidthDp",
+            expectedWidthDp in 240f..320f,
         )
 
         val rootHeightDp = dp(
@@ -152,7 +152,7 @@ class AcGtdHeaderT090Test {
         )
         val drawer = findDrawer(density, expectedWidthDp, rootHeightDp)
         assertEquals(
-            "抽屉宽度应等于 min(max(最长标题 + 48dp, 180dp), 280dp)",
+            "抽屉宽度应等于 min(max(最长标题 + 48dp, 240dp), 320dp)",
             expectedWidthDp,
             dp(drawer.boundsInRoot.width, density),
             1.0f,
