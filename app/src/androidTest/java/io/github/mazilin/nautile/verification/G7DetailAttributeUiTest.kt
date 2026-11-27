@@ -585,7 +585,9 @@ class G7DetailAttributeUiTest {
         composeRule.waitUntil(5_000) { vm.newTask.value != null }
         composeRule.onNodeWithContentDescription("设置截止日期，当前：未设置").assertIsDisplayed()
 
-        composeRule.onAllNodes(hasSetTextAction()).onFirst().performTextInput("回归任务")
+        // 标题通过 ViewModel 写入，避免软键盘弹出后工具栏重排导致点击落点失效（G7 首跑时序失败）。
+        composeRule.runOnIdle { vm.onNewTaskTitleChanged("回归任务") }
+        composeRule.waitUntil(5_000) { vm.newTask.value?.title == "回归任务" }
         composeRule.onNodeWithContentDescription("设置优先级，当前：无").performClick()
         composeRule.onNodeWithContentDescription("优先级：高").performClick()
         composeRule.onNodeWithContentDescription("设置优先级，当前：高").assertIsDisplayed()

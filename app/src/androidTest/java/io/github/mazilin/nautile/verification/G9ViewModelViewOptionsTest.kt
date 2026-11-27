@@ -148,6 +148,16 @@ class G9ViewModelViewOptionsTest {
     private fun taskIdsInGroup(groupIndex: Int = 0): List<Long> =
         vm.uiState.value.groups[groupIndex].tasks.map { it.id.value }
 
+    /**
+     * 等待异步持久化写入落到内存设置仓库，避免“本地覆盖已生效、写协程尚未执行”的时序竞争。
+     * 只补齐等待，不改变任何断言与预期值（2026-11-27 G7 全量首跑 1 例时序失败后修正测试）。
+     */
+    private fun awaitViewOptionsWrite(expected: String) {
+        composeRule.waitUntil(5_000) {
+            settings.viewOptionsWrites.lastOrNull()?.second == expected
+        }
+    }
+
     @Test
     fun g9_default_is_project_created_with_created_desc_order() {
         seedTask("旧任务", createdSeconds = 1)
@@ -186,6 +196,7 @@ class G9ViewModelViewOptionsTest {
             listOf("高优先级", "低优先级"),
             priorityState.groups.map { it.headerTitle },
         )
+        awaitViewOptionsWrite("classification=priority;sort=created")
         assertEquals(
             "选择即写入当前模块（默认排序已回退为 created）",
             "classification=priority;sort=created",
@@ -195,6 +206,7 @@ class G9ViewModelViewOptionsTest {
 
         vm.selectViewSort(ViewSort.DUE)
         val dueSortState = awaitState("切到截止日期排序") { it.viewOptions.sort == ViewSort.DUE }
+        awaitViewOptionsWrite("classification=priority;sort=due")
         assertEquals(
             "排序写入与分类组成同一稳定文本",
             "classification=priority;sort=due",
@@ -220,6 +232,7 @@ class G9ViewModelViewOptionsTest {
         // 在等待中改排序（不能选与默认相同的 CREATED，否则按“同值不重复写”返回），不得覆盖收件箱。
         vm.selectViewSort(ViewSort.DUE)
         awaitState("等待中排序写入") { it.viewOptions.sort == ViewSort.DUE }
+        awaitViewOptionsWrite("classification=project;sort=due")
         runBlocking {
             val stored = settings.settings.first().perModuleViewOptions
             assertEquals(
