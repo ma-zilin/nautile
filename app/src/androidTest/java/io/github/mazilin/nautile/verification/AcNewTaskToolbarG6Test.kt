@@ -24,6 +24,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.printToString
@@ -274,28 +275,40 @@ class AcNewTaskToolbarG6Test {
 
         composeRule.onNodeWithContentDescription("设置截止日期，当前：未设置").performClick()
         composeRule.onNodeWithText("选择截止日期").assertIsDisplayed()
-        // 无日期时时刻控件不可编辑，并说明原因（CMP-32）。
-        composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
-        composeRule.onNodeWithText("先选择日期，再填写时间").assertIsDisplayed()
+        // 无日期时“时间”行禁用，并说明原因（v2.16 / R5-4 / CMP-32）。
+        composeRule.onNodeWithTag("date_panel_time_row")
+            .performScrollTo()
+            .assertIsNotEnabled()
+        composeRule.onNodeWithText("先选择日期，再设置时间").assertExists()
 
         val today = LocalDate.now()
         selectDay(today)
         composeRule.waitUntil(5_000) { vm.newTask.value?.dueDate != null }
-        composeRule.onAllNodes(hasSetTextAction()).onFirst().assertIsEnabled()
-        composeRule.onAllNodes(hasSetTextAction()).onFirst().performTextInput("09:30")
+        composeRule.onNodeWithTag("date_panel_time_row")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        composeRule.onNodeWithTag("time_picker_panel").assertExists()
+        composeRule.onNodeWithTag("time_picker_input")
+            .performScrollTo()
+            .performTextInput("09:30")
+        composeRule.onNodeWithTag("time_picker_confirm")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
         composeRule.waitUntil(5_000) { vm.newTask.value?.dueTime == LocalTime.of(9, 30) }
-        composeRule.onNodeWithText("返回").performClick()
+        composeRule.onNodeWithTag("date_panel_back").performScrollTo().performClick()
 
         composeRule.onNodeWithContentDescription("设置截止日期，当前：今天 09:30")
             .assertIsDisplayed()
 
         // 清除日期同时清空时刻，摘要回到“未设置”（CMP-32）。
         composeRule.onNodeWithContentDescription("设置截止日期，当前：今天 09:30").performClick()
-        composeRule.onNodeWithText("清除截止日期").performClick()
+        composeRule.onNodeWithText("清除截止日期").performScrollTo().performClick()
         composeRule.waitUntil(5_000) {
             vm.newTask.value?.dueDate == null && vm.newTask.value?.dueTime == null
         }
-        composeRule.onNodeWithText("返回").performClick()
+        composeRule.onNodeWithTag("date_panel_back").performScrollTo().performClick()
         composeRule.onNodeWithContentDescription("设置截止日期，当前：未设置")
             .assertIsDisplayed()
     }
@@ -486,9 +499,18 @@ class AcNewTaskToolbarG6Test {
         val today = LocalDate.now()
         selectDay(today)
         composeRule.waitUntil(5_000) { vm.newTask.value?.dueDate != null }
-        composeRule.onAllNodes(hasSetTextAction()).onFirst().performTextInput("09:30")
+        composeRule.onNodeWithTag("date_panel_time_row")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        composeRule.onNodeWithTag("time_picker_input")
+            .performScrollTo()
+            .performTextInput("09:30")
+        composeRule.onNodeWithTag("time_picker_confirm")
+            .performScrollTo()
+            .performClick()
         composeRule.waitUntil(5_000) { vm.newTask.value?.dueTime == LocalTime.of(9, 30) }
-        composeRule.onNodeWithText("返回").performClick()
+        composeRule.onNodeWithTag("date_panel_back").performScrollTo().performClick()
         composeRule.onNodeWithContentDescription("设置截止日期，当前：今天 09:30")
             .assertIsDisplayed()
 

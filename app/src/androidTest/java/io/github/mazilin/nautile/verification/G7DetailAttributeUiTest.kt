@@ -339,18 +339,29 @@ class G7DetailAttributeUiTest {
 
         composeRule.onNodeWithContentDescription("设置截止日期，当前：未设置").performClick()
         composeRule.onNodeWithText("选择截止日期").assertIsDisplayed()
-        // 详情为 60% 半屏，日期组件下移；无日期时时刻控件不可编辑（无 SetText 语义），
-        // 说明文字用存在断言核对（不判可见像素）。
-        composeRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
-        composeRule.onNodeWithText("先选择日期，再填写时间").assertExists()
+        // 详情为 60% 半屏，日期组件下移；无日期时“时间”行禁用并说明原因（v2.16 / R5-4 / CMP-32）。
+        composeRule.onNodeWithTag("date_panel_time_row")
+            .performScrollTo()
+            .assertIsNotEnabled()
+        composeRule.onNodeWithText("先选择日期，再设置时间").assertExists()
 
         val today = LocalDate.now()
         selectDay(today)
         waitTask(taskId) { it.dueDate == today }
-        composeRule.onAllNodes(hasSetTextAction()).onFirst().assertIsEnabled()
-        composeRule.onAllNodes(hasSetTextAction()).onFirst().performTextInput("09:30")
+        composeRule.onNodeWithTag("date_panel_time_row")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        composeRule.onNodeWithTag("time_picker_panel").assertExists()
+        composeRule.onNodeWithTag("time_picker_input")
+            .performScrollTo()
+            .performTextInput("09:30")
+        composeRule.onNodeWithTag("time_picker_confirm")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
         waitTask(taskId) { it.dueTime == LocalTime.of(9, 30) }
-        composeRule.onNodeWithText("返回").performScrollTo().performClick()
+        composeRule.onNodeWithTag("date_panel_back").performScrollTo().performClick()
         composeRule.onNodeWithContentDescription("设置截止日期，当前：今天 09:30")
             .assertIsDisplayed()
 
@@ -358,7 +369,7 @@ class G7DetailAttributeUiTest {
         composeRule.onNodeWithContentDescription("设置截止日期，当前：今天 09:30").performClick()
         composeRule.onNodeWithText("清除截止日期").performScrollTo().performClick()
         waitTask(taskId) { it.dueDate == null && it.dueTime == null }
-        composeRule.onNodeWithText("返回").performScrollTo().performClick()
+        composeRule.onNodeWithTag("date_panel_back").performScrollTo().performClick()
         // 日期面板较高，返回后把内容滚回顶部再核对摘要。
         composeRule.onNodeWithText("任务详情").performScrollTo()
         composeRule.onNodeWithContentDescription("设置截止日期，当前：未设置")
@@ -596,9 +607,18 @@ class G7DetailAttributeUiTest {
         composeRule.onNodeWithContentDescription("设置截止日期，当前：未设置").performClick()
         selectDay(today)
         composeRule.waitUntil(5_000) { vm.newTask.value?.dueDate == today }
-        composeRule.onAllNodes(hasSetTextAction()).onFirst().performTextInput("09:30")
+        composeRule.onNodeWithTag("date_panel_time_row")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        composeRule.onNodeWithTag("time_picker_input")
+            .performScrollTo()
+            .performTextInput("09:30")
+        composeRule.onNodeWithTag("time_picker_confirm")
+            .performScrollTo()
+            .performClick()
         composeRule.waitUntil(5_000) { vm.newTask.value?.dueTime == LocalTime.of(9, 30) }
-        composeRule.onNodeWithText("返回").performClick()
+        composeRule.onNodeWithTag("date_panel_back").performScrollTo().performClick()
         composeRule.onNodeWithContentDescription("设置截止日期，当前：今天 09:30")
             .assertIsDisplayed()
 

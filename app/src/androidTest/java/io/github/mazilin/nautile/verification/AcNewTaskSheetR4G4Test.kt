@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
@@ -22,6 +23,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.printToString
 import androidx.lifecycle.viewModelScope
@@ -301,9 +303,18 @@ class AcNewTaskSheetR4G4Test {
         val today = LocalDate.now()
         selectDay(today)
         composeRule.waitUntil(5_000) { vm.newTask.value?.dueDate != null }
-        composeRule.onAllNodes(hasSetTextAction()).onFirst().performTextInput("09:30")
+        composeRule.onNodeWithTag("date_panel_time_row")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        composeRule.onNodeWithTag("time_picker_input")
+            .performScrollTo()
+            .performTextInput("09:30")
+        composeRule.onNodeWithTag("time_picker_confirm")
+            .performScrollTo()
+            .performClick()
         composeRule.waitUntil(5_000) { vm.newTask.value?.dueTime == LocalTime.of(9, 30) }
-        composeRule.onNodeWithText("返回").performClick()
+        composeRule.onNodeWithTag("date_panel_back").performScrollTo().performClick()
 
         composeRule.onNodeWithContentDescription("设置截止日期，当前：今天 09:30")
             .assertIsDisplayed()
@@ -316,11 +327,11 @@ class AcNewTaskSheetR4G4Test {
 
         // 清除日期同时清空时刻，摘要回到属性名“日期”。
         composeRule.onNodeWithContentDescription("设置截止日期，当前：今天 09:30").performClick()
-        composeRule.onNodeWithText("清除截止日期").performClick()
+        composeRule.onNodeWithText("清除截止日期").performScrollTo().performClick()
         composeRule.waitUntil(5_000) {
             vm.newTask.value?.dueDate == null && vm.newTask.value?.dueTime == null
         }
-        composeRule.onNodeWithText("返回").performClick()
+        composeRule.onNodeWithTag("date_panel_back").performScrollTo().performClick()
         composeRule.onNodeWithContentDescription("设置截止日期，当前：未设置").assertIsDisplayed()
         assertToolbarLabel("设置截止日期，当前：未设置", "日期")
     }

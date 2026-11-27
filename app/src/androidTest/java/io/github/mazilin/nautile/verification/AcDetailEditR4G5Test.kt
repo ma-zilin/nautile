@@ -22,6 +22,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.viewModelScope
 import androidx.room.Room
@@ -429,11 +430,11 @@ class AcDetailEditR4G5Test {
 
         // 清除日期（同时清空时刻，CMP-32）。
         composeRule.onNodeWithContentDescription("设置截止日期，当前：今天 09:30").performClick()
-        composeRule.onNodeWithText("清除截止日期").performClick()
+        composeRule.onNodeWithText("清除截止日期").performScrollTo().performClick()
         composeRule.waitUntil(5_000) {
             vm.taskEdit.value?.dueDate == null && vm.taskEdit.value?.dueTime == null
         }
-        composeRule.onNodeWithText("返回").performClick()
+        composeRule.onNodeWithTag("date_panel_back").performScrollTo().performClick()
 
         // 单次“保存”提交全部改动。
         composeRule.onNodeWithText("保存").performClick()
