@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="10" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-26T13:07:25" hostname="localhost">
+  <testsuite name="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" tests="10" failures="0" errors="0" skipped="0" time="12.004" timestamp="2026-11-26T13:07:25" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="R4G4_blank_title_blocks_create_and_shows_error" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="1.174" />
+    <testcase name="R4G4_date_label_switches_between_name_and_summary_then_back" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="2.538" />
+    <testcase name="R4G4_no_detail_icon_no_target_picker_and_detail_is_second_row" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="0.648" />
+    <testcase name="R4G4_toolbar_has_exactly_four_entries_with_visible_labels" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="0.968" />
+    <testcase name="R4G4_project_label_switches_between_name_and_summary" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="0.973" />
+    <testcase name="R4G4_priority_label_switches_between_name_and_summary" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="0.985" />
+    <testcase name="R4G4_ended_position_defaults_checklist_to_inbox_and_blocks_ended" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="0.754" />
+    <testcase name="R4G4_keyboard_stays_open_and_typing_continues_after_menu" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="1.568" />
+    <testcase name="R4G4_checklist_defaults_to_current_position_and_menu_selects" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="0.801" />
+    <testcase name="R4G4_project_create_only_name_and_blank_blocks" classname="io.github.mazilin.nautile.verification.AcNewTaskSheetR4G4Test" time="1.595" />
+  </testsuite>
+</testsuites>

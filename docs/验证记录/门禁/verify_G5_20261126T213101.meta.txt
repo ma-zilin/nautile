@@ -1,0 +1,8 @@
+task=G5
+time=2026-11-26T21:31:36+08:00
+head=bb5f9ba87e5e1010f18ddb16b27835edb30dfbf2
+dirty_entries=89
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_G5_20261126T213101.log

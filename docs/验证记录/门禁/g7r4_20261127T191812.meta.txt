@@ -1,0 +1,27 @@
+task=R4-G7
+time=2026-11-27T19:18:12+08:00
+scope=G1 v2.15/设计;G2 设置深色/系统栏;G3 GTD 左抽屉+切换修复;G4 创建四属性图标+文字;G5 编辑入口/面板;G6 弹层统一/滑动色条/手动暂缓
+head=b24e74adf5fe7cfa2fa5d352d19e1b69fd33a38d
+dirty_entries=216
+business_code_changes=none(app/src/main git status empty)
+test_code_changes=G7DetailAttributeUiTest.kt(M timing wait);G9ViewModelViewOptionsTest.kt(M timing wait);G7R4ScreenshotTest.kt(new evidence shots)
+device=emulator-5554 nautile_api36(AVD) API36 (模拟器，非真机)
+static=check_ui_tokens.sh PASS hits=0 rules=8 files=22
+verify=scripts/verify.sh G7 PASS
+verify_steps=assembleDebug:0;assembleDebugAndroidTest:0;testDebugUnitTest:0;lintDebug:0
+verify_jvm=suites=37 tests=216 failures=0 errors=0 skipped=0
+verify_lint=errors=0 warnings=23 hints=1
+verify_schema=1/2/3.json;version3;tasks/projects/detail/manual_order;EXIT=0
+verify_log=docs/验证记录/门禁/verify_G7_20261127T191642.log
+connected=./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+connected_result=PASS tests=290 failures=0 errors=0 skipped=0 duration=3m3s classes=44
+connected_log=docs/验证记录/门禁/g7r4_20261127T191812_connected.log
+ui_checklist=11/11 PASS (上下拉,四属性图标+文字,手动暂缓,设置深色/insets,左抽屉,编辑入口,滑动图标+色条,弹层点外关闭,首尾提示,创建精简,弹层统一)
+tokens=无硬编码:PASS;19+edit:PASS(20 ic_*);48dp:PASS(G6_CMP31);深色:PASS;insets:PASS(statusBars[0,0][1080,128],title top=139;nav[0,2337][1080,2400],labels bottom=2297);键盘无空隙:PASS(device_create_keyboard);圆角:PASS(静态)
+ticktick=4图对照: 图1 面板/工具栏/键盘无线;图2/3 分组卡片/空组/FAB/无分隔线;图4 无遮罩旗标菜单+图标文字+键盘保持
+screenshots=16(g7r4_*.png via G7R4ScreenshotTest,1080x2400)+3 device(g7r4_device_light/dark/create_keyboard)
+result=PASS
+judge=静态+门禁+全量290/0/0+UI无未解释阻断 → PASS(模拟器范围)
+manual_not_automated=动画/手感观感;系统栏图标像素级断言;真机(vivo/OriginOS);IME动画中间态
+ac_gaps=标签,提醒,重复,子任务(首版不做),项目颜色/图标,折叠,日程,日志/计时/统计,AI,四象限(后期),备份(后期);手动排序按FR-V-03暂缓,非缺口;4.24/4.25已落档(C-34/C-35)
+log=docs/验证记录/门禁/g7r4_20261127T191812.log

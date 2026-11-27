@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="2" failures="2" errors="0" skipped="0" time="0.000" timestamp="2026-11-26T14:56:08" hostname="localhost">
+  <testsuite name="io.github.mazilin.nautile.verification.G6R4R2PanelTapProbeTest" tests="2" failures="2" errors="0" skipped="0" time="1.323" timestamp="2026-11-26T14:56:08" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="G6R4R2_probe_project_detail_body_tap_does_not_close" classname="io.github.mazilin.nautile.verification.G6R4R2PanelTapProbeTest" time="0.786">
+      <failure>java.lang.AssertionError: 点按面板内标题不应请求关闭面板 expected:&lt;0&gt; but was:&lt;1&gt;
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.mazilin.nautile.verification.G6R4R2PanelTapProbeTest.G6R4R2_probe_project_detail_body_tap_does_not_close(G6R4R2PanelTapProbeTest.kt:107)
+</failure>
+    </testcase>
+    <testcase name="G6R4R2_probe_task_detail_body_tap_does_not_close" classname="io.github.mazilin.nautile.verification.G6R4R2PanelTapProbeTest" time="0.537">
+      <failure>java.lang.AssertionError: 点按面板内标题不应请求关闭详情 expected:&lt;0&gt; but was:&lt;1&gt;
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at io.github.mazilin.nautile.verification.G6R4R2PanelTapProbeTest.G6R4R2_probe_task_detail_body_tap_does_not_close(G6R4R2PanelTapProbeTest.kt:71)
+</failure>
+    </testcase>
+  </testsuite>
+</testsuites>

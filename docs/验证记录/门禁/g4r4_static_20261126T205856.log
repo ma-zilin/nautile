@@ -1,0 +1,31 @@
+============================================================
+G1-A2 设计 token 静态检查
+时间：2026-11-26T21:07:48+08:00
+HEAD：6dec86c2b853642ff5d33788664b6fa6649dd46b
+扫描路径：app/src/main/java/io/github/mazilin/nautile/ui/theme
+          app/src/main/java/io/github/mazilin/nautile/ui/designsystem
+          app/src/main/java/io/github/mazilin/nautile/ui/AppRoot.kt
+          app/src/main/java/io/github/mazilin/nautile/ui/screen/todo
+============================================================
+
+[规则 1] 颜色字面量：Color(0x / Color.Black / Color.White / Color.Red（COL-01、NO-01；豁免 theme/Color.kt 种子色板）
+  命中 0
+[规则 2] 圆角字面量：RoundedCornerShape(<数字>（SHP-01、NO-02；豁免 theme/Theme.kt）
+  命中 0
+[规则 3] 动效字面量：tween( / spring( / durationMillis（MOT-03、NO-03；豁免 theme/NautileMotion.kt）
+  命中 0
+[规则 4] 文本图标：Text("☰/+/✓/×")（ICO-02、ICO-08、NO-05）
+  命中 0
+[规则 5] 固定比例分栏：weight(0.38f/0.62f)（CMP-10、NO-10）
+  命中 0
+[规则 6] 遮罩 alpha 字面量：0.32f（COL-10；豁免 theme/NautileSpacing.kt）
+  命中 0
+[规则 7] 依赖：material-icons-extended 出现在构建/依赖声明文件（build.gradle.kts settings.gradle.kts app/build.gradle.kts gradle/libs.versions.toml；ICO-02、ICO-09、NO-13）
+  命中 0
+[规则 8] 无限动画 API：CircularProgressIndicator / infiniteRepeatable / rememberInfiniteTransition（MOT-13）
+  命中 0
+
+------------------------------------------------------------
+检查文件数：20（ui/theme + ui/designsystem + ui/screen/todo 的 .kt，另加 ui/AppRoot.kt）
+命中总数：0
+RESULT: PASS

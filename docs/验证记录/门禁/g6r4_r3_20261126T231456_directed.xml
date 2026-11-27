@@ -1,0 +1,85 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="52" failures="1" errors="0" skipped="0" time="0.000" timestamp="2026-11-26T15:15:40" hostname="localhost">
+  <testsuite name="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" tests="22" failures="1" errors="0" skipped="0" time="17.081" timestamp="2026-11-26T15:15:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="G6R4R3_project_detail_focused_input_pull_40_200_does_not_close" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="1.229" />
+    <testcase name="G6R4R3_new_task_menu_outside_tap_closes_only_menu" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.843" />
+    <testcase name="G6R4R3_project_edit_panel_taps_keep_open_then_scrim_tap_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.800" />
+    <testcase name="G6R4R3_task_detail_menu_and_date_panel_close_before_sheet" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="1.660" />
+    <testcase name="G6R4R3_project_edit_unfocused_40dp_rebounds_and_200dp_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.559" />
+    <testcase name="G6R4R3_task_edit_focused_input_pull_40_200_does_not_close" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="1.016" />
+    <testcase name="G6R4R3_task_detail_unfocused_40dp_rebounds_and_200dp_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.623" />
+    <testcase name="G6R4R3_project_edit_focused_input_pull_40_200_does_not_close" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.964" />
+    <testcase name="G6R4R3_new_task_unfocused_40dp_rebounds_and_200dp_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.698" />
+    <testcase name="G6R4R3_new_task_cancel_button_still_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.469" />
+    <testcase name="G6R4R3_new_task_date_panel_back_closes_only_date_panel" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.668" />
+    <testcase name="G6R4R3_task_edit_menu_outside_tap_and_back_close_menu_first" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.752" />
+    <testcase name="G6R4R3_task_detail_focused_input_pull_40_200_does_not_close" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.812" />
+    <testcase name="G6R4R3_task_detail_panel_taps_keep_open_then_scrim_tap_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.724" />
+    <testcase name="G6R4R3_task_edit_panel_taps_keep_open_then_scrim_tap_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.710" />
+    <testcase name="G6R4R3_new_task_focused_input_pull_40_200_does_not_close" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.988" />
+    <testcase name="G6R4R3_project_detail_unfocused_40dp_rebounds_and_200dp_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.538" />
+    <testcase name="G6R4R3_new_task_panel_taps_keep_open_then_scrim_tap_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.692" />
+    <testcase name="G6R4R3_task_edit_unfocused_40dp_rebounds_and_200dp_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.574" />
+    <testcase name="G6R4R3_new_task_date_panel_scrim_tap_closes_only_date_panel" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.617">
+      <failure>java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (Text + InputText + EditableText contains '新建' (ignoreCase: false))
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest.G6R4R3_new_task_date_panel_scrim_tap_closes_only_date_panel(G6R4R3PanelIsolationTest.kt:619)
+</failure>
+    </testcase>
+    <testcase name="G6R4R3_project_detail_panel_taps_keep_open_then_scrim_tap_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.685" />
+    <testcase name="G6R4R3_task_detail_close_button_still_closes" classname="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest" time="0.460" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.G6R4R2PanelTapProbeTest" tests="2" failures="0" errors="0" skipped="0" time="0.780" timestamp="2026-11-26T15:15:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="G6R4R2_probe_project_detail_body_tap_does_not_close" classname="io.github.mazilin.nautile.verification.G6R4R2PanelTapProbeTest" time="0.362" />
+    <testcase name="G6R4R2_probe_task_detail_body_tap_does_not_close" classname="io.github.mazilin.nautile.verification.G6R4R2PanelTapProbeTest" time="0.418" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcSheetPullG4Test" tests="21" failures="0" errors="0" skipped="0" time="11.535" timestamp="2026-11-26T15:15:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="G4_AC_D07_new_task_keyboard_focus_typing_keeps_panel_usable" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="1.296" />
+    <testcase name="G4_MOT08_new_task_40dp_pull_rebounds_and_stays" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.469" />
+    <testcase name="G4_AC_D08_task_detail_invalid_field_pull_blocked_by_host" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.512" />
+    <testcase name="G4_MOT08_task_detail_100dp_pull_rebounds_and_stays" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.430" />
+    <testcase name="G4_T088_project_detail_start_inside_input_drag_does_not_close" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.388" />
+    <testcase name="G4_MOT08_task_detail_pull_above_threshold_closes_once" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.420" />
+    <testcase name="G4_MOT08_project_detail_100dp_pull_rebounds_and_stays" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.400" />
+    <testcase name="G4_AC_D07_new_task_pull_above_threshold_closes_once" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.438" />
+    <testcase name="G4_AC_D08_project_detail_invalid_field_pull_blocked_by_host" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.372" />
+    <testcase name="G4_T088_task_detail_input_focused_scrim_drag_does_not_close" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.597" />
+    <testcase name="G4_MOT08_new_task_handle_80dp_pull_rebounds" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.518" />
+    <testcase name="G4_T088_new_task_input_focused_scrim_upward_swipe_does_not_close" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.931" />
+    <testcase name="G4_T088_new_task_input_focused_scrim_40dp_drag_does_not_close" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.772" />
+    <testcase name="G4_MOT08_project_detail_pull_above_threshold_closes_once" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.418" />
+    <testcase name="G4_T088_new_task_input_focused_scrim_drag_does_not_close" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.973" />
+    <testcase name="G4_T088_new_task_scrim_tap_still_closes" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.407" />
+    <testcase name="G4_MOT08_new_task_fast_fling_below_distance_threshold_closes" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.389" />
+    <testcase name="G4_T088_new_task_start_inside_input_drag_does_not_close" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.477" />
+    <testcase name="G4_T088_task_detail_start_inside_input_drag_does_not_close" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.410" />
+    <testcase name="G4_AC_D07_new_task_invalid_field_pull_shows_prompt_and_stays" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.498" />
+    <testcase name="G4_MOT08_new_task_70dp_between_old_and_new_threshold_rebounds" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.420" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcDetailPullT088Test" tests="7" failures="0" errors="0" skipped="0" time="3.376" timestamp="2026-11-26T15:15:40" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="T_088_project_input_focused_pull_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.593" />
+    <testcase name="T_088_task_non_input_pull_still_closes" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.487" />
+    <testcase name="T_088_task_pull_starting_inside_input_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.412" />
+    <testcase name="T_088_project_pull_starting_inside_input_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.353" />
+    <testcase name="T_088_invalid_field_pull_outside_input_shows_prompt" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.491" />
+    <testcase name="T_088_project_non_input_pull_still_closes" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.409" />
+    <testcase name="T_088_task_input_focused_pull_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.631" />
+  </testsuite>
+</testsuites>

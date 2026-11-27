@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="9" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-27T07:10:12" hostname="localhost">
+  <testsuite name="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" tests="9" failures="0" errors="0" skipped="0" time="5.977" timestamp="2026-11-27T07:10:12" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="g6r4_saved_manual_falls_back_to_created_logs_once_and_keeps_data" classname="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" time="1.427" />
+    <testcase name="g9_select_options_applies_immediately_and_persists_per_module" classname="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" time="0.755" />
+    <testcase name="g9_write_failure_reverts_to_previous_option_and_shows_error" classname="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" time="0.488" />
+    <testcase name="g9_reorder_is_ignored_when_sort_is_not_manual_or_in_search" classname="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" time="0.928" />
+    <testcase name="g9_complete_and_abandon_do_not_change_view_options" classname="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" time="0.590" />
+    <testcase name="g9_saved_options_are_restored_by_new_view_model" classname="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" time="0.389" />
+    <testcase name="g6r4_manual_reorder_failure_path_not_triggered" classname="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" time="0.504" />
+    <testcase name="g6r4_manual_reorder_is_rejected_after_fallback_and_never_writes" classname="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" time="0.479" />
+    <testcase name="g9_default_is_project_created_with_created_desc_order" classname="io.github.mazilin.nautile.verification.G9ViewModelViewOptionsTest" time="0.417" />
+  </testsuite>
+</testsuites>

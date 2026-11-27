@@ -1,0 +1,8 @@
+task=G6
+time=2026-11-26T22:33:46+08:00
+head=c12281f8ffffddaa01ee284674924d7b47f63497
+dirty_entries=118
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_G6_20261126T223308.log

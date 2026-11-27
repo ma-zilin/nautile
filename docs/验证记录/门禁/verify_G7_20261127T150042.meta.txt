@@ -1,0 +1,8 @@
+task=G7
+time=2026-11-27T15:01:29+08:00
+head=b24e74adf5fe7cfa2fa5d352d19e1b69fd33a38d
+dirty_entries=175
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_G7_20261127T150042.log

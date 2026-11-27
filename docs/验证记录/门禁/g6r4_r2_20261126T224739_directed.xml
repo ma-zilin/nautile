@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="9" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-26T14:48:44" hostname="localhost">
+  <testsuite name="io.github.mazilin.nautile.verification.AcDetailPullT088Test" tests="2" failures="0" errors="0" skipped="0" time="1.898" timestamp="2026-11-26T14:48:44" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="T_088_project_input_focused_pull_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="1.135" />
+    <testcase name="T_088_task_input_focused_pull_does_not_close" classname="io.github.mazilin.nautile.verification.AcDetailPullT088Test" time="0.763" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.AcSheetPullG4Test" tests="1" failures="0" errors="0" skipped="0" time="0.711" timestamp="2026-11-26T14:48:44" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="G4_T088_task_detail_input_focused_scrim_drag_does_not_close" classname="io.github.mazilin.nautile.verification.AcSheetPullG4Test" time="0.711" />
+  </testsuite>
+  <testsuite name="io.github.mazilin.nautile.verification.G6R4SwipeOverlayTest" tests="6" failures="0" errors="0" skipped="0" time="12.787" timestamp="2026-11-26T14:48:44" hostname="localhost">
+    <properties>
+      <property name="device" value="emulator-5554" />
+    </properties>
+    <testcase name="G6R4_screenshot_scrim_close_mid_state" classname="io.github.mazilin.nautile.verification.G6R4SwipeOverlayTest" time="0.647" />
+    <testcase name="G6R4_project_row_uses_same_swipe_bands_and_callbacks" classname="io.github.mazilin.nautile.verification.G6R4SwipeOverlayTest" time="4.486" />
+    <testcase name="G6R4_view_menu_hides_manual_and_closes_on_outside_tap_and_back" classname="io.github.mazilin.nautile.verification.G6R4SwipeOverlayTest" time="1.015" />
+    <testcase name="G6R4_detail_scrim_tap_closes_and_invalid_fields_block_with_prompt" classname="io.github.mazilin.nautile.verification.G6R4SwipeOverlayTest" time="1.196" />
+    <testcase name="G6R4_attribute_menu_outside_tap_and_back_close_menu_first" classname="io.github.mazilin.nautile.verification.G6R4SwipeOverlayTest" time="0.914" />
+    <testcase name="G6R4_task_row_swipe_bands_tokens_and_threshold" classname="io.github.mazilin.nautile.verification.G6R4SwipeOverlayTest" time="4.529" />
+  </testsuite>
+</testsuites>

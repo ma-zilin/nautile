@@ -1,0 +1,170 @@
+============================================================
+R4 G7 回归、UI 验收与交付（独立验证）
+时间：2026-11-27T19:18:12+08:00
+检查对象：HEAD b24e74a（G1—G6 合计交付）；适用需求 docs/需求基线.md v2.15
+范围：G1 需求 v2.15/设计；G2 设置深色/系统栏；G3 GTD 左抽屉+切换修复；
+      G4 创建面板四属性图标+文字；G5 编辑入口/面板；G6 弹层统一/滑动色条/手动暂缓
+环境：emulator-5554（nautile_api36 AVD，API 36，模拟器，非真机）；物理 1080x2400，density 420
+工作区：git HEAD=b24e74adf5fe7cfa2fa5d352d19e1b69fd33a38d
+        git dirty=216 条（主要是历史证据日志/截图未跟踪）
+        app/src/main 无改动（git status 为空）：本角色未修改业务代码
+        androidTest 改动仅测试侧：
+          M G7DetailAttributeUiTest.kt（标题改由 ViewModel 写入，规避 IME 重排导致的点击落点失效）
+          M G9ViewModelViewOptionsTest.kt（等待异步设置写入，断言与预期未改动）
+          ?? G7R4ScreenshotTest.kt（本轮证据截图用例，新增）
+============================================================
+
+一、静态 token 检查
+命令：bash scripts/check_ui_tokens.sh
+结果：EXIT=0，RESULT: PASS；8 条规则命中均为 0；扫描文件数 22
+日志：docs/验证记录/门禁/g7r4_20261127T191812_static.log
+要点：无颜色字面量（豁免 theme/Color.kt）、无圆角字面量、无动效字面量、
+      无文本图标、无 weight(0.38/0.62)、无遮罩 0.32f、无 material-icons-extended、
+      无无限动画 API。
+图标资源：res/drawable 下 ic_* 共 23 个，扣除 3 个 launcher 图标 = 20 个，
+      即基线 19 个 + ICO-11 新增 edit（与 01 标准“19+edit”一致）。
+
+二、刚性门禁（scripts/verify.sh G7，四步 --rerun-tasks）
+命令：bash scripts/verify.sh G7
+  assembleDebug                      EXIT=0
+  assembleDebugAndroidTest(compile)  EXIT=0
+  testDebugUnitTest                  EXIT=0
+  lintDebug                          EXIT=0
+  JVM 统计 suites=37 tests=216 failures=0 errors=0 skipped=0（EXIT=0）
+  schema 1.json/2.json/3.json 存在；version 3 含 tasks/projects/detail/manual_order（EXIT=0）
+  lint 严重度：Error=0、Warning=23、Hint=1
+  GATE RESULT: PASS
+日志：docs/验证记录/门禁/verify_G7_20261127T191642.log
+元数据：docs/验证记录/门禁/verify_G7_20261127T191642.meta.txt
+说明：19:04 首跑亦 PASS（verify_G7_20261127T190426.log）；因随后修正截图测试，
+      用最终源码重跑（上表）作为判决证据。
+
+三、全量 connected（含 S1/R2/R3 回归）
+命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+结果：BUILD SUCCESSFUL；设备 nautile_api36(AVD) - 16；耗时 3m3s，70 tasks executed
+统计：tests=290 failures=0 errors=0 skipped=0（0/0）
+逐类失败：无；44 个测试类全部执行（含 G7R4ScreenshotTest 16、G7DetailAttributeUiTest 12、
+      G6R4SwipeOverlayTest 6、G6R4R3PanelIsolationTest 22、AcTodoT07Test 25、
+      AcSheetPullG4Test 21、AcDetailEditR4G5Test 10、AcNewTaskToolbarG6Test 11、
+      G9ViewModelViewOptionsTest 9、MigrationTest 6、Room DAO/Repository 契约等）
+日志：docs/验证记录/门禁/g7r4_20261127T191812_connected.log
+原始 XML：app/build/outputs/androidTest-results/connected/debug/TEST-nautile_api36(AVD) - 16.xml
+
+四、UI 验收清单（11 项，逐项给判定）
+1  上下拉修复（预览/阈值/首尾提示）                 PASS   AcTodoT07Test 25 例（含首/尾提示、回弹、
+                                                        空/短/长清单、快速两连拉）+ AcDetailPullT088Test 7 例
+2  创建面板四属性图标+文字                          PASS   AcNewTaskSheetR4G4Test 10 例 + AcNewTaskToolbarG6Test 11 例；
+                                                        截图 create_sheet_unset/set_light/dark（图标+文字/摘要）
+3  手动排序暂缓                                    PASS   G6R4SwipeOverlayTest（菜单无“手动”）+
+                                                        G9ViewModelViewOptionsTest/G9ViewOptionsPersistenceTest（已存 MANUAL 回退 CREATED 并记录、数据保留）
+4  设置深色/系统栏                                 PASS   AcSettingsFullScreenG2R4Test 4 例（深色语义）+
+                                                        AcSettingsExitG4Test 3 例；设备级浅/深截图与 inset 断言见第六节
+5  GTD 左抽屉                                      PASS   AcGtdHeaderT090Test 5 例（宽度公式/全高/左贴边/仅点按切换/
+                                                        关闭图标·遮罩·返回·左滑四种关闭）+ AcTodoT07Test；
+                                                        截图 gtd_drawer_light/dark
+6  编辑入口/面板                                    PASS   AcDetailEditR4G5Test 10 例（预填、全字段保存、空标题阻止、
+                                                        返回先关菜单、保存失败保留、项目仅改名）；截图 edit_sheet_light/dark
+7  滑动图标+色条                                    PASS   G6R4SwipeOverlayTest 像素断言：右滑 errorContainer+close 图标+“放弃”，
+                                                        左滑 primaryContainer+check 图标+“完成”，72dp 阈值；
+                                                        截图 swipe_abandon_light/swipe_complete_light/dark
+8  弹层点外关闭                                      PASS   G6R4SwipeOverlayTest（菜单点外/返回先关、详情遮罩关闭）+
+                                                        G6R4R3PanelIsolationTest 22 例 + AcSheetPullG4Test 21 例
+9  首尾提示                                          PASS   AcTodoT07Test：第一个下拉提示“已是第一个清单”、
+                                                        最后一个上拉提示“已是最后一个清单”，清单不变、不循环
+10 创建面板精简                                      PASS   AcNewTaskSheetR4G4Test：恰四项、无详情图标、无目标清单块、
+                                                        详情固定第二行、项目仅名称；截图 create_sheet_unset_light
+11 弹层统一                                          PASS   G6R4R3PanelIsolationTest + G6R4R2PanelTapProbeTest +
+                                                        AcSheetPullG4Test（面板/菜单/抽屉各自关闭路径）
+
+Token 子项
+- 无硬编码色/圆角/动效/遮罩 alpha：PASS（静态 8 规则 0 命中）
+- 19+edit 图标：PASS（20 个 ic_* 资源，edit=ICO-11）
+- 48dp 触控：PASS（G6_CMP31 断言工具栏项 ≥48dp）
+- 深色：PASS（NautileTheme 两套色板 + 深色语义测试 + 真实界面深色截图）
+- insets：PASS（设备级数值断言，见第六节）
+- 键盘无空隙：PASS（设备截图：面板底部与键盘顶边贴合；G4/R4G4 断言键盘保持、输入可用）
+- 圆角：PASS（静态无字面量，圆角只来自 theme 形状 token）
+
+五、TickTick 四图对照（只比交互与视觉语言，不复制素材）
+图1 快速添加（155703）：白色大圆角贴底面板、输入区在上、底部工具栏图标分组、键盘与面板无缝。
+  我们：NewTaskSheet 同构（截图 create_sheet_unset/set_light、device_create_keyboard），
+  四项属性“图标+文字”，键盘贴合；不采纳其图标素材/文案/标签/提醒/更多/语音入口。
+图2 列表（155812）：浅灰底+白色圆角分组卡片、组头名称+数量、空组显示 0、蓝色圆形 FAB、行内无分隔线。
+  我们：一致（todo_light）；差异：组头不显示展开箭头（本轮不折叠），底导 4 项而非 3 项，色值按自有蓝色种子。
+图3 另一清单（155820）：未分组与项目组并存、已完成组灰化。
+  我们：单独任务组保留、已结项行灰化；行内百分比未做（不新增字段）。
+图4 优先级菜单（160236）：旗标菜单无遮罩、彩旗图标+文字、键盘保持。
+  我们：锚定菜单无遮罩、flag 图标+中文“高/中/低/无”、打开期间键盘与焦点保持（toolbar 测试），
+  颜色只用角色（error/primary/secondary/onSurfaceVariant）且文字非颜色唯一区分。
+
+六、设备级检查（模拟器，人工未介入，仅 adb 操作）
+安装：app-debug.apk 安装成功；冷启动 TotalTime 400ms（浅）/369ms（深）
+浅色：g7r4_device_light.png；深色（cmd uimode night yes）：g7r4_device_dark.png
+  - 状态栏图标：浅色底深色图标 / 深色底浅色图标，肉眼可辨（观感项，未做像素断言）
+Insets 断言（uiautomator dump + dumpsys window）：
+  - statusBars frame=[0,0][1080,128] visible=true；标题“待办”bounds top=139 → 内容在状态栏下方
+  - navigationBars frame=[0,2337][1080,2400]；底部导航文字 bottom=2297 → 在导航栏上方，无遮挡
+键盘：g7r4_device_create_keyboard.png（创建面板 + Gboard）面板底边与键盘顶边贴合，无空隙；
+  环境干扰：Gboard 弹出“See more features”促销气泡，非应用元素，未计为通过项或缺陷。
+
+七、截图清单（docs/验证记录/门禁/，file 校验均为 PNG 1080x2400 RGBA）
+g7r4_todo_light.png / g7r4_todo_dark.png
+g7r4_gtd_drawer_light.png / g7r4_gtd_drawer_dark.png
+g7r4_create_sheet_unset_light.png / g7r4_create_sheet_unset_dark.png / g7r4_create_sheet_set_light.png
+g7r4_edit_sheet_light.png / g7r4_edit_sheet_dark.png
+g7r4_swipe_complete_light.png / g7r4_swipe_abandon_light.png / g7r4_swipe_complete_dark.png
+g7r4_search_light.png / g7r4_view_menu_light.png
+g7r4_settings_light.png / g7r4_settings_dark.png
+g7r4_device_light.png / g7r4_device_dark.png / g7r4_device_create_keyboard.png
+说明：前 16 张由 G7R4ScreenshotTest 写入 MediaStore（应用 external files 会随测试卸载被删），
+      adb pull 归档；后 3 张为真实启动界面 adb screencap。截图不提交，仅作人工视觉核对。
+
+八、失败与纠正（测试侧，如实记录）
+- 15:10 首轮定向：g7r4_swipe_complete_light/dark 失败（before=42.0 after=42.0），
+  原因：Compose performTouchInput 横向拖动被纵向列表手势判定吞掉；
+  纠正：改用 G6R4SwipeOverlayTest 已验证的 uiAutomation 真实指针注入 + 像素变化断言，
+  断言强度未降低（证明行内容位移/色条露出），业务代码未改。
+  证据：g7r4_connected_20261127T151026.log（上一轮）与本文件同目录历史日志。
+- 19:10 定向：search 用例断言占位文本“搜索标题或项目”失败（M3 TextField 占位未进文本语义）；
+  纠正：改断言“退出搜索/清除搜索”图标与结果项，仍保留搜索栏与结果可见证据。
+  证据：g7r4_20261127T191812_shots_run1_fail_search.log。
+- 19:13 定向：构图通过但截图写入 external files，测试结束卸载应用后文件被删；
+  纠正：改写 MediaStore Download/nautile_evidence（run2 无产物，run3 产出 16 张）。
+  证据：g7r4_20261127T191812_shots_run2_pass_noartifacts.log、…_shots_pass.log。
+- 首轮全量曾出现 1 例 G7DetailAttributeUiTest 时序失败与 G9 设置写入时序失败；
+  已由测试侧等待修正（见工作区 androidTest 改动说明），本轮全量 290/0/0 复现通过。
+
+九、未自动化与 AC 缺口
+未自动化（不计入通过项）：
+- 动画节奏、滑动/抽屉手感、菜单阴影与层级观感：人工评审。
+- 系统栏图标明暗的像素级断言：只有浅/深截图，未做颜色断言。
+- 真机（vivo/OriginOS）未验证；本轮全部为模拟器 API36，非真机。
+- 键盘弹出/收起的 IME 动画中间态：只验证键盘保持与贴合截图。
+AC 缺口（当前版本未实现，非本轮范围）：
+标签 FR-G-03、提醒 FR-R-01—07、重复 FR-S-05/06、子任务（首版明确不做 FR-G-02）、
+项目颜色/图标、项目折叠 FR-G-13/AC-T-16、日程 FR-S-01—14、时间日志/计时/统计 FR-T-*、
+AI 协作 FR-A-*、四象限（后期 FR-V-07）、备份恢复（后期 FR-B-*）。
+手动排序按 FR-V-03 暂缓，属确认口径而非缺口；已存字段与数据保留。
+4.24/4.25 变更已落档于 docs/需求变更记录.md（C-34/C-35，2026-11-26 确认）。
+本报告只覆盖 R4 G1—G6 范围内可执行核对项，不把局部通过扩大为整产品通过。
+
+十、判定
+静态 PASS（0 命中）+ 门禁 PASS（四步 EXIT=0，JVM 216/0）+ 全量 connected 290/0/0
++ UI 11 项均有自动化证据、无未解释阻断 → R4 G7：PASS（模拟器范围）。
+
+附表：规格 → 实现 → 测试证据（逐项对应，证据均为本轮实际执行）
+1  FR-G-18 上下拉/预览/首尾不循环       TodoScreen 拉动手势+VM 预览态      AcTodoT07Test 25 例
+2  FR-D-02 四属性图标+文字、面板精简      NewTaskSheet/TaskAttributeControls  AcNewTaskSheetR4G4Test 10 + AcNewTaskToolbarG6Test 11
+3  FR-D-02 编辑图标+同构编辑面板         TaskEditSheet/ProjectEditSheet      AcDetailEditR4G5Test 10
+4  FR-G-15/16 GTD 左抽屉宽度与四种关闭    GtdSelector + TodoScreen            AcGtdHeaderT090Test 5 + AcTodoT07Test
+5  FR-G-14/AC-T-17 滑动色条图标+72dp阈值  SwipeableRow                        G6R4SwipeOverlayTest 6（像素断言）
+6  FR-D-01/FR-M-01 弹层点外/返回/遮罩    统一 BottomSheet/锚定菜单宿主        G6R4R3PanelIsolationTest 22 + AcSheetPullG4Test 21
+7  FR-V-03 手动排序暂缓与回退             ViewOptions 读取回退 CREATED        G9ViewModelViewOptionsTest 9 + G6R4SwipeOverlayTest
+8  FR-D-02 无效字段阻止关闭               Host 校验 leaveBlocked              AcDetailEditR4G5Test + G6R4SwipeOverlayTest
+9  AC-D-09 详情第二行/编辑即保存          TaskDetailSheet                     AcUiT077T081Test 8 + AcDetailNewTaskUiT08T09Test 8
+10 COL/SHP/MOT/ICO/NO token 约束           theme/designsystem                   check_ui_tokens.sh（8 规则 0 命中）
+11 CMP-30/31 48dp 与摘要                  TaskAttributeControls               G6_CMP31 等 11 例
+12 G2 设置全屏/深色/返回                 AppRoot + SettingsScreen            AcSettingsFullScreenG2R4Test 4 + AcSettingsExitG4Test 3
+13 insets/键盘贴合（模拟器）             MainActivity WindowInsets            设备 uiautomator+dumpsys 数值断言、截图
+============================================================
+
