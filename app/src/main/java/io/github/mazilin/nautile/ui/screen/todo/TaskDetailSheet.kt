@@ -2,6 +2,8 @@ package io.github.mazilin.nautile.ui.screen.todo
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -53,6 +55,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -127,6 +130,7 @@ fun TaskDetailSheet(
     val scope = rememberCoroutineScope()
     val motion = rememberSheetMotion(visible = visible, onExitFinished = onExitFinished)
     val currentVisible by rememberUpdatedState(visible)
+    val currentOnCloseRequested by rememberUpdatedState(onCloseRequested)
 
     // ---- G7 属性菜单/日期面板：面板内的瞬时界面状态，不持久化 ----
     var openMenu by remember { mutableStateOf<TaskAttribute?>(null) }
@@ -264,12 +268,45 @@ fun TaskDetailSheet(
                 },
             ),
     ) {
-        // 遮罩 alpha 在图层中读取动效值，并随拖拽位移联动（MOT-08.3、COL-10）。
+        // 遮罩层：绘制与“点按遮罩关闭”都只在遮罩层完成（MOT-08.3、COL-10、T-088）。
+        // 遮罩位于面板下方，面板区域的点按由上层 Surface 自行消费，不会被误判为点按遮罩。
+        // 只有未移动的点按才关闭；拖动被排除参与下拉时（输入框聚焦/起点在框内）上层不消费位移，
+        // 这里按 touch slop 判定为拖动并消费，避免整段滑动被误判为点按而关闭面板。
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = motion.scrim.value * motion.dragScrimFactor() }
-                .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA)),
+                .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA))
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        // 遮罩上的按下；已在别处消费的按下（按钮、输入框等）不参与点按判定。
+                        val down = awaitFirstDown(requireUnconsumed = true)
+                        var dragged = false
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!dragged &&
+                                (change.isConsumed ||
+                                    (change.position - down.position).getDistance() >=
+                                    viewConfiguration.touchSlop)
+                            ) {
+                                dragged = true
+                            }
+                            if (dragged) change.consume()
+                            if (!change.pressed) {
+                                // 点按遮罩关闭（§15 CMP-46）：先关菜单/日期面板，再关详情（T-088）。
+                                if (!dragged && currentVisible) {
+                                    when {
+                                        openMenu != null -> openMenu = null
+                                        datePanelOpen -> datePanelOpen = false
+                                        else -> currentOnCloseRequested()
+                                    }
+                                }
+                                break
+                            }
+                        }
+                    }
+                },
         )
         Surface(
             modifier = Modifier

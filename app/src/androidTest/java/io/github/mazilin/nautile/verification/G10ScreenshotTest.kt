@@ -240,8 +240,9 @@ class G10ScreenshotTest {
         capture("view_menu")
     }
 
+    /** R4 G6：手动排序暂缓后，长按拖拽不重排；截图记录禁用态（NO-19、CMP-40.2）。 */
     @Test
-    fun G10_screenshot_manual_drag_mid() {
+    fun G10_screenshot_manual_drag_disabled() {
         val options = ViewOptions(ViewClassification.PROJECT, ViewSort.MANUAL)
         val dragTasks = listOf(
             task(1L, "拖拽任务一", createdSeconds = 1),
@@ -258,21 +259,27 @@ class G10ScreenshotTest {
             }
         }
         composeRule.onNodeWithText("拖拽任务三").assertExists()
+        val secondTopBefore = composeRule.onNodeWithText("拖拽任务二")
+            .fetchSemanticsNode().boundsInRoot.top
+        val thirdTopBefore = composeRule.onNodeWithText("拖拽任务三")
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue("初始顺序：任务三在任务二之上", thirdTopBefore < secondTopBefore)
+
         val rowPx = with(composeRule.density) { 64.dp.toPx() }
         composeRule.onNodeWithText("拖拽任务三").performTouchInput {
             down(center)
             advanceEventTime(700)
             moveBy(Offset(0f, rowPx * 1.2f))
             advanceEventTime(120)
+            up()
         }
-        composeRule.waitUntil(5_000) {
-            val secondTop = composeRule.onNodeWithText("拖拽任务二")
-                .fetchSemanticsNode().boundsInRoot.top
-            val thirdTop = composeRule.onNodeWithText("拖拽任务三")
-                .fetchSemanticsNode().boundsInRoot.top
-            secondTop < thirdTop
-        }
-        capture("manual_drag_mid")
-        composeRule.onNodeWithText("拖拽任务二").performTouchInput { up() }
+        composeRule.waitForIdle()
+
+        val secondTopAfter = composeRule.onNodeWithText("拖拽任务二")
+            .fetchSemanticsNode().boundsInRoot.top
+        val thirdTopAfter = composeRule.onNodeWithText("拖拽任务三")
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue("拖拽入口不可达，顺序保持不变", thirdTopAfter < secondTopAfter)
+        capture("manual_drag_disabled")
     }
 }

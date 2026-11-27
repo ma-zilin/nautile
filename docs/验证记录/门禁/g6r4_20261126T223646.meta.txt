@@ -1,0 +1,74 @@
+R4 G6 独立验证记录（弹层关闭、滑动操作区、手动排序暂缓）
+============================================================
+时间：2026-11-26 22:13—22:41（Asia/Shanghai）
+HEAD：c12281f8ffffddaa01ee284674924d7b47f63497（main）
+工作区：生产代码 5 个文件未提交（开发方 G6 实现）；本 Agent 仅改 androidTest 并新增证据/截图，未改业务代码、构建或依赖。
+设备：emulator-5554 / API 36 / sdk_gphone64_x86_64（模拟器，非真机）。
+
+一、测试改动（均在 app/src/androidTest）
+- 新增 G6R4SwipeOverlayTest.kt（6 例，全部通过）：
+  1) 任务行左右滑色条/图标像素 + 未超 72dp 回弹 + 超阈值动作；
+  2) 项目行同样色条/回调；
+  3) 任务/项目详情遮罩点按关闭；无效标题/名称阻止并提示；
+  4) 属性菜单点外关闭、返回先关菜单；
+  5) 视图菜单无“手动”、点外/返回关闭；
+  6) 遮罩关闭中间态截图。
+- 更新旧断言：
+  * G9ViewUiTest：视图菜单“手动”改为不存在、创建时间选中；拖拽改为不可达不重排不写库。
+  * G9ViewModelViewOptionsTest：默认改 CREATED；选项写入文本改 sort=created；失败回退改 DUE→CREATED；新增“已存 manual 回退 created、每模块记录一次、不写回、manualOrder 保留”和“重排不可达不写库”。
+  * G9ScreenshotTest / G10ScreenshotTest：旧手动拖拽中间态截图改为“拖拽禁用态 + 顺序不变”。
+- 顺手修复 G4 截图夹具：AcSettingsExitG4Test 的 MediaStore DISPLAY_NAME 由固定名改为时间戳唯一名，避免重复插入自动改名、adb pull 旧名取到过期图（非幂等）。
+
+二、命令与结果
+1) bash scripts/check_ui_tokens.sh
+   RESULT: PASS；8 条规则命中 0；文件数 22。日志：g6r4_20261126T223646_static.log
+2) bash scripts/verify.sh G6
+   GATE RESULT: PASS；assembleDebug/assembleDebugAndroidTest/testDebugUnitTest/lintDebug 四步 EXIT=0；
+   JVM suites=37 tests=216 failures=0 errors=0 skipped=0；schema v3（tasks/projects/detail/manual_order）。
+   日志/元数据：verify_G6_20261126T223308.log/.meta.txt
+3) ./gradlew :app:connectedDebugAndroidTest --rerun-tasks（全量，--rerun-tasks）
+   实际结果：FAIL；250 tests / 3 failures / 0 errors；耗时 2m50s（低于 20 分钟上限）。
+   日志：g6r4_20261126T223646.log
+4) 复跑受影响类（AcDetailPullT088Test + AcSheetPullG4Test）
+   复现 3 failures / 28 tests；日志 g6r4_20261126T223646_repro_t088.log，XML g6r4_20261126T223646_repro_t088.xml。
+5) 新增/更新类定向运行
+   G6R4SwipeOverlayTest：6/6 通过（约 25s）；
+   G9ViewUiTest+G9ViewModelViewOptionsTest+G9/G10 截图+AcSettingsExitG4Test+G6R4：36/0（约 36s）。
+
+三、失败项（业务缺陷，交开发修复）
+1) AcDetailPullT088Test.T_088_task_input_focused_pull_does_not_close
+   期望 closeRequests=0，实际 1（AcDetailPullT088Test.kt:114）。
+2) AcDetailPullT088Test.T_088_project_input_focused_pull_does_not_close
+   期望 0，实际 1（:189）。
+3) AcSheetPullG4Test.G4_T088_task_detail_input_focused_scrim_drag_does_not_close
+   期望 0，实际 1（AcSheetPullG4Test.kt:486）。
+事实依据：三例均为“输入框已聚焦时，从遮罩区向下拖拽”不应请求关闭；本轮新增的
+TaskDetailSheet/ProjectDetailSheet 遮罩 detectTapGestures 在父层下拉处理器因输入框聚焦
+而未消费位移时，把整段拖拽按“未移动 tap”处理，触发 onCloseRequested。
+影响：恢复/引入 T-088 回归——输入框聚焦时从遮罩区下拉会关闭详情（并可能提交/提示），
+与“T-088 输入框聚焦不误关”和 AC-D-06/08 的无效/编辑态离开规则冲突。
+推测原因：detectTapGestures 不按 touch slop 取消，依赖上游消费位移；输入框聚焦路径未消费。
+建议方向（交开发判断）：遮罩 tap 需按位移/斜率判定为真正点按（或改用受拖拽消费影响的点击），
+并把“输入框聚焦/拖拽起手在输入框”排除条件并入遮罩层。
+
+四、关键交互核对（本轮新实现，均通过）
+- 任务行：右滑露“× 放弃”（errorContainer/onErrorContainer）、左滑露“完成 ✓”（primaryContainer/onPrimaryContainer）；图标+文字；色条逐点像素匹配主题 token；整行高。
+- 项目行：同样色条/图标；“未超阈值不请求结项，超阈值请求 COMPLETED/ABANDONED”。
+- 阈值：72dp 未改；56dp 释放回弹且不回调；超过阈值才回调。
+- 详情：任务/项目详情点遮罩关闭；无效标题/名称阻止并显示“请先修正…”。
+- 菜单：属性菜单点外/返回只关菜单；视图菜单无“手动”，点外/返回关闭。
+- 手动排序：已存 manual 回退 created、列表按创建时间倒序、每模块记录一次、不写回存储、manualOrder 保留；视图入口与拖拽不可达。
+- 未自动化/人工评审：动画观感、真机手势与厂商 ROM 差异、200% 字体、TalkBack、像素级遮罩透明度观感；本轮为模拟器结果，不代表真机通过。
+
+五、截图（不提交，docs/验证记录/门禁/）
+- g6r4_task_swipe_abandon_1795703523036.png
+- g6r4_task_swipe_complete_1795703525111.png
+- g6r4_project_swipe_abandon_1795703516053.png
+- g6r4_project_swipe_complete_1795703517219.png
+- g6r4_view_menu_1795703387618.png
+- g6r4_scrim_close_mid_1795703384635.png
+
+六、判定
+- 静态、verify 门禁、G6 新交互：通过。
+- 全量 connected：3 个既有验收用例失败（T-088 两例 + G4_T088 一例），未达 0/0。
+- 结论：本轮不能判 PASS；状态=待修复（业务缺陷）。修复后需独立复测同一 3 例并重跑全量，再补 G6 证据。

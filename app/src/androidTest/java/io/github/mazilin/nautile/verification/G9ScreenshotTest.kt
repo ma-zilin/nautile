@@ -181,8 +181,12 @@ class G9ScreenshotTest {
         capture("due_groups")
     }
 
+    /**
+     * R4 G6：手动排序入口暂缓（CMP-40.3、NO-19）——截图记录“长按拖拽不重排”的状态。
+     * 旧 G9 手动拖拽中间态截图对应当前已暂缓的能力，按基线 v2.15 更新为禁用态证据。
+     */
     @Test
-    fun G9_screenshot_manual_drag_mid_state() {
+    fun G9_screenshot_manual_drag_disabled_state() {
         val tasks = listOf(
             task(1L, "拖拽任务一", createdSeconds = 1),
             task(2L, "拖拽任务二", createdSeconds = 2),
@@ -200,23 +204,29 @@ class G9ScreenshotTest {
                 )
             }
         }
-        // 默认手动序为创建时间倒序：任务三在最上；向下拖过一行与任务二交换。
+        // 默认手动序为创建时间倒序：任务三在最上，任务二其次。
         composeRule.onNodeWithText("拖拽任务三").assertExists()
+        val secondTopBefore = composeRule.onNodeWithText("拖拽任务二")
+            .fetchSemanticsNode().boundsInRoot.top
+        val thirdTopBefore = composeRule.onNodeWithText("拖拽任务三")
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue("初始顺序：任务三在任务二之上", thirdTopBefore < secondTopBefore)
+
         val rowPx = with(composeRule.density) { 64.dp.toPx() }
         composeRule.onNodeWithText("拖拽任务三").performTouchInput {
             down(center)
             advanceEventTime(700)
             moveBy(Offset(0f, rowPx * 1.2f))
             advanceEventTime(120)
+            up()
         }
-        composeRule.waitUntil(5_000) {
-            val secondTop = composeRule.onNodeWithText("拖拽任务二")
-                .fetchSemanticsNode().boundsInRoot.top
-            val thirdTop = composeRule.onNodeWithText("拖拽任务三")
-                .fetchSemanticsNode().boundsInRoot.top
-            secondTop < thirdTop
-        }
-        capture("manual_drag_mid")
-        composeRule.onNodeWithText("拖拽任务二").performTouchInput { up() }
+        composeRule.waitForIdle()
+
+        val secondTopAfter = composeRule.onNodeWithText("拖拽任务二")
+            .fetchSemanticsNode().boundsInRoot.top
+        val thirdTopAfter = composeRule.onNodeWithText("拖拽任务三")
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue("拖拽入口不可达，顺序保持不变", thirdTopAfter < secondTopAfter)
+        capture("manual_drag_disabled")
     }
 }

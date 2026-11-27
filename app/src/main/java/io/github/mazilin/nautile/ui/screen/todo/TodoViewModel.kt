@@ -29,6 +29,7 @@ import io.github.mazilin.nautile.domain.usecase.TaskCommands
 import io.github.mazilin.nautile.domain.usecase.TaskFieldUpdate
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.logging.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -80,6 +81,8 @@ private data class TodoListBase(
     val confirmation: ProjectConfirmation?,
     val reopenPrompt: ProjectReopenPrompt?,
     val savedViewOptions: ViewOptions,
+    /** 该模块是否已有保存过的视图选项；用于区分“默认值”与“已存 MANUAL”（CMP-40.3）。 */
+    val hasSavedViewOptions: Boolean,
 )
 
 /** 视图选项本地覆盖：写入成功前/后都以内存值为准，失败时回退到旧值（CMP-41）。 */
@@ -172,6 +175,9 @@ class TodoViewModel(
     /** G9 视图选项本地状态：选择即生效，写入失败再回退（CMP-41）。 */
     private val viewPreferences = MutableStateFlow(ViewPreferences())
 
+    /** 已记录过 MANUAL 回退的模块；同一模块每个进程只记录一次（CMP-40.3）。 */
+    private val manualFallbackLogged = mutableSetOf<GtdPosition>()
+
     /** 生效清单：本地覆盖优先于持久化的上次 GTD，位置变化时先更新 UI 再写库。 */
     private val effectiveSettings = combine(
         settingsRepository.settings,
@@ -200,6 +206,8 @@ class TodoViewModel(
                 effective.settings.perModuleViewOptions,
                 effective.position,
             ),
+            hasSavedViewOptions = effective.settings.perModuleViewOptions
+                .containsKey(effective.position),
         )
     }
 
@@ -209,10 +217,16 @@ class TodoViewModel(
         viewPreferences,
         positionError,
     ) { base, input, preferences, positionErrorValue ->
-        val options = preferences.optionsOverride
+        val rawOptions = preferences.optionsOverride
             ?.takeIf { it.position == base.position }
             ?.options
             ?: base.savedViewOptions
+        // R4 G6：手动排序暂缓，读取到 MANUAL 时按 CREATED 展示（CMP-40.3）；
+        // 只影响展示，不写回存储字符串、不删除 manualOrder（NO-19）。
+        if (base.hasSavedViewOptions && rawOptions.sort == ViewSort.MANUAL) {
+            recordManualSortFallback(base.position, rawOptions)
+        }
+        val options = rawOptions.withManualSortFallback()
         val manualOrders = preferences.manualOverride
             ?.takeIf { it.position == base.position }
             ?.orders
@@ -369,11 +383,25 @@ class TodoViewModel(
         persistViewOptions(current.position, current.viewOptions.copy(classification = classification))
     }
 
-    /** 切换排序：立即生效并写入当前模块；同值不重复写。 */
+    /** 切换排序：立即生效并写入当前模块；同值不重复写。手动排序本轮暂缓，忽略该值。 */
     fun selectViewSort(sort: ViewSort) {
+        // 入口已隐藏（CMP-40.3、NO-19）；防御性忽略，避免外部调用重新进入手动排序。
+        if (sort == ViewSort.MANUAL) return
         val current = uiState.value
         if (current.viewOptions.sort == sort) return
         persistViewOptions(current.position, current.viewOptions.copy(sort = sort))
+    }
+
+    /**
+     * CMP-40.3：已存 MANUAL 只回退展示为 CREATED，不改写存储、不删除 manualOrder。
+     * 记录一次模块与旧值，仅进 logcat，不弹 UI、不写业务数据。
+     */
+    private fun recordManualSortFallback(position: GtdPosition, options: ViewOptions) {
+        if (!manualFallbackLogged.add(position)) return
+        Logger.getLogger(LOG_TAG).info(
+            "视图排序回退：module=${position.name}, old=manual, new=created, " +
+                "classification=${options.classification.name}",
+        )
     }
 
     /**
@@ -1520,3 +1548,9 @@ class TodoViewModel(
         TaskCommandError.PROJECT_NOT_FOUND -> "项目不存在"
     }
 }
+
+private const val LOG_TAG = "TodoViewModel"
+
+/** CMP-40.3：已存 MANUAL 在展示层回退 CREATED；枚举与存储值保留，供恢复手动排序时使用。 */
+private fun ViewOptions.withManualSortFallback(): ViewOptions =
+    if (sort == ViewSort.MANUAL) copy(sort = ViewSort.CREATED) else this

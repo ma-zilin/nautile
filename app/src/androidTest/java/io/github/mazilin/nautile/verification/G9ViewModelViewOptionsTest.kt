@@ -27,6 +27,9 @@ import io.github.mazilin.nautile.ui.theme.NautileTheme
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDate
+import java.util.logging.Handler
+import java.util.logging.LogRecord
+import java.util.logging.Logger
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -95,6 +98,7 @@ class G9ViewModelViewOptionsTest {
         priority: Priority = Priority.NONE,
         dueDate: LocalDate? = null,
         createdSeconds: Long = 0L,
+        manualOrder: Long? = null,
     ): TaskId = runBlocking {
         val createdAt = now.plusSeconds(createdSeconds)
         taskRepository.insert(
@@ -104,6 +108,7 @@ class G9ViewModelViewOptionsTest {
                 position = position,
                 priority = priority,
                 dueDate = dueDate,
+                manualOrder = manualOrder,
                 createdAt = createdAt,
                 updatedAt = createdAt,
             ),
@@ -144,7 +149,7 @@ class G9ViewModelViewOptionsTest {
         vm.uiState.value.groups[groupIndex].tasks.map { it.id.value }
 
     @Test
-    fun g9_default_is_project_manual_with_created_desc_order() {
+    fun g9_default_is_project_created_with_created_desc_order() {
         seedTask("旧任务", createdSeconds = 1)
         seedTask("中任务", createdSeconds = 2)
         seedTask("新任务", createdSeconds = 3)
@@ -153,14 +158,16 @@ class G9ViewModelViewOptionsTest {
 
         val state = awaitState("三条任务进入当前清单") { it.visibleTasks.size == 3 }
         assertEquals("默认分类=项目", ViewClassification.PROJECT, state.viewOptions.classification)
-        assertEquals("默认排序=手动", ViewSort.MANUAL, state.viewOptions.sort)
+        // R4 G6（CMP-40.3）：默认/未保存的 MANUAL 值在展示层回退 CREATED，菜单不再显示“手动”。
+        assertEquals("默认排序=创建时间", ViewSort.CREATED, state.viewOptions.sort)
         assertTrue("视图入口应可用", state.viewOptionsAvailable)
         assertEquals("默认仍按项目分组", 1, state.groups.size)
         assertEquals(
-            "未排序任务按创建时间倒序（旧默认展示）",
+            "按创建时间倒序",
             listOf(3L, 2L, 1L),
             taskIdsInGroup(),
         )
+        assertTrue("默认展示不写视图选项", settings.viewOptionsWrites.isEmpty())
     }
 
     @Test
@@ -180,8 +187,8 @@ class G9ViewModelViewOptionsTest {
             priorityState.groups.map { it.headerTitle },
         )
         assertEquals(
-            "选择即写入当前模块",
-            "classification=priority;sort=manual",
+            "选择即写入当前模块（默认排序已回退为 created）",
+            "classification=priority;sort=created",
             settings.viewOptionsWrites.last().second,
         )
         assertEquals(GtdPosition.INBOX, settings.viewOptionsWrites.last().first)
@@ -195,10 +202,13 @@ class G9ViewModelViewOptionsTest {
         )
         assertEquals("高优先级仍在前", "高优先级", dueSortState.groups.first().headerTitle)
 
-        // 切换清单：等待中模块使用自己的默认选项，不继承收件箱。
+        // 切换清单：等待中模块使用自己的默认选项（项目+创建时间），不继承收件箱。
         vm.selectPosition(GtdPosition.WAITING)
         val waitingState = awaitState("切到等待中") { it.position == GtdPosition.WAITING }
-        assertEquals(ViewOptions.Default, waitingState.viewOptions)
+        assertEquals(
+            ViewOptions(ViewClassification.PROJECT, ViewSort.CREATED),
+            waitingState.viewOptions,
+        )
         runBlocking {
             val inboxStored = settings.settings.first().perModuleViewOptions
             assertEquals(
@@ -207,9 +217,9 @@ class G9ViewModelViewOptionsTest {
             )
         }
 
-        // 在等待中改排序，不得覆盖收件箱。
-        vm.selectViewSort(ViewSort.CREATED)
-        awaitState("等待中排序写入") { it.viewOptions.sort == ViewSort.CREATED }
+        // 在等待中改排序（不能选与默认相同的 CREATED，否则按“同值不重复写”返回），不得覆盖收件箱。
+        vm.selectViewSort(ViewSort.DUE)
+        awaitState("等待中排序写入") { it.viewOptions.sort == ViewSort.DUE }
         runBlocking {
             val stored = settings.settings.first().perModuleViewOptions
             assertEquals(
@@ -217,7 +227,7 @@ class G9ViewModelViewOptionsTest {
                 ViewOptions.fromSettings(stored, GtdPosition.INBOX),
             )
             assertEquals(
-                ViewOptions(ViewClassification.PROJECT, ViewSort.CREATED),
+                ViewOptions(ViewClassification.PROJECT, ViewSort.DUE),
                 ViewOptions.fromSettings(stored, GtdPosition.WAITING),
             )
         }
@@ -251,10 +261,11 @@ class G9ViewModelViewOptionsTest {
         awaitState("任务就绪") { it.visibleTasks.size == 2 }
         settings.failViewOptionsWrites = true
 
-        vm.selectViewSort(ViewSort.CREATED)
+        // 默认 CREATED；选择 DUE 才会触发写入与失败回退。
+        vm.selectViewSort(ViewSort.DUE)
         val failed = awaitState("写入失败应提示") { it.viewOptionsError != null }
 
-        assertEquals("失败后回退旧排序", ViewSort.MANUAL, failed.viewOptions.sort)
+        assertEquals("失败后回退旧排序", ViewSort.CREATED, failed.viewOptions.sort)
         assertEquals(
             "列表顺序回到旧排序",
             listOf(2L, 1L),
@@ -269,38 +280,30 @@ class G9ViewModelViewOptionsTest {
         awaitState("关闭提示") { it.viewOptionsError == null }
     }
 
+    /**
+     * R4 G6（NO-19）：手动重排入口已暂缓，展示层始终回退 CREATED，
+     * `reorderGroup` 不得写库、不得改变顺序（写入/回滚代码保留但不可达）。
+     */
     @Test
-    fun g9_manual_reorder_writes_zero_based_orders_and_persists() {
+    fun g6r4_manual_reorder_is_rejected_after_fallback_and_never_writes() {
         val first = seedTask("任务一", createdSeconds = 1)
         val second = seedTask("任务二", createdSeconds = 2)
         val third = seedTask("任务三", createdSeconds = 3)
         createViewModel()
         setScreen()
         val state = awaitState("任务就绪") { it.visibleTasks.size == 3 }
-
-        assertEquals("默认手动序按创建时间倒序", listOf(3L, 2L, 1L), taskIdsInGroup())
         val groupKey = state.groups[0].key
 
         vm.reorderGroup(groupKey, listOf(first, second, third))
+        composeRule.waitForIdle()
 
-        val reordered = awaitState("落位后顺序更新") { taskIdsInGroup() == listOf(1L, 2L, 3L) }
-        assertEquals("写入一次批量事务", 1, manualOrderWrites.size)
-        assertEquals(
-            "落位写 0..n-1",
-            mapOf(first to 0L, second to 1L, third to 2L),
-            manualOrderWrites.single(),
-        )
-        assertNull("列表无错误提示", reordered.manualOrderError)
-
-        runBlocking {
-            assertEquals(0L, taskRepository.get(first)?.manualOrder)
-            assertEquals(1L, taskRepository.get(second)?.manualOrder)
-            assertEquals(2L, taskRepository.get(third)?.manualOrder)
-        }
+        assertEquals("回退 CREATED 后重排不得写库", 0, manualOrderWrites.size)
+        assertEquals("顺序保持创建时间倒序", listOf(3L, 2L, 1L), taskIdsInGroup())
+        assertNull("不得出现手动排序错误提示", vm.uiState.value.manualOrderError)
     }
 
     @Test
-    fun g9_manual_reorder_failure_rolls_back_and_shows_error() {
+    fun g6r4_manual_reorder_failure_path_not_triggered() {
         val first = seedTask("任务一", createdSeconds = 1)
         val second = seedTask("任务二", createdSeconds = 2)
         val third = seedTask("任务三", createdSeconds = 3)
@@ -311,20 +314,14 @@ class G9ViewModelViewOptionsTest {
         val groupKey = state.groups[0].key
 
         vm.reorderGroup(groupKey, listOf(first, second, third))
-        val failed = awaitState("写入失败应提示") { it.manualOrderError != null }
+        composeRule.waitForIdle()
 
-        assertEquals(
-            "失败后回滚到原顺序",
-            listOf(3L, 2L, 1L),
-            taskIdsInGroup(),
-        )
-        assertTrue(
-            "提示内容应说明已恢复",
-            failed.manualOrderError.orEmpty().contains("手动排序保存失败"),
-        )
+        assertEquals("不可达路径不得尝试写入", 0, manualOrderWrites.size)
+        assertEquals("顺序不变", listOf(3L, 2L, 1L), taskIdsInGroup())
+        assertNull("不得出现手动排序错误提示", vm.uiState.value.manualOrderError)
         runBlocking {
             listOf(first, second, third).forEach { id ->
-                assertNull("失败不得写库", taskRepository.get(id)?.manualOrder)
+                assertNull("不得写 manualOrder", taskRepository.get(id)?.manualOrder)
             }
         }
     }
@@ -347,17 +344,97 @@ class G9ViewModelViewOptionsTest {
         assertEquals("非手动模式不得写入", 0, manualOrderWrites.size)
         assertEquals("非手动模式顺序不变", beforeNonManual, taskIdsInGroup())
 
-        // 搜索态即使排序=手动也不接受重排。
+        // R4 G6：手动入口隐藏后，防御性选择 MANUAL 也不生效，保持当前排序。
         vm.selectViewSort(ViewSort.MANUAL)
-        awaitState("切回手动排序") { it.viewOptions.sort == ViewSort.MANUAL }
-        val optionsBeforeSearch = vm.uiState.value.viewOptions
+        composeRule.waitForIdle()
+        assertEquals("选择手动排序应被忽略", ViewSort.CREATED, vm.uiState.value.viewOptions.sort)
+        assertEquals("选择手动排序不得写库", 0, settings.viewOptionsWrites.size)
+
+        // 搜索态即使排序=手动也不接受重排（保留旧断言）。
         vm.openSearch()
         vm.onSearchQueryChanged("任务")
         val searching = awaitState("进入搜索态") { it.searchActive && it.searchQuery == "任务" }
         vm.reorderGroup(groupKey, listOf(first, second, third))
         composeRule.waitForIdle()
         assertEquals("搜索态不得写入", 0, manualOrderWrites.size)
-        assertEquals("搜索不改变排序选项", optionsBeforeSearch, searching.viewOptions)
+        assertEquals("搜索不改变排序选项", ViewSort.CREATED, searching.viewOptions.sort)
+    }
+
+    /**
+     * R4 G6（CMP-40.3、NO-19）：已存 `sort=manual` 的模块按 `created` 展示，
+     * 只记录一次回退、不改写存储、不删除 manualOrder；重复进入模块不重复记录。
+     */
+    @Test
+    fun g6r4_saved_manual_falls_back_to_created_logs_once_and_keeps_data() {
+        val handler = CollectingLogHandler()
+        val logger = Logger.getLogger("TodoViewModel")
+        logger.addHandler(handler)
+        try {
+            val old = seedTask("旧任务", createdSeconds = 1, manualOrder = 0L)
+            val mid = seedTask("中任务", createdSeconds = 2, manualOrder = 1L)
+            val new = seedTask("新任务", createdSeconds = 3, manualOrder = 2L)
+            runBlocking {
+                settings.setViewOptions(GtdPosition.INBOX, "classification=project;sort=manual")
+            }
+            val writesBefore = settings.viewOptionsWrites.size
+            createViewModel()
+            setScreen()
+
+            val state = awaitState("已存 manual 回退为 created") {
+                it.visibleTasks.size == 3 && it.viewOptions.sort == ViewSort.CREATED
+            }
+            assertEquals("分类保持项目", ViewClassification.PROJECT, state.viewOptions.classification)
+            assertEquals(
+                "列表按创建时间倒序，而不是 manualOrder 正序",
+                listOf(3L, 2L, 1L),
+                taskIdsInGroup(),
+            )
+
+            // 切走再切回同一模块：回退记录每模块只记一次。
+            vm.selectPosition(GtdPosition.WAITING)
+            awaitState("切到等待中") { it.position == GtdPosition.WAITING }
+            vm.selectPosition(GtdPosition.INBOX)
+            awaitState("回到收件箱仍回退 created") {
+                it.position == GtdPosition.INBOX && it.viewOptions.sort == ViewSort.CREATED
+            }
+
+            val fallbackRecords = handler.messages.filter { it.contains("视图排序回退") }
+            assertEquals("每模块只记录一次回退：$fallbackRecords", 1, fallbackRecords.size)
+            assertTrue(
+                "记录含模块与旧/新值：${fallbackRecords.single()}",
+                fallbackRecords.single().contains("module=INBOX") &&
+                    fallbackRecords.single().contains("old=manual") &&
+                    fallbackRecords.single().contains("new=created"),
+            )
+            assertTrue(
+                "回退展示不写回视图选项（预置的 1 次写入之外无新增）",
+                settings.viewOptionsWrites.size == writesBefore,
+            )
+            runBlocking {
+                assertEquals(
+                    "存储字符串仍是 manual",
+                    "classification=project;sort=manual",
+                    settings.settings.first().perModuleViewOptions[GtdPosition.INBOX],
+                )
+                listOf(old, mid, new).forEachIndexed { index, id ->
+                    assertEquals("manualOrder 数据保留", index.toLong(), taskRepository.get(id)?.manualOrder)
+                }
+            }
+        } finally {
+            logger.removeHandler(handler)
+        }
+    }
+
+    private class CollectingLogHandler : Handler() {
+        val messages = mutableListOf<String>()
+
+        override fun publish(record: LogRecord) {
+            record.message?.let { messages += it }
+        }
+
+        override fun flush() = Unit
+
+        override fun close() = Unit
     }
 
     @Test

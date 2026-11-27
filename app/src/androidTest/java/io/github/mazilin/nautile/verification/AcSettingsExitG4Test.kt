@@ -147,8 +147,11 @@ class AcSettingsExitG4Test {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         val bitmap: Bitmap = instrumentation.uiAutomation.takeScreenshot()
+        // G6R4 修复：固定 DISPLAY_NAME 重复插入时 MediaStore 会自动改名，adb pull 旧名会取到过期图。
+        // 改为唯一名（时间戳），保证重复执行幂等、取证时按本次输出名拉取。
+        val fileName = "g4_settings_pop_mid_${System.currentTimeMillis()}.png"
         val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, "g4_settings_pop_mid.png")
+            put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
             put(
                 MediaStore.Images.Media.RELATIVE_PATH,
@@ -163,7 +166,7 @@ class AcSettingsExitG4Test {
         context.contentResolver.openOutputStream(uri!!)!!.use { out ->
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
-        println("G4 settings mid frame uri=$uri")
+        println("G4 settings mid frame name=$fileName uri=$uri")
 
         composeRule.mainClock.advanceTimeBy(400)
         composeRule.waitForIdle()

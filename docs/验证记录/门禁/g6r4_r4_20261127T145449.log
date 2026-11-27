@@ -1,0 +1,109 @@
+G6-R4-R4 独立复测汇总（2026-11-27）
+============================================================
+检查对象：G6 上轮唯一失败“新建面板日期面板打开时点遮罩连面板一起关闭”的修复
+依据：docs/需求基线.md v2.15（AC-D-07/08、FR-G-14）、CMP-05/31/45/46、T-088 输入框排除
+代码版本：HEAD c12281f（工作区有未提交改动，dirty 条目见 meta）
+设备：emulator-5554，Android API 36（nautile_api36 AVD），模拟器，非真机
+工具：Gradle 9.6.0、adb、python3（仅解析 JUnit XML）
+
+一、diff 范围核对
+------------------------------------------------------------
+- git diff -- '*.gradle*' 'gradle/**' 'gradle.properties'：空，无构建/依赖改动。
+- 本轮业务改动仅 NewTaskSheet.kt：把遮罩点按 pointerInput 从父 Box 移到遮罩 Box，
+  并在未拖动点按时按“菜单 → 日期面板 → 面板”顺序只关最上层。
+- 其它 G6 修复文件（ProjectDetailSheet/TaskDetailSheet/TaskEditSheet/ProjectEditSheet/
+  TaskAttributeControls/TodoScreen/TodoViewModel）仍在工作区，属上轮 G6 修复遗留。
+- 说明：工作区无提交，无法用 git 对上一轮做逐文件 diff；本轮新增修改经内容核对仅 NewTaskSheet.kt，
+  其余业务文件 mtime 为 2026-11-27 14:03:55（同一批，早于本轮开始 14:09），NewTaskSheet 为 14:05:34。
+
+二、静态检查
+------------------------------------------------------------
+命令：bash scripts/check_ui_tokens.sh
+结果：PASS，检查 22 个文件，8 条规则命中总数 0，EXIT=0
+日志：g6r4_r4_20261127T145449_static.log
+
+三、定向复跑
+------------------------------------------------------------
+命令：
+./gradlew :app:connectedDebugAndroidTest --rerun-tasks \
+  -Pandroid.testInstrumentationRunnerArguments.class="io.github.mazilin.nautile.verification.G6R4R3PanelIsolationTest,io.github.mazilin.nautile.verification.G6R4SwipeOverlayTest,io.github.mazilin.nautile.verification.AcDetailPullT088Test"
+结果：tests=35 failures=0 errors=0 skipped=0，BUILD SUCCESSFUL，EXIT=0
+包含：
+- G6R4R3PanelIsolationTest 22 例，含上轮唯一失败
+  G6R4R3_new_task_date_panel_scrim_tap_closes_only_date_panel（通过）
+- G6R4SwipeOverlayTest 6 例
+- AcDetailPullT088Test 7 例（含任务侧三例：input_focused_pull / start_inside_input / non_input_pull_still_closes）
+说明：该命令因执行环境重试实际运行两次（141014、141135），两次均 35/0/0/0。
+日志：g6r4_r4_20261127T145449_directed.log
+
+四、G6-R4 门禁
+------------------------------------------------------------
+命令：bash scripts/verify.sh G6-R4
+结果：四步全部 EXIT=0（assembleDebug / assembleDebugAndroidTest / testDebugUnitTest / lintDebug）；
+JVM suites=37 tests=216 failures=0 errors=0 skipped=0；
+schema v3 内容检查 EXIT=0；GATE RESULT: PASS
+日志：g6r4_r4_20261127T145449_gate.log；元数据：g6r4_r4_20261127T145449_gate.meta.txt
+（verify.sh 自身归档：docs/验证记录/门禁/verify_G6-R4_20261127T141403.log/.meta.txt）
+
+五、全量 connected（--rerun-tasks，单次 3m22s–3m27s，均低于 20 分钟上限）
+------------------------------------------------------------
+实际运行 6 次（含执行环境重试），逐次如实记录：
+1) 20261127T141838 FAIL：274 例 / 3 失败
+   - G9ScreenshotTest G9_screenshot_priority_groups / view_menu / due_groups
+   - 原因：截图夹具固定 DISPLAY_NAME，设备 Download/nautile_evidence 下同名文件已 32 份，
+     MediaStore insert 抛 IllegalStateException: Failed to build unique file
+   - 分类：测试夹具 + 设备残留，非业务缺陷；旧 g9 截图已在 docs 归档 4 张
+2) 20261127T142325 PASS：274/0/0/0
+3) 20261127T142655 FAIL：274 例 / 1 失败
+   - AcNewTaskToolbarG6Test G6_CMP31_menu_keeps_input_focus_and_panel_usable
+   - 失败点：点击“设置优先级”后立即断言“优先级：高”不可见
+   - 分类：IME/键盘动画时序波动（见第六节重复验证），非 G6 修复路径的稳定回归
+4) 20261127T143504 PASS：274/0/0/0
+5) 20261127T143832 PASS：274/0/0/0
+6) 20261127T145449 PASS：274/0/0/0（XML 已归档 g6r4_r4_20261127T145449_full_pass_d.xml）
+处置：
+- 清理设备端同名截图家族 g9_priority_groups*/g9_view_menu*/g9_due_groups*（各 32 份）后，
+  G9ScreenshotTest 单跑 tests=4 failures=0（两次均成功），确认夹具可恢复；
+- 另清理 g10_*（31 份）避免同一固定名上限在后续全量再次触发（G10 截图已在 docs 归档两轮）。
+- 清理的是测试截图产物，docs 中已有对应归档，不构成删除唯一证据。
+日志：full_fail_g9fixture / full_pass_a / full_fail_menu_flake / full_pass_b / full_pass_c / full_pass_d
+
+六、菜单焦点用例波动量化
+------------------------------------------------------------
+- 单例复跑：2 次通过（143027、143053）
+- 全类复跑：6 次，每次 11 例，均 0 失败（143120/143152/143225/143303/143337/143410）
+- menuloop 单例循环：10 次通过（144759/144818/144836/144855/144913/144938/144956/145014/145032/145049）
+- 全量中：6 次里 5 次通过，1 次失败（142655）
+合计：该用例单独/类内执行 18 次全部通过；全量执行 6 次中 1 次失败。
+环境：API36 模拟器，测试在输入框聚焦后立即点击工具栏，键盘弹入动画未受控；无固定时钟或动画禁用。
+结论：低频时序波动，不能据此判定业务回归；但属测试稳定性限制，需记录并在后续夹具中加等待/关闭动画。
+
+七、交互抽查（一次性探针，执行后删除源码；断言全部通过）
+------------------------------------------------------------
+探针：G6R4R4_interaction_probe（NewTaskSheet + 记录关闭/创建请求的宿主）
+结果：tests=1 failures=0，BUILD SUCCESSFUL（144609；144542 亦通过）
+断言与截图（docs/验证记录/门禁/，不提交）：
+1) 日期面板打开：g6r4_r4_01_date_panel_open_1795761986208.png
+2) 点遮罩后：日期面板消失、新建面板仍在、closeRequests=0
+   g6r4_r4_02_scrim_after_date_closed_1795761986817.png
+3) 再点遮罩：新建面板关闭、closeRequests=1
+   g6r4_r4_03_scrim_after_sheet_closed_1795761987417.png
+4) 菜单打开：g6r4_r4_04_menu_open_1795761988288.png
+5) 系统返回：菜单关闭、面板仍在、closeRequests 不变
+   g6r4_r4_05_back_after_menu_closed_1795761988784.png
+6) 输入框聚焦后遮罩区下拉 200dp：面板仍在、closeRequests 不变（T-088）
+   g6r4_r4_06_focused_drag_kept_1795761989805.png
+7) 清空标题后点“创建”：显示“标题不能为空”、面板保留、onCreate 仅 1 次
+   g6r4_r4_07_invalid_title_blocked_1795761990836.png
+日志：g6r4_r4_20261127T145449_probe.log
+说明：截图由 UiAutomation 全屏捕获；Compose onRoot().captureToImage 在日期面板展开时返回 0 尺寸，已改用系统截图。
+
+八、结论
+------------------------------------------------------------
+定向 0 失败 + 全量多次 0/0（最新一次 274/0/0/0，XML 已归档）+ 交互抽查通过 → G6-R4-R4 PASS。
+剩余限制：
+- 仅模拟器 API36，非真机；动画观感、触摸手感、IME 真机差异未判定，列为人工评审。
+- 全量存在两类非业务波动：截图夹具固定文件名（G9/G10 残留已清理，根因未改夹具）；
+  AcNewTaskToolbarG6Test 菜单用例低频 IME 时序失败（18 次单跑/类内全过，6 次全量 1 次失败）。
+- 全量 XML 仅最新一次保留；前几次 XML 被后续 Gradle 运行覆盖，失败明细以当次解析结果与本日志记录为准。
+- 本轮临时探针源码已删除，保留日志与 7 张截图。

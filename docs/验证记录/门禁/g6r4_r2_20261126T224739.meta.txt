@@ -1,0 +1,72 @@
+R4 G6-R2 独立复测（T-088 聚焦态下拉误判为遮罩点按）
+============================================================
+时间：2026-11-26 22:47—22:58（Asia/Shanghai）
+HEAD：c12281f8ffffddaa01ee284674924d7b47f63497（main）
+工作区：G6 生产代码 5 个文件未提交（开发方实现，非本轮提交）；
+本 Agent 仅新增 1 个验证探针测试与证据文件，未改业务代码、构建、依赖或脚本。
+设备：emulator-5554 / API 36 / sdk_gphone64_x86_64（模拟器，非真机）。
+
+一、检查对象与依据
+- 检查对象：TaskDetailSheet.kt、ProjectDetailSheet.kt（相对上轮的修复）。
+- 需求/标准：T-088；AC-D-06/07/08（人工评审）；CMP-46 下半屏面板关闭规则；
+  CMP-45 锚定菜单；CMP-31 返回优先级。
+- 上轮证据：docs/验证记录/门禁/g6r4_20261126T223646.meta.txt（3 例失败）。
+
+二、diff 核对（相对上轮）
+- 上轮记录结束 22:41；两 Sheet 修改时间 22:44:21 / 22:43:40；
+  其余生产文件 ≤22:08，G6R4SwipeOverlayTest 22:31、G9ViewUiTest 22:19，均早于上轮取证。
+- 内容：两文件根级新增 awaitEachGesture（位移≥touchSlop 或已被消费即判拖动并消费，
+  仅未移动点按关闭），并用 rememberUpdatedState 捕获 onCloseRequested；
+  任务面板保留“先关菜单/日期面板、再关详情”。
+- build.gradle.kts、gradle/libs.versions.toml、gradle.properties、scripts/ 无改动（git status 核对）。
+- 限制：无上轮文件快照，diff 范围依据 mtime 与内容核对，不是逐字节 diff。
+
+三、命令与结果（全部实跑）
+1) bash scripts/check_ui_tokens.sh
+   EXIT=0；RESULT: PASS；检查 22 文件，8 条规则命中 0。
+   日志：g6r4_r2_20261126T224739_static.log
+2) 定向复跑：AcDetailPullT088Test 两例 + AcSheetPullG4Test#G4_T088_task_detail_input_focused_scrim_drag_does_not_close
+   + G6R4SwipeOverlayTest（整类）
+   命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks -Pandroid.testInstrumentationRunnerArguments.class=...
+   EXIT=0；9 tests / 0 failures / 0 errors / 0 skipped；上轮 3 个失败用例全部通过。
+   日志/XML：g6r4_r2_20261126T224739_directed.log / .xml
+3) bash scripts/verify.sh G6-R2
+   GATE RESULT: PASS；assembleDebug、assembleDebugAndroidTest、testDebugUnitTest、lintDebug 四步 EXIT=0；
+   JVM suites=37 tests=216 failures=0 errors=0 skipped=0；schema v3（tasks/projects/detail/manual_order）。
+   日志/元数据：verify_G6-R2_20261126T224946.log / .meta.txt
+4) 全量 connected：./gradlew :app:connectedDebugAndroidTest --rerun-tasks
+   EXIT=0；250 tests / 0 failures / 0 errors / 0 skipped；BUILD SUCCESSFUL in 2m 45s（<20 分钟上限）。
+   失败分类：无。抽查：AcDetailPullT088Test 7 例、AcSheetPullG4Test 中 T088 8 例、G6R4 6 例均 PASS。
+   日志/XML：g6r4_r2_20261126T224739.log / .xml
+
+四、交互抽查
+- 输入框聚焦态遮罩下拉 40dp/200dp 不关闭：
+  G4_T088_new_task_input_focused_scrim_40dp_drag_does_not_close、
+  G4_T088_new_task_input_focused_scrim_drag_does_not_close、
+  G4_T088_task_detail_input_focused_scrim_drag_does_not_close：PASS（全量中）。
+- 未移动点按遮罩关闭：G6R4_detail_scrim_tap_closes_and_invalid_fields_block_with_prompt：PASS。
+- 菜单/返回顺序：G6R4_attribute_menu_outside_tap_and_back_close_menu_first：PASS
+  （点外只关菜单 → 返回只关菜单 → 再点遮罩关详情）。
+- 新增探针（CMP-46“点按面板本体不应关闭”）：
+  G6R4R2PanelTapProbeTest 2 例 FAIL（期望 0，实际均 1 次 closeRequest）：
+  * 点按任务详情标题“任务详情” → 请求关闭；
+  * 点按项目详情标题“项目详情” → 请求关闭。
+  命令：./gradlew :app:connectedDebugAndroidTest --rerun-tasks -P...class=...G6R4R2PanelTapProbeTest
+  EXIT=1；2 tests / 2 failures；连续两次运行结果一致（22:56、22:58）。
+  日志/XML：g6r4_r2_20261126T224739_probe_panel_tap.log / .xml；第二次 …_probe_panel_tap_run2.log
+
+五、发现（业务缺陷，交开发修复；非 T-088 三例）
+- 事实：根级 pointerInput 位于遮罩与面板的共同祖先，面板内未被消费的点按（标题文字、
+  空白、拖拽柄）被当作遮罩点按并触发 onCloseRequested。
+- 依据：CMP-46 关闭触发为“点遮罩/系统返回/下拉”；AC-D-07“面板点遮罩关闭”。
+- 影响：用户查看/滚动详情时点按面板文字或空白会误关详情（项目详情同样）；属本次修复引入的新回归。
+- 推测原因：修复把点按判定从遮罩兄弟层上移到共同祖先，未按面板 bounds 排除面板内部。
+- 建议方向（交开发判断）：点按判定限定在面板外区域，或让面板 Surface 消费未命中子控件的 down，
+  或恢复遮罩层局部点按 + slop 判定。
+- 剩余限制：模拟器结果，不代表真机；本探针未重跑 250 例全量（全量 250/0 在加入探针前测得）。
+
+六、判定
+- 指定判据（定向 0 失败 + 全量 250/0/0）：达标；T-088 三例已修复。
+- 但交互抽查新增探针 2/2 失败，确认“点按面板本体误关”新回归，本轮不能判 PASS。
+- 状态建议：待修复（新问题第一轮）；修复后复测探针 2 例 + 原 T-088 3 例 + 全量 connected。
+- 人工/未自动化：动画观感、真机手势与厂商 ROM 差异、200% 字体、TalkBack、遮罩透明度观感。

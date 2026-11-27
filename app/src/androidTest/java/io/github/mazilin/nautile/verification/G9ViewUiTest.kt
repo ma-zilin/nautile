@@ -3,10 +3,12 @@ package io.github.mazilin.nautile.verification
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -37,6 +39,7 @@ import io.github.mazilin.nautile.ui.theme.NautileTheme
 import java.time.Instant
 import java.time.LocalDate
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -98,6 +101,7 @@ class G9ViewUiTest {
         priority: Priority = Priority.NONE,
         dueDate: LocalDate? = null,
         createdSeconds: Long = 0L,
+        manualOrder: Long? = null,
     ): TaskId = runBlocking {
         val createdAt = now.plusSeconds(createdSeconds)
         taskRepository.insert(
@@ -107,6 +111,7 @@ class G9ViewUiTest {
                 position = GtdPosition.INBOX,
                 priority = priority,
                 dueDate = dueDate,
+                manualOrder = manualOrder,
                 createdAt = createdAt,
                 updatedAt = createdAt,
             ),
@@ -176,7 +181,8 @@ class G9ViewUiTest {
                         visibleTasks = listOf(task),
                         searchAvailable = true,
                         viewOptionsAvailable = true,
-                        viewOptions = ViewOptions.Default,
+                        // R4 G6：手动排序入口隐藏；本轮验收以“已存 manual 回退 CREATED”的展示为准。
+                        viewOptions = ViewOptions(ViewClassification.PROJECT, ViewSort.CREATED),
                     ),
                 )
             }
@@ -188,8 +194,11 @@ class G9ViewUiTest {
         composeRule.onNodeWithText("排序").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("分类：项目").assertIsSelected()
         composeRule.onNodeWithContentDescription("分类：优先级").assertIsNotSelected()
-        composeRule.onNodeWithContentDescription("排序：手动").assertIsSelected()
-        composeRule.onNodeWithContentDescription("排序：创建时间").assertIsNotSelected()
+        composeRule.onNodeWithContentDescription("排序：创建时间").assertIsSelected()
+        composeRule.onNodeWithContentDescription("排序：截止日期").assertIsNotSelected()
+        // NO-19：视图菜单不显示“手动”入口，也不显示拖拽手柄提示。
+        composeRule.onNodeWithContentDescription("排序：手动").assertDoesNotExist()
+        composeRule.onAllNodesWithText("手动").assertCountEquals(0)
 
         // 锚定浮层无遮罩：菜单打开时列表内容仍可见（像素级 alpha 由人工核对）。
         composeRule.onNodeWithText("可见任务").assertIsDisplayed()
@@ -254,18 +263,22 @@ class G9ViewUiTest {
         )
     }
 
+    /**
+     * R4 G6（NO-19、CMP-40.2）：手动排序入口暂缓，长按纵向拖拽不得重排、不得写库。
+     * 旧用例曾断言“长按拖拽写 0..n-1”；本轮按基线 v2.15 更新为“不可达”，数据路径保留由
+     * [G9ViewModelViewOptionsTest] 的代码级用例覆盖。
+     */
     @Test
-    fun g9_manual_long_press_drag_reorders_and_persists_zero_based_orders() {
-        val first = seedTask("任务一", createdSeconds = 1)
-        val second = seedTask("任务二", createdSeconds = 2)
-        val third = seedTask("任务三", createdSeconds = 3)
+    fun g6r4_manual_drag_entry_unreachable_and_no_reorder() {
+        seedTask("任务一", createdSeconds = 1)
+        seedTask("任务二", createdSeconds = 2)
+        seedTask("任务三", createdSeconds = 3)
         createViewModel()
         setVmScreen()
-        val state = awaitState("任务就绪") { it.visibleTasks.size == 3 }
-        assertEquals("默认顺序", listOf("任务三", "任务二", "任务一"), taskOrder())
-        val groupKey = state.groups[0].key
+        awaitState("任务就绪") { it.visibleTasks.size == 3 }
+        assertEquals("默认顺序（创建时间倒序）", listOf("任务三", "任务二", "任务一"), taskOrder())
 
-        // 长按首行后向下拖过一行：任务三 与 任务二 交换。
+        // 长按首行后向下拖过一行：入口已关闭，不应发生交换或写库。
         val rowPx = with(composeRule.density) { 64.dp.toPx() }
         composeRule.onNodeWithText("任务三").performTouchInput {
             down(center)
@@ -274,23 +287,9 @@ class G9ViewUiTest {
             advanceEventTime(120)
             up()
         }
-
-        val reordered = awaitState("拖拽落位后顺序更新") {
-            taskOrder() == listOf("任务二", "任务三", "任务一")
-        }
-        assertEquals("发生一次批量写入", 1, manualOrderWrites.size)
-        assertEquals(
-            "落位写 0..n-1",
-            mapOf(second to 0L, third to 1L, first to 2L),
-            manualOrderWrites.single(),
-        )
-        assertNull(reordered.manualOrderError)
-        runBlocking {
-            assertEquals(0L, taskRepository.get(second)?.manualOrder)
-            assertEquals(1L, taskRepository.get(third)?.manualOrder)
-            assertEquals(2L, taskRepository.get(first)?.manualOrder)
-        }
-        assertTrue(groupKey.isNotBlank())
+        composeRule.waitForIdle()
+        assertEquals("拖拽入口不可达，顺序不变", listOf("任务三", "任务二", "任务一"), taskOrder())
+        assertEquals("拖拽入口不可达，不得写库", 0, manualOrderWrites.size)
     }
 
     @Test

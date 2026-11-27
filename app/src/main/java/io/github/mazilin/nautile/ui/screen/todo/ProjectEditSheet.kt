@@ -147,29 +147,6 @@ fun ProjectEditSheet(
         modifier = Modifier
             .fillMaxSize()
             .onGloballyPositioned { boxOrigin.value = it.positionInRoot() }
-            // 遮罩点按关闭：只有未移动的点按才关闭（T-088）。
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = true)
-                    var dragged = false
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!dragged &&
-                            (change.isConsumed ||
-                                (change.position - down.position).getDistance() >=
-                                viewConfiguration.touchSlop)
-                        ) {
-                            dragged = true
-                        }
-                        if (dragged) change.consume()
-                        if (!change.pressed) {
-                            if (!dragged && currentVisible) currentOnDismissRequest()
-                            break
-                        }
-                    }
-                }
-            }
             .nautileSheetPullDown(
                 motion = motion,
                 visible = { currentVisible },
@@ -183,12 +160,36 @@ fun ProjectEditSheet(
             ),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        // 遮罩 alpha 随动效与拖拽位移联动（MOT-08.3、COL-10）。
+        // 遮罩层：绘制与“点按遮罩关闭”都只在遮罩层完成（MOT-08.3、COL-10、T-088）。
+        // 遮罩位于面板下方，面板区域的点按由上层 Surface 自行消费，不会被误判为点按遮罩。
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = motion.scrim.value * motion.dragScrimFactor() }
-                .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA)),
+                .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA))
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        // 遮罩上的按下；已在别处消费的按下（按钮、输入框等）不参与点按判定。
+                        val down = awaitFirstDown(requireUnconsumed = true)
+                        var dragged = false
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!dragged &&
+                                (change.isConsumed ||
+                                    (change.position - down.position).getDistance() >=
+                                    viewConfiguration.touchSlop)
+                            ) {
+                                dragged = true
+                            }
+                            if (dragged) change.consume()
+                            if (!change.pressed) {
+                                if (!dragged && currentVisible) currentOnDismissRequest()
+                                break
+                            }
+                        }
+                    }
+                },
         )
         Surface(
             modifier = Modifier

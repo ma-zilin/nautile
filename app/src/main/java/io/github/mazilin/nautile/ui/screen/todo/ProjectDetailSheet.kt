@@ -2,6 +2,8 @@ package io.github.mazilin.nautile.ui.screen.todo
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,6 +46,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -94,6 +97,7 @@ fun ProjectDetailSheet(
     val scope = rememberCoroutineScope()
     val motion = rememberSheetMotion(visible = visible, onExitFinished = onExitFinished)
     val currentVisible by rememberUpdatedState(visible)
+    val currentOnCloseRequested by rememberUpdatedState(onCloseRequested)
 
     // T-088：输入框聚焦或手势起点落在输入框内时，不触发遮罩/内容的下拉关闭。
     val nameFocused = remember { mutableStateOf(false) }
@@ -171,12 +175,37 @@ fun ProjectDetailSheet(
                 },
             ),
     ) {
-        // 遮罩 alpha 在图层中读取动效值，并随拖拽位移联动（MOT-08.3、COL-10）。
+        // 遮罩层：绘制与“点按遮罩关闭”都只在遮罩层完成（MOT-08.3、COL-10、T-088）。
+        // 遮罩位于面板下方，面板区域的点按由上层 Surface 自行消费，不会被误判为点按遮罩；
+        // 无效名称仍由父层 canDismiss 阻止。
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = motion.scrim.value * motion.dragScrimFactor() }
-                .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA)),
+                .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA))
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        // 遮罩上的按下；已在别处消费的按下（按钮、输入框等）不参与点按判定。
+                        val down = awaitFirstDown(requireUnconsumed = true)
+                        var dragged = false
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!dragged &&
+                                (change.isConsumed ||
+                                    (change.position - down.position).getDistance() >=
+                                    viewConfiguration.touchSlop)
+                            ) {
+                                dragged = true
+                            }
+                            if (dragged) change.consume()
+                            if (!change.pressed) {
+                                if (!dragged && currentVisible) currentOnCloseRequested()
+                                break
+                            }
+                        }
+                    }
+                },
         )
         Surface(
             modifier = Modifier

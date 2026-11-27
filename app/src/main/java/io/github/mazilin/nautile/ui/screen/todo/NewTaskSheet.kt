@@ -238,35 +238,6 @@ fun NewTaskSheet(
             .fillMaxSize()
             .onGloballyPositioned { boxOrigin.value = it.positionInRoot() }
             .onSizeChanged { rootSize = it }
-            // 遮罩点按关闭：与拖动手势分层，只有未移动的点按才关闭（T-088）。
-            // 拖动被排除参与下拉时（输入框聚焦/起点在框内或拖拽柄）上层不会消费位移，
-            // 这里按 touch slop 判定为拖动并消费，避免整段滑动被误判为点按而关闭面板。
-            .pointerInput(Unit) {
-                awaitEachGesture {
-                    // 子元素已消费的按下（按钮、输入框等）不参与遮罩点按。
-                    val down = awaitFirstDown(requireUnconsumed = true)
-                    var dragged = false
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        if (!dragged &&
-                            (change.isConsumed ||
-                                (change.position - down.position).getDistance() >=
-                                viewConfiguration.touchSlop)
-                        ) {
-                            dragged = true
-                        }
-                        if (dragged) {
-                            // 拖动位移在此消费，不落到点按判定。
-                            change.consume()
-                        }
-                        if (!change.pressed) {
-                            if (!dragged && currentVisible) currentOnDismissRequest()
-                            break
-                        }
-                    }
-                }
-            }
             // 祖先层观察下拉，输入框聚焦/起手在输入框内时不参与（T-088）。
             .nautileSheetPullDown(
                 motion = motion,
@@ -279,12 +250,48 @@ fun NewTaskSheet(
             ),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        // 遮罩 alpha 在图层中读取动效值，并随拖拽位移联动（MOT-08.3、COL-10）。
+        // 遮罩层：绘制与“点按遮罩关闭”都只在遮罩层完成（MOT-08.3、COL-10、T-088）。
+        // 遮罩位于面板下方，面板区域的点按由上层 Surface 自行消费，不会被误判为点按遮罩。
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = motion.scrim.value * motion.dragScrimFactor() }
-                .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA)),
+                .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA))
+                // 遮罩点按关闭：与拖动手势分层，只有未移动的点按才关闭（T-088）。
+                // 按 touch slop 判定为拖动并消费，避免整段滑动被误判为点按而关闭面板。
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        // 已在别处消费的按下（按钮、输入框等）不参与遮罩点按。
+                        val down = awaitFirstDown(requireUnconsumed = true)
+                        var dragged = false
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!dragged &&
+                                (change.isConsumed ||
+                                    (change.position - down.position).getDistance() >=
+                                    viewConfiguration.touchSlop)
+                            ) {
+                                dragged = true
+                            }
+                            if (dragged) {
+                                // 拖动位移在此消费，不落到点按判定。
+                                change.consume()
+                            }
+                            if (!change.pressed) {
+                                // 弹层关闭层级“最上层优先”：先关菜单，再关日期面板，最后才关新建面板。
+                                if (!dragged && currentVisible) {
+                                    when {
+                                        openMenu != null -> openMenu = null
+                                        datePanelOpen -> datePanelOpen = false
+                                        else -> currentOnDismissRequest()
+                                    }
+                                }
+                                break
+                            }
+                        }
+                    }
+                },
         )
         Surface(
             modifier = Modifier

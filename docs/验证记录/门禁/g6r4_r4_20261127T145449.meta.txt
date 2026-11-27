@@ -1,0 +1,13 @@
+task=G6-R4-R4
+time=2026-11-27T14:58:00+08:00
+head=c12281f8ffffddaa01ee284674924d7b47f63497
+dirty_entries=163
+device=emulator-5554 API36 (nautile_api36 AVD, 模拟器非真机)
+static=PASS checks=22 files hits=0
+directed=tests=35 failures=0 errors=0 skipped=0 (runs=2, both pass)
+gate=PASS assembleDebug=0 androidtest_compile=0 jvm=216/0 lint=0 schema=v3
+full_latest=tests=274 failures=0 errors=0 skipped=0 (20261127T145449, 3m22s)
+full_runs=6 (pass=4, fail=2: g9_screenshot_fixture_residue=1, acnewtasktoolbar_menu_ime_flake=1)
+interaction=PASS probe=1/0 screenshots=7
+result=PASS
+log=docs/验证记录/门禁/g6r4_r4_20261127T145449.log

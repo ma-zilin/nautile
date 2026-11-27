@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.screen.todo
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +70,7 @@ import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.ViewClassification
 import io.github.mazilin.nautile.domain.model.ViewOptions
 import io.github.mazilin.nautile.domain.model.ViewSort
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import io.github.mazilin.nautile.ui.theme.NautileStates
 import java.time.Instant
@@ -157,6 +159,16 @@ internal fun AttributeMenuOverlay(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     var menuSize by remember { mutableStateOf(IntSize.Zero) }
+    // MOT-16：锚定菜单打开用 StandardEffects 淡入；首帧测量完成后再开始，避免跳位。
+    var appeared by remember { mutableStateOf(false) }
+    LaunchedEffect(menuSize.height) {
+        if (menuSize.height > 0) appeared = true
+    }
+    val menuAlpha by animateFloatAsState(
+        targetValue = if (appeared) 1f else 0f,
+        animationSpec = NautileMotion.StandardEffects,
+        label = "attribute_menu_fade",
+    )
     Box(modifier = Modifier.fillMaxSize()) {
         // 透明点按层：点菜单外关闭菜单，不写状态、不收键盘。
         Box(
@@ -183,8 +195,8 @@ internal fun AttributeMenuOverlay(
                         IntOffset(x, y)
                     }
                     .onSizeChanged { menuSize = it }
-                    // 首帧尚未测量时先隐藏，避免菜单从触发图标位置跳到目标位置。
-                    .alpha(if (menuSize.height == 0) 0f else 1f),
+                    // 首帧尚未测量时先隐藏，避免菜单从触发图标位置跳到目标位置；随后按 Standard 淡入。
+                    .alpha(menuAlpha),
                 shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.surfaceContainer,
                 contentColor = MaterialTheme.colorScheme.onSurface,
@@ -298,6 +310,7 @@ internal fun ProjectMenuContent(
         description = if (selectedProjectId == null) "项目：无项目，已选择" else "项目：无项目",
         selected = selectedProjectId == null,
         onClick = { onProjectSelected(null) },
+        leading = { MenuLeadingIcon(R.drawable.ic_folder) },
     )
     projects.forEach { project ->
         AttributeMenuItem(
@@ -389,6 +402,7 @@ internal fun ChecklistMenuContent(
             enabled = !ended && entryEnabled,
             supporting = if (ended) "已结束不可直接移入" else disabledSupporting,
             onClick = { onSelect(position) },
+            leading = { MenuLeadingIcon(R.drawable.ic_checklist) },
         )
     }
 }
@@ -417,6 +431,7 @@ internal fun DetailMenuContent(
         description = if (detail.isBlank()) "清空详情，当前为空" else "清空详情",
         selected = false,
         onClick = onClearDetail,
+        leading = { MenuLeadingIcon(R.drawable.ic_close) },
     )
 }
 
@@ -439,16 +454,19 @@ internal fun ViewOptionsMenuContent(
             description = "分类：$label",
             selected = options.classification == classification,
             onClick = { onClassificationSelected(classification) },
+            leading = { MenuLeadingIcon(classification.menuIconRes()) },
         )
     }
     MenuGroupTitle("排序")
-    ViewSort.entries.forEach { sort ->
+    // R4 G6：手动排序入口隐藏（CMP-40.3、NO-19）；枚举与数据保留，恢复时去掉过滤即可。
+    ViewSort.entries.filter { it != ViewSort.MANUAL }.forEach { sort ->
         val label = sort.menuLabel()
         AttributeMenuItem(
             text = label,
             description = "排序：$label",
             selected = options.sort == sort,
             onClick = { onSortSelected(sort) },
+            leading = { MenuLeadingIcon(sort.menuIconRes()) },
         )
     }
     if (error != null) {
@@ -492,6 +510,32 @@ internal fun ViewSort.menuLabel(): String = when (this) {
     ViewSort.PRIORITY -> "优先级"
     ViewSort.CREATED -> "创建时间"
     ViewSort.MANUAL -> "手动"
+}
+
+/** CMP-48 图标映射：分类项目/优先级/截止日期用 folder/flag/calendar_today。 */
+internal fun ViewClassification.menuIconRes(): Int = when (this) {
+    ViewClassification.PROJECT -> R.drawable.ic_folder
+    ViewClassification.PRIORITY -> R.drawable.ic_flag
+    ViewClassification.DUE -> R.drawable.ic_calendar_today
+}
+
+/** CMP-48 图标映射：排序截止日期/优先级/创建时间用 calendar_today/flag/schedule。 */
+internal fun ViewSort.menuIconRes(): Int = when (this) {
+    ViewSort.DUE -> R.drawable.ic_calendar_today
+    ViewSort.PRIORITY -> R.drawable.ic_flag
+    ViewSort.CREATED -> R.drawable.ic_schedule
+    // 手动项本轮不显示，仅保留映射以便恢复入口。
+    ViewSort.MANUAL -> R.drawable.ic_schedule
+}
+
+/** 菜单项前导图标：24dp、装饰性，语义由条目合并描述承担（CMP-48）。 */
+@Composable
+private fun MenuLeadingIcon(iconRes: Int) {
+    Icon(
+        painter = painterResource(iconRes),
+        contentDescription = null,
+        modifier = Modifier.size(24.dp),
+    )
 }
 
 /** 日期选择面板（同一底部面板内切换，CMP-31.2、CMP-32）。

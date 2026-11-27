@@ -16,11 +16,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -491,8 +493,9 @@ fun TodoScreen(
                         item(key = group.key) {
                             TaskGroupCard(
                                 group = group,
-                                manualSortEnabled = state.viewOptions.sort == ViewSort.MANUAL &&
-                                    !state.searchActive,
+                                // R4 G6：手动排序暂缓（CMP-40.3、NO-19）——长按拖拽入口不可达；
+                                // 重排实现保留在下方供恢复时启用，不删除数据/枚举。
+                                manualSortEnabled = false,
                                 onReorder = { orderedIds -> onReorderGroup(group.key, orderedIds) },
                                 onCompleteTask = onCompleteTask,
                                 onAbandonTask = onAbandonTask,
@@ -945,15 +948,65 @@ private fun SwipeableRow(
             .then(modifier),
     ) {
         if (swipeEnabled) {
+            // CMP-05：右滑露出左侧“放弃”（errorContainer + close），左滑露出右侧“完成”
+            // （primaryContainer + check）；图标+文字，色条占满整行高，颜色不是唯一区分。
             Row(
                 modifier = Modifier
                     .matchParentSize()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .clipToBounds(),
             ) {
-                Text("放弃", style = MaterialTheme.typography.labelMedium)
-                Text("完成", style = MaterialTheme.typography.labelMedium)
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.errorContainer),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = NautileSpacing.space4),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space2),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_close),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Text(
+                            text = "放弃",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.CenterEnd,
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = NautileSpacing.space4),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space2),
+                    ) {
+                        Text(
+                            text = "完成",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            maxLines = 1,
+                        )
+                        Icon(
+                            painter = painterResource(R.drawable.ic_check),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
             }
         }
         val dragModifier = if (swipeEnabled) {
