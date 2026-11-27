@@ -1,6 +1,7 @@
 package io.github.mazilin.nautile.ui.screen.todo
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -45,6 +46,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -89,11 +91,17 @@ import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.domain.model.ViewClassification
 import io.github.mazilin.nautile.domain.model.ViewSort
 import io.github.mazilin.nautile.domain.rule.TaskGroup
+import io.github.mazilin.nautile.interaction.BoundaryPullReleaseResult
+import io.github.mazilin.nautile.interaction.BoundaryPullState
+import io.github.mazilin.nautile.interaction.BoundaryPullStateMachine
 import io.github.mazilin.nautile.interaction.GestureArbiter
 import io.github.mazilin.nautile.ui.designsystem.NautileEmptyState
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import kotlin.math.abs
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 /**
  * 待办页 P-02（S1-T07）。
@@ -171,29 +179,29 @@ fun TodoScreen(
     }
     val maxPullPx = with(LocalDensity.current) { 120.dp.toPx() }
     val hintThresholdPx = with(LocalDensity.current) { NautileSpacing.space2.toPx() }
+    val pullCommitThresholdPx = GestureArbiter.BOUNDARY_PULL_THRESHOLD_DP * density
+    val coroutineScope = rememberCoroutineScope()
     var gtdSwipe by remember { mutableFloatStateOf(0f) }
     var blockedByRow by remember { mutableStateOf(false) }
     var rowDragging by remember { mutableStateOf(false) }
 
     // 本地清单位置（CMP-14）：提交后先同步这里，避免下一次快速拉拽读到旧 position。
     var localPosition by remember { mutableStateOf(state.position) }
-    // 本次手势首次进入预览时的位置快照；previous/next/target 全部基于快照。
-    var pullBasePosition by remember { mutableStateOf<GtdPosition?>(null) }
-    var pullOffset by remember { mutableFloatStateOf(0f) }
-    var pullTarget by remember { mutableStateOf<GtdPosition?>(null) }
-    var pullActive by remember { mutableStateOf(false) }
-    var pullCommitted by remember { mutableStateOf(false) }
+    // 单次边界拉动手势的不可变状态（R5-2、FR-G-18、BR-61）：起手锁定方向与目标，反向不换目标。
+    var pullState by remember { mutableStateOf(BoundaryPullState()) }
+    // 拖动期直接读 pullState.offsetPx 实现零延迟跟手；未提交松手交 visualPullOffset 按 BoundaryRebound 回弹。
+    val visualPullOffset = remember { Animatable(0f) }
+    var reboundJob by remember { mutableStateOf<Job?>(null) }
 
     LaunchedEffect(state.position) {
         // 外部（含点按抽屉切换与异步回流）位置变化：同步本地值并回到列表顶部。
         if (state.position != localPosition) {
             localPosition = state.position
             listState.scrollToItem(0)
-            pullBasePosition = null
-            pullOffset = 0f
-            pullTarget = null
-            pullActive = false
-            pullCommitted = false
+            reboundJob?.cancel()
+            reboundJob = null
+            pullState = BoundaryPullState()
+            visualPullOffset.snapTo(0f)
         }
     }
 
@@ -205,23 +213,81 @@ fun TodoScreen(
     val latestOnNavigationVisibilityChanged by rememberUpdatedState(onNavigationVisibilityChanged)
     val latestOnSwitchPosition by rememberUpdatedState(onSwitchPosition)
 
-    // 全屏边界拉动（FR-G-18、BR-61、CMP-14）：普通滚动优先，到顶/底后继续拉才预览；
-    // 首次预览记录位置快照，松手过阈值按快照目标最多提交一次；首尾不循环。
+    suspend fun settleBoundaryPull() {
+        val currentPull = pullState
+        if (!currentPull.active) return
+        val startOffset = currentPull.offsetPx
+        val result = BoundaryPullStateMachine.onRelease(
+            state = currentPull,
+            currentPosition = localPosition,
+            thresholdPx = pullCommitThresholdPx,
+        )
+        // 结算立即清空手势状态，确保连续两次快速拉拽彼此隔离、不跳过或跳错清单。
+        pullState = BoundaryPullState()
+        reboundJob?.cancel()
+        reboundJob = null
+        when (result) {
+            is BoundaryPullReleaseResult.Commit -> {
+                // 先同步本地 position 与滚动位置，再异步持久化（CMP-14）。
+                localPosition = result.target
+                visualPullOffset.snapTo(0f)
+                latestOnSwitchPosition(result.target)
+                listState.scrollToItem(0)
+            }
+
+            is BoundaryPullReleaseResult.Rebound -> {
+                if (result.shouldAnimate) {
+                    visualPullOffset.snapTo(startOffset)
+                    reboundJob = coroutineScope.launch {
+                        visualPullOffset.animateTo(0f, NautileMotion.BoundaryRebound)
+                    }
+                } else {
+                    visualPullOffset.snapTo(0f)
+                }
+            }
+        }
+    }
+
+    // 全屏边界拉动（R5-2、FR-G-18、BR-61、CMP-14、ANIM-07）：普通滚动优先，到顶/底后继续拉才预览；
+    // 起手按边界侧锁定方向与目标，反向拖动仅减位移不换目标、越过 0 立即取消并隐藏提示；
+    // 松手仅朝锁定方向且达阈值时提交，否则经 BoundaryRebound 回弹；首尾不循环。
     val boundaryConnection = remember(
         maxPullPx,
         density,
+        pullCommitThresholdPx,
         navigationUpdatesEnabled,
         hideThresholdPx,
         showThresholdPx,
     ) {
         object : NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (source != NestedScrollSource.UserInput || available.y == 0f) {
+                    return Offset.Zero
+                }
+                if (!pullState.active && (reboundJob?.isActive == true || visualPullOffset.value != 0f)) {
+                    reboundJob?.cancel()
+                    reboundJob = null
+                    coroutineScope.launch { visualPullOffset.snapTo(0f) }
+                }
+                val (nextState, consumedY) = BoundaryPullStateMachine.onPreDrag(
+                    state = pullState,
+                    availableY = available.y,
+                )
+                if (consumedY == 0f) return Offset.Zero
+                pullState = nextState
+                return Offset(0f, consumedY)
+            }
+
             override fun onPostScroll(
                 consumed: Offset,
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
                 if (source != NestedScrollSource.UserInput) return Offset.Zero
-                if (navigationUpdatesEnabled && consumed.y != 0f && !pullActive) {
+                if (navigationUpdatesEnabled && consumed.y != 0f && !pullState.active) {
                     if (navigationVisible) {
                         // 上滑（consumed.y 为负）累计绝对值，超过 24dp 隐藏。
                         if (consumed.y < 0f) {
@@ -250,44 +316,36 @@ fun TodoScreen(
                     }
                 }
                 if (available.y == 0f) return Offset.Zero
-                // 首次进入预览即锁定本次手势的基准位置，后续 target 不再随 UI 回流变化。
-                val base = pullBasePosition ?: localPosition.also { pullBasePosition = it }
                 val atTop = !listState.canScrollBackward
                 val atBottom = !listState.canScrollForward
-                val target = when {
-                    available.y > 0f && atTop -> GestureArbiter.adjacentPosition(base, -1)
-                    available.y < 0f && atBottom -> GestureArbiter.adjacentPosition(base, 1)
-                    else -> return Offset.Zero
+                val (nextState, dragConsumed) = BoundaryPullStateMachine.onDrag(
+                    state = pullState,
+                    availableY = available.y,
+                    atTop = atTop,
+                    atBottom = atBottom,
+                    currentPosition = localPosition,
+                    maxPullPx = maxPullPx,
+                )
+                if (!dragConsumed) return Offset.Zero
+                if (reboundJob?.isActive == true) {
+                    reboundJob?.cancel()
+                    reboundJob = null
                 }
-                pullActive = true
-                pullTarget = target
-                val resistance = if (target == null) 0.15f else 0.5f
-                pullOffset = (pullOffset + available.y * resistance).coerceIn(-maxPullPx, maxPullPx)
+                pullState = nextState
                 return Offset(0f, available.y)
             }
 
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (!pullState.active) return Velocity.Zero
+                val consumeVelocity = !pullState.cancelled && pullState.signedOffsetPx > 0f
+                settleBoundaryPull()
+                return if (consumeVelocity) available else Velocity.Zero
+            }
+
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (pullActive && !pullCommitted) {
-                    pullCommitted = true
-                    val target = pullTarget
-                    // 快照仍是当前本地位置、目标有效且超阈值才提交；每次手势最多一次。
-                    if (target != null &&
-                        target != localPosition &&
-                        pullBasePosition == localPosition &&
-                        GestureArbiter.isBoundaryPullCommit(pullOffset, density)
-                    ) {
-                        // 先同步本地 position 与滚动位置，再异步持久化（CMP-14）。
-                        localPosition = target
-                        latestOnSwitchPosition(target)
-                        listState.scrollToItem(0)
-                    }
+                if (pullState.active) {
+                    settleBoundaryPull()
                 }
-                // 提交后立即重置，连续两次快速拉拽不会跳过或跳错清单。
-                pullBasePosition = null
-                pullOffset = 0f
-                pullTarget = null
-                pullActive = false
-                pullCommitted = false
                 return Velocity.Zero
             }
         }
@@ -352,7 +410,7 @@ fun TodoScreen(
                             if (dy > 0f) totalDown += dy
                         }
                         if (!change.pressed) {
-                            if (!navigationVisible && !pullActive && totalDown > showThresholdPx) {
+                            if (!navigationVisible && !pullState.active && totalDown > showThresholdPx) {
                                 navigationVisible = true
                                 navigationAccumulator = 0f
                                 onNavigationVisibilityChanged(true)
@@ -447,6 +505,7 @@ fun TodoScreen(
 
             // 页面背景只用 background 角色；分组卡片用 surfaceContainerLowest 分层（SHP-07）。
             val pageBackground = MaterialTheme.colorScheme.background
+            val displayedPullOffsetPx = if (pullState.active) pullState.offsetPx else visualPullOffset.value
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -460,7 +519,7 @@ fun TodoScreen(
                         // MOT-15：平移内容裁剪在不透明列表层内，不绘制到预览区外。
                         .clipToBounds()
                         .background(pageBackground)
-                        .graphicsLayer { translationY = pullOffset },
+                        .graphicsLayer { translationY = displayedPullOffsetPx },
                     contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -510,18 +569,17 @@ fun TodoScreen(
                 }
 
                 // MOT-15：预览层不透明并裁剪；空间不足时隐藏文字，不溢出到列表交界。
-                // CMP-14：中间清单提示“松手切换到 X”；首/尾无相邻时提示已到边界。
-                val pullHint = when {
-                    !pullActive || abs(pullOffset) < hintThresholdPx -> null
-                    pullTarget != null -> "松手切换到 ${pullTarget?.title}"
-                    pullOffset > 0f -> "已是第一个清单"
-                    else -> "已是最后一个清单"
-                }
+                // R5-2 / CMP-14：仅未取消且朝锁定方向拉动时提示“松手切换到 X”或首/尾边界提示。
+                val pullHint = BoundaryPullStateMachine.hintText(
+                    state = pullState,
+                    minSignedOffsetPx = hintThresholdPx,
+                    label = { it.title },
+                )
                 if (pullHint != null) {
-                    val reveal = with(LocalDensity.current) { abs(pullOffset).toDp() }
+                    val reveal = with(LocalDensity.current) { abs(displayedPullOffsetPx).toDp() }
                     // 空间不足时隐藏文字而不是溢出（MOT-15）。
                     if (reveal >= NautileSpacing.space8) {
-                        val atTop = pullOffset > 0f
+                        val atTop = pullState.direction > 0
                         Box(
                             modifier = Modifier
                                 .align(
@@ -539,7 +597,9 @@ fun TodoScreen(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(horizontal = 16.dp),
+                                modifier = Modifier
+                                    .padding(horizontal = NautileSpacing.space4)
+                                    .testTag("boundary_pull_hint"),
                             )
                         }
                     }
