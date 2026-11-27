@@ -66,6 +66,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Priority
@@ -132,9 +133,9 @@ fun TaskDetailSheet(
     val currentVisible by rememberUpdatedState(visible)
     val currentOnCloseRequested by rememberUpdatedState(onCloseRequested)
 
-    // ---- G7 属性菜单/日期面板：面板内的瞬时界面状态，不持久化 ----
+    // ---- G7/R5-G4 属性菜单与日期/24h时间圆盘子视图：面板内瞬时界面状态，不持久化 ----
     var openMenu by remember { mutableStateOf<TaskAttribute?>(null) }
-    var datePanelOpen by remember { mutableStateOf(false) }
+    var dateSubView by remember { mutableStateOf(DateSubView.NONE) }
     val attributeAnchors = remember { mutableStateMapOf<TaskAttribute, Rect>() }
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     val detailFocusRequester = remember { FocusRequester() }
@@ -142,15 +143,20 @@ fun TaskDetailSheet(
     // 项目菜单内“新建项目”等待新项目回填；成功后关闭菜单（CMP-34）。
     var awaitingProjectCreate by remember { mutableStateOf(false) }
 
-    // 系统返回先关菜单/日期面板，不关闭面板（CMP-31）。
-    BackHandler(enabled = visible && (openMenu != null || datePanelOpen)) {
-        if (openMenu != null) openMenu = null else datePanelOpen = false
+    // 系统返回单层递退：锚定菜单 → 24h时间圆盘 → 日期日历 → 表单（03 规格 §1.5）。
+    BackHandler(enabled = visible && (openMenu != null || dateSubView != DateSubView.NONE)) {
+        when {
+            openMenu != null -> openMenu = null
+            dateSubView == DateSubView.TIME_PICKER -> dateSubView = DateSubView.CALENDAR
+            dateSubView == DateSubView.CALENDAR -> dateSubView = DateSubView.NONE
+            else -> Unit
+        }
     }
-    // 编辑面板打开时详情让位（单宿主切换）；关闭残留的菜单/日期面板，避免回来后停在子面板。
+    // 编辑面板打开时详情让位（单宿主切换）；关闭残留的菜单/日期子视图，避免回来后停在子面板。
     LaunchedEffect(visible) {
         if (!visible) {
             openMenu = null
-            datePanelOpen = false
+            dateSubView = DateSubView.NONE
         }
     }
     LaunchedEffect(state.task.projectId) {
@@ -187,8 +193,9 @@ fun TaskDetailSheet(
                 source: NestedScrollSource,
             ): Offset {
                 // 内容已到顶仍继续下拉时累计；无效字段由父层阻止关闭。
-                // T-088：输入框起手/聚焦的手势不累计，避免输入框内拖动误关。
+                // T-088：输入框起手/聚焦或日历/时间圆盘子视图打开时不累计，避免拖动误关。
                 if (gestureFromInput.value ||
+                    dateSubView != DateSubView.NONE ||
                     source != NestedScrollSource.UserInput ||
                     available.y <= 0f ||
                     scrollState.canScrollBackward
@@ -260,7 +267,8 @@ fun TaskDetailSheet(
                     !scrollState.canScrollBackward && !scrollState.canScrollForward
                 },
                 isExcluded = { point ->
-                    val excluded = inputActive() ||
+                    val excluded = dateSubView != DateSubView.NONE ||
+                        inputActive() ||
                         pointInInput(point + boxOrigin.value) ||
                         handleBounds.value?.contains(point + boxOrigin.value) == true
                     gestureFromInput.value = excluded
@@ -294,11 +302,16 @@ fun TaskDetailSheet(
                             }
                             if (dragged) change.consume()
                             if (!change.pressed) {
-                                // 点按遮罩关闭（§15 CMP-46）：先关菜单/日期面板，再关详情（T-088）。
+                                // 点按遮罩关闭（§15 CMP-46）：先关菜单，再关时间圆盘，再关日期日历，最后关详情。
                                 if (!dragged && currentVisible) {
                                     when {
                                         openMenu != null -> openMenu = null
-                                        datePanelOpen -> datePanelOpen = false
+                                        dateSubView == DateSubView.TIME_PICKER -> {
+                                            dateSubView = DateSubView.CALENDAR
+                                        }
+                                        dateSubView == DateSubView.CALENDAR -> {
+                                            dateSubView = DateSubView.NONE
+                                        }
                                         else -> currentOnCloseRequested()
                                     }
                                 }
@@ -349,13 +362,15 @@ fun TaskDetailSheet(
                     )
                 }
 
+                val inDateSubView = dateSubView != DateSubView.NONE
+                val contentHorizontalPadding = if (inDateSubView) 0.dp else NautileSpacing.space6
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
                         .padding(
-                            start = NautileSpacing.space6,
-                            end = NautileSpacing.space6,
+                            start = contentHorizontalPadding,
+                            end = contentHorizontalPadding,
                             top = NautileSpacing.space2,
                             bottom = NautileSpacing.space6,
                         )
@@ -363,7 +378,11 @@ fun TaskDetailSheet(
                         .nestedScroll(contentConnection),
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = if (inDateSubView) NautileSpacing.space6 else 0.dp,
+                            ),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -380,20 +399,22 @@ fun TaskDetailSheet(
                         }
                     }
                     Spacer(modifier = Modifier.height(NautileSpacing.space2))
-                    if (datePanelOpen) {
-                        // 日期为同一面板内的选择面板，不叠第二层遮罩（CMP-31.2、CMP-32）。
+                    if (inDateSubView) {
+                        // 日期/24h时间圆盘为同一面板内的选择子视图，不叠第二层遮罩（R5-3/R5-4）。
                         DateAttributePanel(
+                            subView = dateSubView,
                             dueDate = state.task.dueDate,
                             dueTime = state.task.dueTime,
                             onDueDateChanged = onDueDateChanged,
                             onDueTimeChanged = onDueTimeChanged,
-                            onBack = { datePanelOpen = false },
+                            onSubViewChanged = { dateSubView = it },
                         )
                         state.error?.let { message ->
                             Text(
                                 text = message,
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(horizontal = NautileSpacing.space6),
                             )
                         }
                     } else {
@@ -457,7 +478,7 @@ fun TaskDetailSheet(
                                     (dueSummary ?: "未设置"),
                                 onActivate = {
                                     openMenu = null
-                                    datePanelOpen = true
+                                    dateSubView = DateSubView.CALENDAR
                                 },
                                 onBounds = {
                                     attributeAnchors[TaskAttribute.DATE] = it

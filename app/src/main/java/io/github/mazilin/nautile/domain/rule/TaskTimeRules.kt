@@ -10,14 +10,53 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * 任务截止时间与逾期判定规则（FR-G-09、BR-38、R5-5）。
+ * 严格 24 小时制 `HH:mm` 时间文本解析结果（BR-70、R5-3）。
  *
- * 纯 Kotlin 实现，不依赖 Android/Compose；仅负责只读判定与展示文案格式化，
+ * - [Empty]：去首尾空白后为空字符串；
+ * - [Valid]：精确匹配两位时（00–23）+ 冒号 + 两位分（00–59）；
+ * - [Invalid]：格式不符或数值越界，携带中文错误提示，绝不静默修正。
+ */
+sealed interface StrictTimeParseResult {
+    data object Empty : StrictTimeParseResult
+    data class Valid(val time: LocalTime) : StrictTimeParseResult
+    data class Invalid(val message: String) : StrictTimeParseResult
+}
+
+/**
+ * 任务截止时间与逾期判定规则（FR-G-09、BR-38、BR-70、R5-3、R5-5）。
+ *
+ * 纯 Kotlin 实现，不依赖 Android/Compose；仅负责只读判定、严格 24h 时间校验与展示文案格式化，
  * 不修改任务状态、不自动结项。
  */
 object TaskTimeRules {
 
     private val TIME_24H_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    private val STRICT_24H_REGEX: Regex = Regex("""^([01][0-9]|2[0-3]):[0-5][0-9]$""")
+
+    /** 24 小时制时间格式或范围非法时的统一中文提示。 */
+    const val INVALID_TIME_MESSAGE: String = "请输入 00:00–23:59 的 24 小时制时间"
+
+    /**
+     * 严格校验 24 小时制 `HH:mm` 时间文本（BR-70、R5-3）。
+     *
+     * - 首尾空白 trim 后为空返回 [StrictTimeParseResult.Empty]；
+     * - 仅接受精确两位小时（00–23）+ 半角冒号 + 精确两位分钟（00–59）；
+     * - 任何越界或格式不符（如 `24:00`、`25:00`、`12:60`、`9:30`、`09:30 AM`、`abc`、`1230`、`-1:00`）
+     *   均返回 [StrictTimeParseResult.Invalid]，绝不静默修正。
+     */
+    fun parseStrict24hTime(raw: String): StrictTimeParseResult {
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty()) return StrictTimeParseResult.Empty
+        if (!STRICT_24H_REGEX.matches(trimmed)) {
+            return StrictTimeParseResult.Invalid(INVALID_TIME_MESSAGE)
+        }
+        val hour = trimmed.substring(0, 2).toInt()
+        val minute = trimmed.substring(3, 5).toInt()
+        return StrictTimeParseResult.Valid(LocalTime.of(hour, minute))
+    }
+
+    /** 将 [LocalTime] 格式化为 24 小时制 `HH:mm`。 */
+    fun format24hTime(time: LocalTime): String = time.format(TIME_24H_FORMATTER)
 
     /**
      * 判断任务在 [now] 时刻是否已逾期（BR-38）。

@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Priority
@@ -116,19 +117,20 @@ fun TaskEditSheet(
     val currentVisible by rememberUpdatedState(visible)
     val scrollState = rememberScrollState()
 
-    // 面板内瞬时界面状态：属性菜单、日期选择面板，不持久化（CMP-31）。
+    // 面板内瞬时界面状态：属性菜单、日期/24h时间圆盘子视图，不持久化（CMP-31、R5-4）。
     var openMenu by remember { mutableStateOf<TaskAttribute?>(null) }
-    var datePanelOpen by remember { mutableStateOf(false) }
+    var dateSubView by remember { mutableStateOf(DateSubView.NONE) }
     val attributeAnchors = remember { mutableStateMapOf<TaskAttribute, Rect>() }
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     val detailFocusRequester = remember { FocusRequester() }
     var awaitingProjectCreate by remember { mutableStateOf(false) }
 
-    // 返回先关菜单/日期面板，再关编辑面板；详情保持（返回顺序：菜单→编辑面板→详情）。
+    // 返回单层递退：锚定菜单 → 24h时间圆盘 → 日期日历 → 编辑面板；详情保持。
     BackHandler(enabled = visible) {
         when {
             openMenu != null -> openMenu = null
-            datePanelOpen -> datePanelOpen = false
+            dateSubView == DateSubView.TIME_PICKER -> dateSubView = DateSubView.CALENDAR
+            dateSubView == DateSubView.CALENDAR -> dateSubView = DateSubView.NONE
             else -> currentOnDismissRequest()
         }
     }
@@ -164,6 +166,7 @@ fun TaskEditSheet(
                 source: NestedScrollSource,
             ): Offset {
                 if (inputActive() ||
+                    dateSubView != DateSubView.NONE ||
                     source != NestedScrollSource.UserInput ||
                     available.y <= 0f ||
                     scrollState.canScrollBackward
@@ -228,7 +231,11 @@ fun TaskEditSheet(
                 onCommitClose = { currentOnDismissRequest() },
                 pass = PointerEventPass.Initial,
                 canStart = { !scrollState.canScrollBackward && !scrollState.canScrollForward },
-                isExcluded = { point -> inputActive() || pointInInput(point + boxOrigin.value) },
+                isExcluded = { point ->
+                    dateSubView != DateSubView.NONE ||
+                        inputActive() ||
+                        pointInInput(point + boxOrigin.value)
+                },
             ),
         contentAlignment = Alignment.BottomCenter,
     ) {
@@ -260,7 +267,12 @@ fun TaskEditSheet(
                                 if (!dragged && currentVisible) {
                                     when {
                                         openMenu != null -> openMenu = null
-                                        datePanelOpen -> datePanelOpen = false
+                                        dateSubView == DateSubView.TIME_PICKER -> {
+                                            dateSubView = DateSubView.CALENDAR
+                                        }
+                                        dateSubView == DateSubView.CALENDAR -> {
+                                            dateSubView = DateSubView.NONE
+                                        }
                                         else -> currentOnDismissRequest()
                                     }
                                 }
@@ -305,28 +317,37 @@ fun TaskEditSheet(
                             .background(MaterialTheme.colorScheme.onSurfaceVariant),
                     )
                 }
+                val inDateSubView = dateSubView != DateSubView.NONE
+                val contentHorizontalPadding = if (inDateSubView) 0.dp else NautileSpacing.space6
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            start = NautileSpacing.space6,
-                            end = NautileSpacing.space6,
+                            start = contentHorizontalPadding,
+                            end = contentHorizontalPadding,
                             top = NautileSpacing.space2,
                             bottom = NautileSpacing.space6,
                         )
                         .verticalScroll(scrollState)
                         .nestedScroll(contentConnection),
                 ) {
-                    Text("编辑任务", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "编辑任务",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(
+                            horizontal = if (inDateSubView) NautileSpacing.space6 else 0.dp,
+                        ),
+                    )
                     Spacer(modifier = Modifier.height(NautileSpacing.space2))
-                    if (datePanelOpen) {
-                        // 日期为同一面板内的选择面板，不叠第二层遮罩（CMP-31.2、CMP-32）。
+                    if (inDateSubView) {
+                        // 日期/24h时间圆盘为同一面板内的选择子视图，不叠第二层遮罩（R5-3/R5-4）。
                         DateAttributePanel(
+                            subView = dateSubView,
                             dueDate = state.dueDate,
                             dueTime = state.dueTime,
                             onDueDateChanged = onDueDateChanged,
                             onDueTimeChanged = onDueTimeChanged,
-                            onBack = { datePanelOpen = false },
+                            onSubViewChanged = { dateSubView = it },
                         )
                     } else {
                         OutlinedTextField(
@@ -378,7 +399,7 @@ fun TaskEditSheet(
                                     (dueSummary ?: "未设置"),
                                 onActivate = {
                                     openMenu = null
-                                    datePanelOpen = true
+                                    dateSubView = DateSubView.CALENDAR
                                 },
                                 onBounds = {
                                     attributeAnchors[TaskAttribute.DATE] = it
@@ -439,12 +460,21 @@ fun TaskEditSheet(
                             text = message,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(
+                                horizontal = if (inDateSubView) NautileSpacing.space6 else 0.dp,
+                            ),
                         )
                     }
                     if (state.saving) {
-                        Text("保存中…", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = "保存中…",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(
+                                horizontal = if (inDateSubView) NautileSpacing.space6 else 0.dp,
+                            ),
+                        )
                     }
-                    if (!datePanelOpen) {
+                    if (!inDateSubView) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

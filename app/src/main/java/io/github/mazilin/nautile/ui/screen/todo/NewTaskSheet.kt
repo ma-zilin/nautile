@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Priority
@@ -130,23 +131,28 @@ fun NewTaskSheet(
     val currentVisible by rememberUpdatedState(visible)
     val scrollState = rememberScrollState()
 
-    // ---- G6 属性菜单/日期面板：面板内的瞬时界面状态，不持久化 ----
+    // ---- G6/R5-G4 属性菜单与日期/24h时间圆盘子视图：面板内瞬时界面状态，不持久化 ----
     var openMenu by remember { mutableStateOf<TaskAttribute?>(null) }
-    var datePanelOpen by remember { mutableStateOf(false) }
+    var dateSubView by remember { mutableStateOf(DateSubView.NONE) }
     val attributeAnchors = remember { mutableStateMapOf<TaskAttribute, Rect>() }
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
     val detailFocusRequester = remember { FocusRequester() }
     // 项目菜单内“新建项目”等待新项目回填；成功后关闭菜单（CMP-34）。
     var awaitingProjectCreate by remember { mutableStateOf(false) }
 
-    // 系统返回先关菜单/日期面板，不关闭面板（CMP-31）。
-    BackHandler(enabled = visible && (openMenu != null || datePanelOpen)) {
-        if (openMenu != null) openMenu = null else datePanelOpen = false
+    // 系统返回单层递退：锚定菜单 → 24h时间圆盘 → 日期日历 → 表单（03 规格 §1.5）。
+    BackHandler(enabled = visible && (openMenu != null || dateSubView != DateSubView.NONE)) {
+        when {
+            openMenu != null -> openMenu = null
+            dateSubView == DateSubView.TIME_PICKER -> dateSubView = DateSubView.CALENDAR
+            dateSubView == DateSubView.CALENDAR -> dateSubView = DateSubView.NONE
+            else -> Unit
+        }
     }
     LaunchedEffect(state.kind) {
         if (state.kind != NewTaskKind.TODO) {
             openMenu = null
-            datePanelOpen = false
+            dateSubView = DateSubView.NONE
         }
     }
     LaunchedEffect(state.projectId) {
@@ -185,7 +191,9 @@ fun NewTaskSheet(
                 source: NestedScrollSource,
             ): Offset {
                 // 内容先滚动；到顶继续下拉才累计并拖动面板（MOT-08.3）。
+                // 日历/时间圆盘子视图打开时不触发内容区下拉关闭，避免拨动表盘或滚动日历误关面板。
                 if (inputActive() ||
+                    dateSubView != DateSubView.NONE ||
                     source != NestedScrollSource.UserInput ||
                     available.y <= 0f ||
                     scrollState.canScrollBackward
@@ -238,7 +246,7 @@ fun NewTaskSheet(
             .fillMaxSize()
             .onGloballyPositioned { boxOrigin.value = it.positionInRoot() }
             .onSizeChanged { rootSize = it }
-            // 祖先层观察下拉，输入框聚焦/起手在输入框内时不参与（T-088）。
+            // 祖先层观察下拉，输入框聚焦/起手在输入框内或日历/圆盘子视图激活时不参与（T-088）。
             .nautileSheetPullDown(
                 motion = motion,
                 visible = { currentVisible },
@@ -246,7 +254,11 @@ fun NewTaskSheet(
                 onCommitClose = { currentOnDismissRequest() },
                 pass = PointerEventPass.Initial,
                 canStart = { !scrollState.canScrollBackward && !scrollState.canScrollForward },
-                isExcluded = { point -> inputActive() || pointInInput(point + boxOrigin.value) },
+                isExcluded = { point ->
+                    dateSubView != DateSubView.NONE ||
+                        inputActive() ||
+                        pointInInput(point + boxOrigin.value)
+                },
             ),
         contentAlignment = Alignment.BottomCenter,
     ) {
@@ -279,11 +291,16 @@ fun NewTaskSheet(
                                 change.consume()
                             }
                             if (!change.pressed) {
-                                // 弹层关闭层级“最上层优先”：先关菜单，再关日期面板，最后才关新建面板。
+                                // 弹层关闭层级“最上层优先”：先关菜单，再关时间圆盘，再关日期日历，最后才关新建面板。
                                 if (!dragged && currentVisible) {
                                     when {
                                         openMenu != null -> openMenu = null
-                                        datePanelOpen -> datePanelOpen = false
+                                        dateSubView == DateSubView.TIME_PICKER -> {
+                                            dateSubView = DateSubView.CALENDAR
+                                        }
+                                        dateSubView == DateSubView.CALENDAR -> {
+                                            dateSubView = DateSubView.NONE
+                                        }
                                         else -> currentOnDismissRequest()
                                     }
                                 }
@@ -330,12 +347,14 @@ fun NewTaskSheet(
                             .background(MaterialTheme.colorScheme.onSurfaceVariant),
                     )
                 }
+                val inDateSubView = dateSubView != DateSubView.NONE
+                val contentHorizontalPadding = if (inDateSubView) 0.dp else NautileSpacing.space6
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
-                            start = NautileSpacing.space6,
-                            end = NautileSpacing.space6,
+                            start = contentHorizontalPadding,
+                            end = contentHorizontalPadding,
                             top = NautileSpacing.space2,
                             bottom = NautileSpacing.space6,
                         )
@@ -343,33 +362,42 @@ fun NewTaskSheet(
                         .verticalScroll(scrollState)
                         .nestedScroll(contentConnection),
                 ) {
-                    Text("新建", style = MaterialTheme.typography.titleMedium)
-                    Row(
-                        modifier = Modifier.padding(top = NautileSpacing.space1),
-                        horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space2),
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = if (inDateSubView) NautileSpacing.space6 else 0.dp,
+                            ),
                     ) {
-                        FilterChip(
-                            selected = state.kind == NewTaskKind.TODO,
-                            onClick = { onKindChanged(NewTaskKind.TODO) },
-                            label = { Text("待办") },
-                        )
-                        FilterChip(
-                            selected = state.kind == NewTaskKind.PROJECT,
-                            onClick = { onKindChanged(NewTaskKind.PROJECT) },
-                            label = { Text("项目") },
-                        )
+                        Text("新建", style = MaterialTheme.typography.titleMedium)
+                        Row(
+                            modifier = Modifier.padding(top = NautileSpacing.space1),
+                            horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space2),
+                        ) {
+                            FilterChip(
+                                selected = state.kind == NewTaskKind.TODO,
+                                onClick = { onKindChanged(NewTaskKind.TODO) },
+                                label = { Text("待办") },
+                            )
+                            FilterChip(
+                                selected = state.kind == NewTaskKind.PROJECT,
+                                onClick = { onKindChanged(NewTaskKind.PROJECT) },
+                                label = { Text("项目") },
+                            )
+                        }
                     }
 
                     when (state.kind) {
                         NewTaskKind.TODO -> {
-                            if (datePanelOpen) {
-                                // 日期为同一面板内的选择面板，不叠第二层遮罩（CMP-31.2、CMP-32）。
+                            if (inDateSubView) {
+                                // 日期/24h时间圆盘为同一面板内的选择子视图，不叠第二层遮罩（R5-3/R5-4）。
                                 DateAttributePanel(
+                                    subView = dateSubView,
                                     dueDate = state.dueDate,
                                     dueTime = state.dueTime,
                                     onDueDateChanged = onDueDateChanged,
                                     onDueTimeChanged = onDueTimeChanged,
-                                    onBack = { datePanelOpen = false },
+                                    onSubViewChanged = { dateSubView = it },
                                 )
                             } else {
                                 // R4 G4：删除独立目标清单选择块，清单只由工具栏“清单”菜单修改
@@ -425,7 +453,7 @@ fun NewTaskSheet(
                                             (dueSummary ?: "未设置"),
                                         onActivate = {
                                             openMenu = null
-                                            datePanelOpen = true
+                                            dateSubView = DateSubView.CALENDAR
                                         },
                                         onBounds = {
                                             attributeAnchors[TaskAttribute.DATE] = it
@@ -512,12 +540,21 @@ fun NewTaskSheet(
                             text = message,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(
+                                horizontal = if (inDateSubView) NautileSpacing.space6 else 0.dp,
+                            ),
                         )
                     }
                     if (state.saving) {
-                        Text("创建中…", style = MaterialTheme.typography.labelSmall)
+                        Text(
+                            text = "创建中…",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(
+                                horizontal = if (inDateSubView) NautileSpacing.space6 else 0.dp,
+                            ),
+                        )
                     }
-                    if (!datePanelOpen) {
+                    if (!inDateSubView) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
