@@ -14,6 +14,7 @@ import io.github.mazilin.nautile.domain.model.UserSettings
 import io.github.mazilin.nautile.domain.model.ViewClassification
 import io.github.mazilin.nautile.domain.model.ViewOptions
 import io.github.mazilin.nautile.domain.model.ViewSort
+import io.github.mazilin.nautile.domain.port.Clock
 import io.github.mazilin.nautile.domain.repository.ProjectRepository
 import io.github.mazilin.nautile.domain.repository.SettingsRepository
 import io.github.mazilin.nautile.domain.repository.TaskRepository
@@ -21,15 +22,19 @@ import io.github.mazilin.nautile.domain.rule.ProjectRules
 import io.github.mazilin.nautile.domain.rule.TaskGrouping
 import io.github.mazilin.nautile.domain.rule.TaskRules
 import io.github.mazilin.nautile.domain.rule.TaskSearch
+import io.github.mazilin.nautile.domain.rule.TaskTimeRules
 import io.github.mazilin.nautile.domain.usecase.ProjectCommandResult
 import io.github.mazilin.nautile.domain.usecase.ProjectCommands
 import io.github.mazilin.nautile.domain.usecase.TaskCommandError
 import io.github.mazilin.nautile.domain.usecase.TaskCommandResult
 import io.github.mazilin.nautile.domain.usecase.TaskCommands
 import io.github.mazilin.nautile.domain.usecase.TaskFieldUpdate
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.util.logging.Logger
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -99,6 +104,13 @@ private data class ViewPreferences(
     val manualError: String? = null,
 )
 
+/** 任务完成/放弃写库防重入与失败提示状态（R5-6、NO-07）。 */
+private data class TaskActionState(
+    val inFlightCompletingIds: Set<TaskId> = emptySet(),
+    val error: String? = null,
+    val completingResetVersion: Int = 0,
+)
+
 private data class TaskDetailBase(
     val id: TaskId?,
     val tasks: List<Task>,
@@ -124,6 +136,10 @@ class TodoViewModel(
      * 测试或预览可传空实现；抛异常表示写入失败，由本类回滚内存顺序。
      */
     private val writeManualOrders: suspend (Map<TaskId, Long>) -> Unit = {},
+    /** 注入时钟用于逾期判定与日期摘要参考日期（BR-38、R5-5）；默认使用系统时钟。 */
+    private val clock: Clock = Clock { Instant.now() },
+    /** 本地时区，供逾期判定与日期摘要使用；测试可固定传入。 */
+    private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) : ViewModel() {
 
     private val allTasks = taskRepository.observeAll()
@@ -175,6 +191,9 @@ class TodoViewModel(
     /** G9 视图选项本地状态：选择即生效，写入失败再回退（CMP-41）。 */
     private val viewPreferences = MutableStateFlow(ViewPreferences())
 
+    /** 任务完成防重入与失败状态（R5-6、NO-07）。 */
+    private val taskActionState = MutableStateFlow(TaskActionState())
+
     /** 已记录过 MANUAL 回退的模块；同一模块每个进程只记录一次（CMP-40.3）。 */
     private val manualFallbackLogged = mutableSetOf<GtdPosition>()
 
@@ -216,7 +235,8 @@ class TodoViewModel(
         search,
         viewPreferences,
         positionError,
-    ) { base, input, preferences, positionErrorValue ->
+        taskActionState,
+    ) { base, input, preferences, positionErrorValue, actionState ->
         val rawOptions = preferences.optionsOverride
             ?.takeIf { it.position == base.position }
             ?.options
@@ -238,6 +258,13 @@ class TodoViewModel(
                 orders[task.id]?.let { order -> task.copy(manualOrder = order) } ?: task
             }
         } ?: visibleSource
+        val now = clock.now()
+        val referenceDate = now.atZone(zoneId).toLocalDate()
+        val overdueTaskIds = base.tasks
+            .asSequence()
+            .filter { TaskTimeRules.isOverdue(it, now, zoneId) }
+            .map { it.id }
+            .toSet()
         TodoUiState(
             position = base.position,
             // 搜索态只保留有命中的组（不显示 0 结果组）；退出搜索恢复含空项目的完整分组。
@@ -259,6 +286,11 @@ class TodoViewModel(
             viewOptionsError = preferences.viewError,
             manualOrderError = preferences.manualError,
             positionError = positionErrorValue,
+            overdueTaskIds = overdueTaskIds,
+            referenceDate = referenceDate,
+            inFlightCompletingIds = actionState.inFlightCompletingIds,
+            taskActionError = actionState.error,
+            completingResetVersion = actionState.completingResetVersion,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TodoUiState())
 
@@ -477,14 +509,92 @@ class TodoViewModel(
     /** 关闭错误提示（不在下一次操作时误留失败状态）。 */
     fun dismissViewError() {
         viewPreferences.update { it.copy(viewError = null, manualError = null) }
+        taskActionState.update { it.copy(error = null) }
     }
 
+    /** 关闭任务完成/放弃失败提示（NO-07）。 */
+    fun dismissTaskActionError() {
+        taskActionState.update { it.copy(error = null) }
+    }
+
+    /**
+     * 幂等防重入完成任务（R5-6、NO-07）：
+     * - 同一 [taskId] 在完成落库进行中忽略重复触发；
+     * - 写库失败或命令拒绝时释放完成中态、递增 [TodoUiState.completingResetVersion]
+     *   通知列表恢复原任务显示，并透出错误提示，不假成功。
+     */
     fun completeTask(taskId: TaskId) {
-        viewModelScope.launch { taskCommands.complete(taskId) }
+        var acquired = false
+        taskActionState.update { current ->
+            if (taskId in current.inFlightCompletingIds) {
+                current
+            } else {
+                acquired = true
+                current.copy(
+                    inFlightCompletingIds = current.inFlightCompletingIds + taskId,
+                    error = null,
+                )
+            }
+        }
+        if (!acquired) return
+        viewModelScope.launch {
+            try {
+                val result = taskCommands.complete(taskId)
+                if (result is TaskCommandResult.Success) {
+                    taskActionState.update { current ->
+                        current.copy(inFlightCompletingIds = current.inFlightCompletingIds - taskId)
+                    }
+                } else {
+                    val message = when (result) {
+                        is TaskCommandResult.NotFound -> "任务不存在，无法完成"
+                        is TaskCommandResult.Invalid -> taskErrorText(result.error)
+                        else -> "完成任务失败，请重试"
+                    }
+                    taskActionState.update { current ->
+                        current.copy(
+                            inFlightCompletingIds = current.inFlightCompletingIds - taskId,
+                            error = message,
+                            completingResetVersion = current.completingResetVersion + 1,
+                        )
+                    }
+                }
+            } catch (e: CancellationException) {
+                taskActionState.update { current ->
+                    current.copy(inFlightCompletingIds = current.inFlightCompletingIds - taskId)
+                }
+                throw e
+            } catch (_: Throwable) {
+                taskActionState.update { current ->
+                    current.copy(
+                        inFlightCompletingIds = current.inFlightCompletingIds - taskId,
+                        error = "完成任务失败，请重试",
+                        completingResetVersion = current.completingResetVersion + 1,
+                    )
+                }
+            }
+        }
     }
 
     fun abandonTask(taskId: TaskId) {
-        viewModelScope.launch { taskCommands.abandon(taskId) }
+        viewModelScope.launch {
+            try {
+                val result = taskCommands.abandon(taskId)
+                if (result is TaskCommandResult.Success) {
+                    taskActionState.update { it.copy(error = null) }
+                } else {
+                    val message = when (result) {
+                        is TaskCommandResult.NotFound -> "任务不存在，无法放弃"
+                        is TaskCommandResult.Invalid -> taskErrorText(result.error)
+                        else -> "放弃任务失败，请重试"
+                    }
+                    taskActionState.update { it.copy(error = message) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+                taskActionState.update { it.copy(error = "放弃任务失败，请重试") }
+            }
+        }
     }
 
     /** 项目滑动：有活动子任务时先请求确认数量（AC-T-17）。 */

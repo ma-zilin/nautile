@@ -1,7 +1,10 @@
 package io.github.mazilin.nautile.ui.screen.todo
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -30,6 +33,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -39,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -49,7 +55,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -72,12 +77,18 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.text
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
@@ -91,6 +102,7 @@ import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.domain.model.ViewClassification
 import io.github.mazilin.nautile.domain.model.ViewSort
 import io.github.mazilin.nautile.domain.rule.TaskGroup
+import io.github.mazilin.nautile.domain.rule.TaskTimeRules
 import io.github.mazilin.nautile.interaction.BoundaryPullReleaseResult
 import io.github.mazilin.nautile.interaction.BoundaryPullState
 import io.github.mazilin.nautile.interaction.BoundaryPullStateMachine
@@ -99,15 +111,16 @@ import io.github.mazilin.nautile.ui.designsystem.NautileEmptyState
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
 import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
+import java.time.LocalDate
 import kotlin.math.abs
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
- * 待办页 P-02（S1-T07）。
+ * 待办页 P-02（S1-T07 / R5-5,6,7）。
  *
- * 标题按钮/空白右滑打开 GTD 选择器；条目左滑完成、右滑放弃；项目行滑动先请求数量确认。
- * 这里不实现分组/排序菜单、详情、新建面板（D-10、T08、T09）。
+ * 标题按钮/空白右滑打开 GTD 选择器；条目右滑完成、左滑放弃；项目行滑动先请求数量确认。
+ * 任务完成由前置 Checkbox 与右滑共用同一退场状态机（220ms 线性淡出/滑出收拢后落库）。
  */
 @Composable
 fun TodoScreen(
@@ -184,6 +197,31 @@ fun TodoScreen(
     var gtdSwipe by remember { mutableFloatStateOf(0f) }
     var blockedByRow by remember { mutableStateOf(false) }
     var rowDragging by remember { mutableStateOf(false) }
+
+    // 完成退场统一状态机映射（R5-6、ANIM-09）：key=正在完成退场的任务 ID，value=起播水平偏移（px）。
+    // Checkbox 入口传 0f，右滑入口传松手时偏移量；两者共享 220ms 线性退场与防重入。
+    var completingOffsets by remember { mutableStateOf<Map<TaskId, Float>>(emptyMap()) }
+    LaunchedEffect(state.completingResetVersion) {
+        if (state.completingResetVersion > 0) {
+            completingOffsets = emptyMap()
+        }
+    }
+    val activeGroupTaskIds = remember(state.groups) {
+        state.groups.flatMapTo(HashSet()) { group -> group.tasks.map { it.id } }
+    }
+    LaunchedEffect(activeGroupTaskIds) {
+        if (completingOffsets.isNotEmpty()) {
+            val remaining = completingOffsets.filterKeys { it in activeGroupTaskIds }
+            if (remaining.size != completingOffsets.size) {
+                completingOffsets = remaining
+            }
+        }
+    }
+    val startCompleteTask: (TaskId, Float) -> Unit = { taskId, initialOffsetPx ->
+        if (taskId !in completingOffsets && taskId !in state.inFlightCompletingIds) {
+            completingOffsets = completingOffsets + (taskId to initialOffsetPx)
+        }
+    }
 
     // 本地清单位置（CMP-14）：提交后先同步这里，避免下一次快速拉拽读到旧 position。
     var localPosition by remember { mutableStateOf(state.position) }
@@ -555,6 +593,12 @@ fun TodoScreen(
                                 // R4 G6：手动排序暂缓（CMP-40.3、NO-19）——长按拖拽入口不可达；
                                 // 重排实现保留在下方供恢复时启用，不删除数据/枚举。
                                 manualSortEnabled = false,
+                                overdueTaskIds = state.overdueTaskIds,
+                                referenceDate = state.referenceDate,
+                                completingOffsets = completingOffsets,
+                                inFlightCompletingIds = state.inFlightCompletingIds,
+                                completingResetVersion = state.completingResetVersion,
+                                onStartCompleteTask = startCompleteTask,
                                 onReorder = { orderedIds -> onReorderGroup(group.key, orderedIds) },
                                 onCompleteTask = onCompleteTask,
                                 onAbandonTask = onAbandonTask,
@@ -563,6 +607,11 @@ fun TodoScreen(
                                 onOpenProjectDetail = onOpenProjectDetail,
                                 onRowDragStart = { rowDragging = true },
                                 onRowDragEnd = { rowDragging = false },
+                                modifier = Modifier.animateItem(
+                                    fadeInSpec = NautileMotion.StandardEffects,
+                                    fadeOutSpec = NautileMotion.StandardEffects,
+                                    placementSpec = NautileMotion.ListItemPlacement,
+                                ),
                             )
                         }
                     }
@@ -624,13 +673,14 @@ fun TodoScreen(
             )
         }
 
-        // 手动排序写入失败提示（CMP-40.2）：列表已回滚，点按可关闭提示。
-        val manualError = state.manualOrderError
-        if (manualError != null) {
+        // 任务完成/放弃或手动排序写入失败提示（NO-07、CMP-40.2）：失败已回滚，点按可关闭提示。
+        val actionError = state.taskActionError ?: state.manualOrderError
+        if (actionError != null) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(horizontal = 16.dp, vertical = 88.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite }
                     .clickable(onClick = onDismissViewError),
                 shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -638,8 +688,9 @@ fun TodoScreen(
                 shadowElevation = 3.dp,
             ) {
                 Text(
-                    text = manualError,
+                    text = actionError,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
@@ -665,12 +716,22 @@ fun TodoScreen(
 
     state.projectConfirmation?.let { pending ->
         val action = if (pending.outcome == ClosedOutcome.COMPLETED) "完成" else "放弃"
+        val isAbandon = pending.outcome == ClosedOutcome.ABANDONED
         AlertDialog(
             onDismissRequest = onCancelProjectClose,
             title = { Text(pending.projectName) },
             text = { Text("将$action ${pending.taskCount} 个子待办") },
             confirmButton = {
-                TextButton(onClick = onConfirmProjectClose) { Text("确认") }
+                TextButton(
+                    onClick = onConfirmProjectClose,
+                    colors = if (isAbandon) {
+                        ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        )
+                    } else {
+                        ButtonDefaults.textButtonColors()
+                    },
+                ) { Text("确认") }
             },
             dismissButton = {
                 TextButton(onClick = onCancelProjectClose) { Text("取消") }
@@ -762,6 +823,12 @@ private fun SearchBar(
 private fun TaskGroupCard(
     group: TaskGroup,
     manualSortEnabled: Boolean,
+    overdueTaskIds: Set<TaskId>,
+    referenceDate: LocalDate?,
+    completingOffsets: Map<TaskId, Float>,
+    inFlightCompletingIds: Set<TaskId>,
+    completingResetVersion: Int,
+    onStartCompleteTask: (TaskId, Float) -> Unit,
     onReorder: (List<TaskId>) -> Unit,
     onCompleteTask: (TaskId) -> Unit,
     onAbandonTask: (TaskId) -> Unit,
@@ -770,6 +837,7 @@ private fun TaskGroupCard(
     onOpenProjectDetail: (ProjectId) -> Unit,
     onRowDragStart: () -> Unit,
     onRowDragEnd: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val cardColor = MaterialTheme.colorScheme.surfaceContainerLowest
     // 行最小高 56dp + 行间 8dp，用于把纵向位移换算成跨越的行数。
@@ -823,7 +891,7 @@ private fun TaskGroupCard(
     }
 
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = MaterialTheme.shapes.large,
@@ -836,11 +904,13 @@ private fun TaskGroupCard(
             val project = group.project
             if (project != null) {
                 SwipeableRow(
-                    onSwipeLeft = { onRequestProjectClose(project.id, ClosedOutcome.COMPLETED) },
-                    onSwipeRight = { onRequestProjectClose(project.id, ClosedOutcome.ABANDONED) },
+                    // R5-7：右滑完成、左滑放弃；项目行同步对调并先弹批量子待办数量确认对话框。
+                    onSwipeRight = { _ -> onRequestProjectClose(project.id, ClosedOutcome.COMPLETED) },
+                    onSwipeLeft = { _ -> onRequestProjectClose(project.id, ClosedOutcome.ABANDONED) },
                     onRowDragStart = onRowDragStart,
                     onRowDragEnd = onRowDragEnd,
                     onClick = { onOpenProjectDetail(project.id) },
+                    holdOffsetOnRightCommit = false,
                     containerColor = cardColor,
                 ) {
                     GroupHeader(
@@ -858,52 +928,165 @@ private fun TaskGroupCard(
                 )
             }
             localTasks.forEachIndexed { index, task ->
-                // key 跟随任务：拖拽重排后组合身份不随槽位改变，进行中的长按手势不会被打断。
+                // key 跟随任务：拖拽重排与完成退场动画期间组合身份不随槽位改变。
                 key(task.id) {
-                    Column {
-                        if (index > 0) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                    val reorderModifier = if (manualSortEnabled) {
+                        Modifier.pointerInput(task.id, manualSortEnabled) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = {
+                                    startReorder(task.id)
+                                    onRowDragStart()
+                                },
+                                onDrag = { change, dragAmount ->
+                                    // 长按后的纵向拖拽归重排；消费事件避免列表同时滚动。
+                                    change.consume()
+                                    moveDragged(dragAmount.y)
+                                },
+                                onDragEnd = {
+                                    finishReorder(commit = true)
+                                    onRowDragEnd()
+                                },
+                                onDragCancel = {
+                                    finishReorder(commit = false)
+                                    onRowDragEnd()
+                                },
+                            )
                         }
-                        val reorderModifier = if (manualSortEnabled) {
-                            Modifier.pointerInput(task.id, manualSortEnabled) {
-                                detectDragGesturesAfterLongPress(
-                                    onDragStart = {
-                                        startReorder(task.id)
-                                        onRowDragStart()
-                                    },
-                                    onDrag = { change, dragAmount ->
-                                        // 长按后的纵向拖拽归重排；消费事件避免列表同时滚动。
-                                        change.consume()
-                                        moveDragged(dragAmount.y)
-                                    },
-                                    onDragEnd = {
-                                        finishReorder(commit = true)
-                                        onRowDragEnd()
-                                    },
-                                    onDragCancel = {
-                                        finishReorder(commit = false)
-                                        onRowDragEnd()
-                                    },
-                                )
-                            }
-                        } else {
-                            Modifier
-                        }
-                        SwipeableRow(
-                            onSwipeLeft = { onCompleteTask(task.id) },
-                            onSwipeRight = { onAbandonTask(task.id) },
-                            onRowDragStart = onRowDragStart,
-                            onRowDragEnd = onRowDragEnd,
-                            onClick = { onOpenTaskDetail(task.id) },
-                            // 已结项行禁用滑动，只保留查看详情（T-10、AC-T-29）；拖拽重排中同样禁用横向滑动。
-                            swipeEnabled = task.closedOutcome == null && draggingId == null,
-                            containerColor = cardColor,
-                            modifier = reorderModifier,
-                        ) {
-                            TaskRowContent(task = task)
-                        }
+                    } else {
+                        Modifier
                     }
+                    CompletableTaskRow(
+                        task = task,
+                        showTopSpacer = index > 0,
+                        isOverdue = task.id in overdueTaskIds,
+                        referenceDate = referenceDate,
+                        isCompleting = (task.id in completingOffsets) || (task.id in inFlightCompletingIds),
+                        initialOffsetPx = completingOffsets[task.id] ?: 0f,
+                        completingResetVersion = completingResetVersion,
+                        reorderDragging = draggingId != null,
+                        cardColor = cardColor,
+                        reorderModifier = reorderModifier,
+                        onStartComplete = onStartCompleteTask,
+                        onCompleteTask = onCompleteTask,
+                        onAbandonTask = onAbandonTask,
+                        onOpenTaskDetail = onOpenTaskDetail,
+                        onRowDragStart = onRowDragStart,
+                        onRowDragEnd = onRowDragEnd,
+                    )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * 任务行完成退场容器（R5-6、ANIM-09）：
+ * Checkbox 点击与右滑 ≥72dp 共用同一状态机：
+ * 1. 立刻切为勾选态并禁用点击、Checkbox 与滑动（防重入）；
+ * 2. 播放 220ms 线性淡出/滑出与垂直高度收拢（[NautileMotion.TaskCompleteExit] + [NautileMotion.TaskCompleteCollapse]）；
+ * 3. 动画结束单次回调 [onCompleteTask] 落库；若中途切页/切清单卸载，由 [DisposableEffect] 兜底幂等提交防丢单。
+ */
+@Composable
+private fun CompletableTaskRow(
+    task: Task,
+    showTopSpacer: Boolean,
+    isOverdue: Boolean,
+    referenceDate: LocalDate?,
+    isCompleting: Boolean,
+    initialOffsetPx: Float,
+    completingResetVersion: Int,
+    reorderDragging: Boolean,
+    cardColor: Color,
+    reorderModifier: Modifier,
+    onStartComplete: (TaskId, Float) -> Unit,
+    onCompleteTask: (TaskId) -> Unit,
+    onAbandonTask: (TaskId) -> Unit,
+    onOpenTaskDetail: (TaskId) -> Unit,
+    onRowDragStart: () -> Unit,
+    onRowDragEnd: () -> Unit,
+) {
+    val completeSlideDistancePx = with(LocalDensity.current) { 24.dp.toPx() }
+    val exitProgress = remember(task.id, completingResetVersion) { Animatable(0f) }
+    var completeCommitted by remember(task.id, completingResetVersion) { mutableStateOf(false) }
+    val latestOnCompleteTask by rememberUpdatedState(onCompleteTask)
+    val latestIsCompleting by rememberUpdatedState(isCompleting)
+
+    LaunchedEffect(task.id, isCompleting, completingResetVersion) {
+        if (isCompleting && !completeCommitted) {
+            exitProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = NautileMotion.TaskCompleteExit,
+            )
+            if (!completeCommitted) {
+                completeCommitted = true
+                latestOnCompleteTask(task.id)
+            }
+        }
+    }
+
+    // 切页/切清单/退出搜索导致行在 220ms 退场动画结束前被卸载时，兜底幂等提交完成，避免丢单。
+    DisposableEffect(task.id, completingResetVersion) {
+        onDispose {
+            if (latestIsCompleting && !completeCommitted) {
+                completeCommitted = true
+                latestOnCompleteTask(task.id)
+            }
+        }
+    }
+
+    AnimatedVisibility(
+        visible = !isCompleting,
+        exit = shrinkVertically(animationSpec = NautileMotion.TaskCompleteCollapse) +
+            fadeOut(animationSpec = NautileMotion.TaskCompleteExit),
+    ) {
+        val completingTranslationX = if (isCompleting) {
+            initialOffsetPx + completeSlideDistancePx * exitProgress.value
+        } else {
+            0f
+        }
+        Column(
+            modifier = Modifier.graphicsLayer {
+                translationX = completingTranslationX
+            },
+        ) {
+            if (showTopSpacer) {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            SwipeableRow(
+                // R5-7：右滑完成（走统一退场状态机）、左滑放弃。
+                onSwipeRight = { offsetPx ->
+                    if (task.closedOutcome == null && !isCompleting) {
+                        onStartComplete(task.id, offsetPx)
+                    }
+                },
+                onSwipeLeft = { _ ->
+                    if (task.closedOutcome == null && !isCompleting) {
+                        onAbandonTask(task.id)
+                    }
+                },
+                onRowDragStart = onRowDragStart,
+                onRowDragEnd = onRowDragEnd,
+                onClick = {
+                    if (!isCompleting) onOpenTaskDetail(task.id)
+                },
+                clickEnabled = !isCompleting,
+                // 已结项行与完成退场中禁用滑动（T-10、AC-T-29、R5-6）；拖拽重排中同样禁用横向滑动。
+                swipeEnabled = task.closedOutcome == null && !isCompleting && !reorderDragging,
+                holdOffsetOnRightCommit = true,
+                containerColor = cardColor,
+                modifier = reorderModifier.testTag("task_row_${task.id.value}"),
+            ) {
+                TaskRowContent(
+                    task = task,
+                    isCompleting = isCompleting,
+                    isOverdue = isOverdue,
+                    referenceDate = referenceDate,
+                    onToggleComplete = {
+                        if (task.closedOutcome == null && !isCompleting) {
+                            onStartComplete(task.id, 0f)
+                        }
+                    },
+                )
             }
         }
     }
@@ -948,59 +1131,191 @@ private fun GroupHeader(name: String, count: Int, combinedLabel: Boolean) {
     }
 }
 
-/** 扁平行内容（SHP-06）：无卡片圆角、无分隔线；最小高 56dp，标题 bodyLarge。 */
+/**
+ * 扁平任务行内容（SHP-06、R5-5、03_交互与动效规格 §2.2）：
+ * - 标题前置标准 M3 [Checkbox]（48×48dp 触控区，已结项/完成中禁用，点击不误触发打开详情）；
+ * - 标题下方按需展示详情摘要（仅非空时渲染，bodySmall/onSurfaceVariant，最多 2 行省略）；
+ * - 按需展示截止时间（仅 dueDate 非空时渲染；逾期用 error 色 + “已逾期 · ”可读语义前缀，颜色不作唯一信息）；
+ * - 已结项任务标题灰化加删除线，行尾清晰区分“已完成”/“已放弃”。
+ */
 @Composable
-private fun TaskRowContent(task: Task) {
+private fun TaskRowContent(
+    task: Task,
+    isCompleting: Boolean,
+    isOverdue: Boolean,
+    referenceDate: LocalDate?,
+    onToggleComplete: () -> Unit,
+) {
+    val isClosed = task.closedOutcome != null
+    val checked = isCompleting || task.closedOutcome == ClosedOutcome.COMPLETED
+    val checkboxEnabled = !isClosed && !isCompleting
+    val checkboxDescription = when {
+        isCompleting -> "正在完成任务：${task.title}"
+        task.closedOutcome == ClosedOutcome.COMPLETED -> "已完成任务不可勾选：${task.title}"
+        task.closedOutcome == ClosedOutcome.ABANDONED -> "已放弃任务不可勾选：${task.title}"
+        else -> "完成任务：${task.title}"
+    }
+    val detailPreview = task.detail?.takeIf { it.isNotBlank() }
+    val dueLabel = TaskTimeRules.formatTaskDueLabel(
+        dueDate = task.dueDate,
+        dueTime = task.dueTime,
+        today = referenceDate,
+    )
+    // 已结项任务不标逾期红（FR-G-09、BR-38、03_交互与动效规格 §2.2）。
+    val showOverdue = !isClosed && isOverdue && dueLabel != null
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(start = 4.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Text(
-            text = task.title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (task.closedOutcome != null) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onSurface
+        Checkbox(
+            checked = checked,
+            onCheckedChange = { shouldComplete ->
+                if (shouldComplete && checkboxEnabled) {
+                    onToggleComplete()
+                }
             },
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
+            enabled = checkboxEnabled,
+            modifier = Modifier
+                .size(48.dp)
+                .testTag("task_checkbox_${task.id.value}")
+                .semantics { contentDescription = checkboxDescription },
         )
-        if (task.closedOutcome != null) {
-            Text(
-                text = "已结项",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 8.dp),
-            )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 4.dp, top = 12.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(NautileSpacing.space1),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = task.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (isClosed) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    textDecoration = if (isClosed) TextDecoration.LineThrough else TextDecoration.None,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                task.closedOutcome?.let { outcome ->
+                    val statusLabel = when (outcome) {
+                        ClosedOutcome.COMPLETED -> "已完成"
+                        ClosedOutcome.ABANDONED -> "已放弃"
+                    }
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        modifier = Modifier.padding(start = NautileSpacing.space2),
+                    ) {
+                        Text(
+                            text = statusLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
+            if (detailPreview != null) {
+                Text(
+                    text = detailPreview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("task_detail_preview_${task.id.value}"),
+                )
+            }
+            if (dueLabel != null) {
+                val dueColor = if (showOverdue) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+                val dueDisplayText = if (showOverdue) "已逾期 · $dueLabel" else dueLabel
+                Row(
+                    modifier = Modifier
+                        .testTag("task_due_${task.id.value}")
+                        .semantics(mergeDescendants = true) {},
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space1),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_schedule),
+                        contentDescription = null,
+                        tint = dueColor,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Text(
+                        text = dueDisplayText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = dueColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }
 
 /**
- * 条目左右滑：左滑完成、右滑放弃；仅越过阈值才提交，否则回原位（BR-46、AC-T-17）。
- * [swipeEnabled] 为 false 时（已结项或拖拽重排中）不挂横向拖拽，只保留点按。
- * [containerColor] 跟随所在分组卡片，避免行自身底色切断卡片层级。
- * [modifier] 为长按纵向拖拽重排（CMP-40.2），挂在外层以先于横向滑动判定长按。
+ * 条目左右滑（R5-7、BR-46、BR-60、AC-T-17、ANIM-08）：
+ * - 右滑（正位移）= 完成（左侧露出整行高 primaryContainer + ic_check + “完成”）；
+ * - 左滑（负位移）= 放弃（右侧露出整行高 errorContainer + ic_close + “放弃”）；
+ * - 仅越过 72dp 阈值才提交；未达阈值松手经 [NautileMotion.BoundaryRebound] 平滑回弹且可打断；
+ * - [swipeEnabled] 为 false 时（已结项、完成退场中或拖拽重排中）不挂横向拖拽；
+ * - 活跃条目水平滑动由本组件消费，绝不冒泡触发 GTD 左抽屉（BR-60 / FR-G-16）。
  */
 @Composable
 private fun SwipeableRow(
-    onSwipeLeft: () -> Unit,
-    onSwipeRight: () -> Unit,
+    onSwipeLeft: (Float) -> Unit,
+    onSwipeRight: (Float) -> Unit,
     onRowDragStart: () -> Unit,
     onRowDragEnd: () -> Unit,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
+    clickEnabled: Boolean = true,
     swipeEnabled: Boolean = true,
+    holdOffsetOnRightCommit: Boolean = false,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current.density
-    var offset by remember { mutableFloatStateOf(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    var isDragging by remember { mutableStateOf(false) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val offsetAnim = remember { Animatable(0f) }
+    var reboundJob by remember { mutableStateOf<Job?>(null) }
+    val latestOnSwipeLeft by rememberUpdatedState(onSwipeLeft)
+    val latestOnSwipeRight by rememberUpdatedState(onSwipeRight)
+    val latestOnRowDragStart by rememberUpdatedState(onRowDragStart)
+    val latestOnRowDragEnd by rememberUpdatedState(onRowDragEnd)
+    val latestHoldRight by rememberUpdatedState(holdOffsetOnRightCommit)
+
+    LaunchedEffect(swipeEnabled) {
+        if (!swipeEnabled) {
+            reboundJob?.cancel()
+            reboundJob = null
+            isDragging = false
+            dragOffset = 0f
+            offsetAnim.snapTo(0f)
+        }
+    }
+
+    val displayedOffset = if (isDragging) dragOffset else offsetAnim.value
 
     Box(
         modifier = Modifier
@@ -1008,8 +1323,8 @@ private fun SwipeableRow(
             .then(modifier),
     ) {
         if (swipeEnabled) {
-            // CMP-05：右滑露出左侧“放弃”（errorContainer + close），左滑露出右侧“完成”
-            // （primaryContainer + check）；图标+文字，色条占满整行高，颜色不是唯一区分。
+            // R5-7 / CMP-05：右滑露出左侧“完成”（primaryContainer + check），
+            // 左滑露出右侧“放弃”（errorContainer + close）；色条占满整行高，颜色不是唯一区分。
             Row(
                 modifier = Modifier
                     .matchParentSize()
@@ -1019,7 +1334,7 @@ private fun SwipeableRow(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.errorContainer),
+                        .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     Row(
@@ -1028,15 +1343,15 @@ private fun SwipeableRow(
                         horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space2),
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_close),
+                            painter = painterResource(R.drawable.ic_check),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(24.dp),
                         )
                         Text(
-                            text = "放弃",
+                            text = "完成",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             maxLines = 1,
                         )
                     }
@@ -1045,7 +1360,7 @@ private fun SwipeableRow(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(MaterialTheme.colorScheme.errorContainer),
                     contentAlignment = Alignment.CenterEnd,
                 ) {
                     Row(
@@ -1054,15 +1369,15 @@ private fun SwipeableRow(
                         horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space2),
                     ) {
                         Text(
-                            text = "完成",
+                            text = "放弃",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                             maxLines = 1,
                         )
                         Icon(
-                            painter = painterResource(R.drawable.ic_check),
+                            painter = painterResource(R.drawable.ic_close),
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
                             modifier = Modifier.size(24.dp),
                         )
                     }
@@ -1072,28 +1387,96 @@ private fun SwipeableRow(
         val dragModifier = if (swipeEnabled) {
             Modifier.draggable(
                 state = rememberDraggableState { delta ->
-                    offset += delta
-                    if (offset != 0f) onRowDragStart()
+                    if (!isDragging) {
+                        reboundJob?.cancel()
+                        reboundJob = null
+                        dragOffset = offsetAnim.value
+                        isDragging = true
+                        latestOnRowDragStart()
+                    }
+                    dragOffset += delta
                 },
                 orientation = Orientation.Horizontal,
+                onDragStarted = {
+                    reboundJob?.cancel()
+                    reboundJob = null
+                    dragOffset = offsetAnim.value
+                    isDragging = true
+                    latestOnRowDragStart()
+                },
                 onDragStopped = {
-                    onRowDragEnd()
+                    val finalOffset = dragOffset
+                    latestOnRowDragEnd()
+                    val committed = GestureArbiter.isCommitSwipe(finalOffset, density)
                     when {
-                        GestureArbiter.isCommitSwipe(offset, density) && offset < 0f -> onSwipeLeft()
-                        GestureArbiter.isCommitSwipe(offset, density) && offset > 0f -> onSwipeRight()
+                        committed && finalOffset > 0f -> {
+                            if (latestHoldRight) {
+                                // 任务行右滑完成：交由外层退场状态机从 finalOffset 顺势继续滑出，避免闪回。
+                                offsetAnim.snapTo(0f)
+                                isDragging = false
+                                dragOffset = 0f
+                                latestOnSwipeRight(finalOffset)
+                            } else {
+                                // 项目行右滑完成：平滑回弹归零并弹出数量确认框。
+                                offsetAnim.snapTo(finalOffset)
+                                isDragging = false
+                                dragOffset = 0f
+                                reboundJob = coroutineScope.launch {
+                                    offsetAnim.animateTo(0f, NautileMotion.BoundaryRebound)
+                                }
+                                latestOnSwipeRight(finalOffset)
+                            }
+                        }
+
+                        committed && finalOffset < 0f -> {
+                            offsetAnim.snapTo(finalOffset)
+                            isDragging = false
+                            dragOffset = 0f
+                            reboundJob = coroutineScope.launch {
+                                offsetAnim.animateTo(0f, NautileMotion.BoundaryRebound)
+                            }
+                            latestOnSwipeLeft(finalOffset)
+                        }
+
+                        else -> {
+                            offsetAnim.snapTo(finalOffset)
+                            isDragging = false
+                            dragOffset = 0f
+                            if (finalOffset != 0f) {
+                                reboundJob = coroutineScope.launch {
+                                    offsetAnim.animateTo(0f, NautileMotion.BoundaryRebound)
+                                }
+                            }
+                        }
                     }
-                    offset = 0f
                 },
             )
+        } else {
+            Modifier
+        }
+        val accessibilityModifier = if (swipeEnabled) {
+            Modifier.semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction("标记完成") {
+                        latestOnSwipeRight(0f)
+                        true
+                    },
+                    CustomAccessibilityAction("标记放弃") {
+                        latestOnSwipeLeft(0f)
+                        true
+                    },
+                )
+            }
         } else {
             Modifier
         }
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .graphicsLayer { translationX = offset }
+                .graphicsLayer { translationX = displayedOffset }
+                .then(accessibilityModifier)
                 .then(dragModifier)
-                .clickable(onClick = onClick),
+                .clickable(enabled = clickEnabled, onClick = onClick),
             color = containerColor,
         ) {
             content()

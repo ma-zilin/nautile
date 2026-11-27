@@ -5,6 +5,7 @@ import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Priority
 import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.Task
+import io.github.mazilin.nautile.domain.model.TaskId
 import io.github.mazilin.nautile.domain.model.ViewOptions
 import io.github.mazilin.nautile.domain.rule.TaskGroup
 import java.time.LocalDate
@@ -38,6 +39,16 @@ data class TodoUiState(
      * 仅记录错误，不阻塞页面使用。
      */
     val positionError: String? = null,
+    /** 当前清单中已逾期的未结项任务 ID 集合（FR-G-09、BR-38、R5-5），由注入的 Clock 计算。 */
+    val overdueTaskIds: Set<TaskId> = emptySet(),
+    /** 由注入的 Clock 换算出的当前本地日期，用于列表行“今天/明天”格式化，避免 Composable 直接读系统时钟。 */
+    val referenceDate: LocalDate? = null,
+    /** 正在提交完成落库中的任务 ID 集合（R5-6 防重入幂等态）。 */
+    val inFlightCompletingIds: Set<TaskId> = emptySet(),
+    /** 任务完成/放弃写库失败提示（NO-07，不假成功）。 */
+    val taskActionError: String? = null,
+    /** 任务完成写库失败时递增，通知列表撤销局部退场态并恢复原任务行显示。 */
+    val completingResetVersion: Int = 0,
 ) {
     val isEmpty: Boolean get() = visibleTasks.isEmpty()
 }
