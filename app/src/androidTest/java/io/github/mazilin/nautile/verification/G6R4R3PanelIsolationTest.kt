@@ -20,6 +20,7 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -29,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.mazilin.nautile.domain.model.GtdPosition
-import io.github.mazilin.nautile.domain.model.Priority
 import io.github.mazilin.nautile.domain.model.Project
 import io.github.mazilin.nautile.domain.model.ProjectId
 import io.github.mazilin.nautile.domain.model.ProjectStatus
@@ -39,12 +39,8 @@ import io.github.mazilin.nautile.ui.screen.todo.NewTaskSheet
 import io.github.mazilin.nautile.ui.screen.todo.NewTaskUiState
 import io.github.mazilin.nautile.ui.screen.todo.ProjectDetailSheet
 import io.github.mazilin.nautile.ui.screen.todo.ProjectDetailUiState
-import io.github.mazilin.nautile.ui.screen.todo.ProjectEditSheet
-import io.github.mazilin.nautile.ui.screen.todo.ProjectEditUiState
 import io.github.mazilin.nautile.ui.screen.todo.TaskDetailSheet
 import io.github.mazilin.nautile.ui.screen.todo.TaskDetailUiState
-import io.github.mazilin.nautile.ui.screen.todo.TaskEditSheet
-import io.github.mazilin.nautile.ui.screen.todo.TaskEditUiState
 import io.github.mazilin.nautile.ui.theme.NautileTheme
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -112,23 +108,6 @@ class G6R4R3PanelIsolationTest {
         collapsed = false,
     )
 
-    private fun taskEditState() = TaskEditUiState(
-        taskId = TaskId(1L),
-        title = "任务",
-        detail = "",
-        priority = Priority.NONE,
-        dueDate = null,
-        dueTime = null,
-        projectId = null,
-        projectName = null,
-        position = GtdPosition.INBOX,
-    )
-
-    private fun projectEditState() = ProjectEditUiState(
-        projectId = ProjectId(1L),
-        name = "项目",
-    )
-
     /** 宿主：记录关闭请求次数，并按“允许关闭”移除面板（与生产宿主同层，不复制业务判定）。 */
     private class PanelHost {
         var visible by mutableStateOf(true)
@@ -177,30 +156,6 @@ class G6R4R3PanelIsolationTest {
                     onCommitName = {},
                     onToggleCollapsed = {},
                     onCloseRequested = host::requestClose,
-                    visible = host.visible,
-                )
-            }
-        }
-    }
-
-    private fun setTaskEditHost(host: PanelHost) {
-        composeRule.setContent {
-            NautileTheme {
-                TaskEditSheet(
-                    state = taskEditState(),
-                    onDismissRequest = host::requestClose,
-                    visible = host.visible,
-                )
-            }
-        }
-    }
-
-    private fun setProjectEditHost(host: PanelHost) {
-        composeRule.setContent {
-            NautileTheme {
-                ProjectEditSheet(
-                    state = projectEditState(),
-                    onDismissRequest = host::requestClose,
                     visible = host.visible,
                 )
             }
@@ -437,110 +392,6 @@ class G6R4R3PanelIsolationTest {
         composeRule.onNodeWithText("项目详情").assertDoesNotExist()
     }
 
-    // ---------- 任务编辑 ----------
-
-    @Test
-    fun G6R4R3_task_edit_panel_taps_keep_open_then_scrim_tap_closes() {
-        val host = PanelHost()
-        setTaskEditHost(host)
-
-        tapPanelTitle("编辑任务")
-        assertEquals("点按任务编辑标题不得关闭", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑任务").assertIsDisplayed()
-
-        tapPanelBlank("编辑任务")
-        assertEquals("点按任务编辑空白（拖拽柄区）不得关闭", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑任务").assertIsDisplayed()
-        saveEvidence("task_edit_panel_tap")
-
-        tapScrim()
-        composeRule.waitForIdle()
-        assertEquals("任务编辑点按遮罩应关闭一次", 1, host.closeRequests)
-        composeRule.onNodeWithText("编辑任务").assertDoesNotExist()
-    }
-
-    @Test
-    fun G6R4R3_task_edit_focused_input_pull_40_200_does_not_close() {
-        val host = PanelHost()
-        setTaskEditHost(host)
-
-        focusInputAndPullFromScrim(40f)
-        assertEquals("任务编辑输入框聚焦下拉 40dp 不得关闭", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑任务").assertExists()
-
-        focusInputAndPullFromScrim(200f)
-        assertEquals("任务编辑输入框聚焦下拉 200dp 不得关闭（T-088）", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑任务").assertExists()
-        assertTrue("面板应保持可见", host.visible)
-    }
-
-    @Test
-    fun G6R4R3_task_edit_unfocused_40dp_rebounds_and_200dp_closes() {
-        val host = PanelHost()
-        setTaskEditHost(host)
-
-        pullFromScrim(40f)
-        assertEquals("任务编辑未聚焦下拉 40dp 未超阈值应回弹", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑任务").assertIsDisplayed()
-
-        pullFromScrim(200f)
-        composeRule.waitForIdle()
-        assertEquals("任务编辑未聚焦下拉 200dp 应关闭一次", 1, host.closeRequests)
-        composeRule.onNodeWithText("编辑任务").assertDoesNotExist()
-    }
-
-    // ---------- 项目编辑 ----------
-
-    @Test
-    fun G6R4R3_project_edit_panel_taps_keep_open_then_scrim_tap_closes() {
-        val host = PanelHost()
-        setProjectEditHost(host)
-
-        tapPanelTitle("编辑项目")
-        assertEquals("点按项目编辑标题不得关闭", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑项目").assertIsDisplayed()
-
-        tapPanelBlank("编辑项目")
-        assertEquals("点按项目编辑空白（拖拽柄区）不得关闭", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑项目").assertIsDisplayed()
-        saveEvidence("project_edit_panel_tap")
-
-        tapScrim()
-        composeRule.waitForIdle()
-        assertEquals("项目编辑点按遮罩应关闭一次", 1, host.closeRequests)
-        composeRule.onNodeWithText("编辑项目").assertDoesNotExist()
-    }
-
-    @Test
-    fun G6R4R3_project_edit_focused_input_pull_40_200_does_not_close() {
-        val host = PanelHost()
-        setProjectEditHost(host)
-
-        focusInputAndPullFromScrim(40f)
-        assertEquals("项目编辑输入框聚焦下拉 40dp 不得关闭", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑项目").assertExists()
-
-        focusInputAndPullFromScrim(200f)
-        assertEquals("项目编辑输入框聚焦下拉 200dp 不得关闭（T-088）", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑项目").assertExists()
-        assertTrue("面板应保持可见", host.visible)
-    }
-
-    @Test
-    fun G6R4R3_project_edit_unfocused_40dp_rebounds_and_200dp_closes() {
-        val host = PanelHost()
-        setProjectEditHost(host)
-
-        pullFromScrim(40f)
-        assertEquals("项目编辑未聚焦下拉 40dp 未超阈值应回弹", 0, host.closeRequests)
-        composeRule.onNodeWithText("编辑项目").assertIsDisplayed()
-
-        pullFromScrim(200f)
-        composeRule.waitForIdle()
-        assertEquals("项目编辑未聚焦下拉 200dp 应关闭一次", 1, host.closeRequests)
-        composeRule.onNodeWithText("编辑项目").assertDoesNotExist()
-    }
-
     // ---------- 菜单 / 日期面板：点外部只关子层，返回先关子层 ----------
 
     @Test
@@ -585,26 +436,6 @@ class G6R4R3PanelIsolationTest {
         composeRule.waitForIdle()
         assertEquals("子层关闭后遮罩点按关闭详情一次", 1, host.closeRequests)
         composeRule.onNodeWithText("任务详情").assertDoesNotExist()
-    }
-
-    @Test
-    fun G6R4R3_task_edit_menu_outside_tap_and_back_close_menu_first() {
-        val host = PanelHost()
-        setTaskEditHost(host)
-
-        composeRule.onNodeWithContentDescription("设置优先级，当前：无").performClick()
-        composeRule.onNodeWithText("高").assertIsDisplayed()
-        tapScrim()
-        composeRule.onNodeWithText("高").assertDoesNotExist()
-        composeRule.onNodeWithText("编辑任务").assertIsDisplayed()
-        assertEquals("点菜单外不应关闭任务编辑", 0, host.closeRequests)
-
-        composeRule.onNodeWithContentDescription("设置优先级，当前：无").performClick()
-        composeRule.onNodeWithText("高").assertIsDisplayed()
-        pressBack()
-        composeRule.onNodeWithText("高").assertDoesNotExist()
-        composeRule.onNodeWithText("编辑任务").assertIsDisplayed()
-        assertEquals("返回先关菜单，不关编辑面板", 0, host.closeRequests)
     }
 
     @Test
@@ -653,10 +484,23 @@ class G6R4R3PanelIsolationTest {
         val host = PanelHost()
         setTaskDetailHost(host)
 
-        composeRule.onNodeWithText("关闭").performClick()
+        // v2.16（4.27 / R5-8）：任务详情关闭按钮改为顶部关闭图标按钮 detail_close_button。
+        composeRule.onNodeWithTag("detail_close_button").performClick()
         composeRule.waitForIdle()
-        assertEquals("任务详情“关闭”按钮应关闭一次", 1, host.closeRequests)
+        assertEquals("任务详情关闭图标按钮应关闭一次", 1, host.closeRequests)
         composeRule.onNodeWithText("任务详情").assertDoesNotExist()
+    }
+
+    @Test
+    fun G6R4R3_project_detail_close_button_still_closes() {
+        val host = PanelHost()
+        setProjectDetailHost(host)
+
+        // v2.16（4.27 / R5-9）：项目详情关闭按钮改为顶部关闭图标按钮 project_detail_close_button。
+        composeRule.onNodeWithTag("project_detail_close_button").performClick()
+        composeRule.waitForIdle()
+        assertEquals("项目详情关闭图标按钮应关闭一次", 1, host.closeRequests)
+        composeRule.onNodeWithText("项目详情").assertDoesNotExist()
     }
 
     @Test

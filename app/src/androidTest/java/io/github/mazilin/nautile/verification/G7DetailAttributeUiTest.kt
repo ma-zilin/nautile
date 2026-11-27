@@ -248,10 +248,10 @@ class G7DetailAttributeUiTest {
         clickable.onFirst().performClick()
     }
 
-    // ---- CMP-30/CMP-37：详情工具栏恰五项、无额外入口、不重复 ----
+    // ---- CMP-30/CMP-37（v2.16 / 4.27 同构统一）：详情工具栏恰四项、无“编辑详情”第 5 图标 ----
 
     @Test
-    fun G7_CMP30_detail_toolbar_has_exactly_five_icon_entries() {
+    fun G7_CMP30_detail_toolbar_has_exactly_four_icon_entries() {
         val taskId = seedTask()
         createViewModel()
         setDetailSheet()
@@ -262,17 +262,18 @@ class G7DetailAttributeUiTest {
             "设置优先级，当前：无",
             "设置项目，当前：无项目",
             "移动到 GTD 清单，当前：收件箱",
-            "编辑详情，当前为空",
         )
         descriptions.forEach { description ->
             composeRule.onNodeWithContentDescription(description).assertIsDisplayed()
         }
-        // 每个入口只有一个节点，没有重复入口（CMP-37）。
-        listOf("设置截止日期", "设置优先级", "设置项目", "移动到 GTD 清单", "编辑详情")
+        // 每个入口只有一个节点，没有重复入口（CMP-37），且不再有“编辑详情”第 5 项。
+        listOf("设置截止日期", "设置优先级", "设置项目", "移动到 GTD 清单")
             .forEach { prefix ->
                 composeRule.onAllNodes(hasContentDescription(prefix, substring = true))
                     .assertCountEquals(1)
             }
+        composeRule.onAllNodes(hasContentDescription("编辑详情", substring = true))
+            .assertCountEquals(0)
         listOf("标签", "提醒", "重复", "更多", "语音").forEach { forbidden ->
             composeRule.onAllNodesWithText(forbidden).assertCountEquals(0)
         }
@@ -285,7 +286,7 @@ class G7DetailAttributeUiTest {
         setDetailSheet()
         openDetail(taskId)
 
-        listOf("设置截止日期", "设置优先级", "设置项目", "移动到 GTD 清单", "编辑详情")
+        listOf("设置截止日期", "设置优先级", "设置项目", "移动到 GTD 清单")
             .forEach { prefix ->
                 val bounds = composeRule
                     .onNodeWithContentDescription(prefix, substring = true)
@@ -513,26 +514,32 @@ class G7DetailAttributeUiTest {
         composeRule.onNodeWithContentDescription("移动到 GTD 清单：等待中").assertDoesNotExist()
     }
 
-    // ---- CMP-36：详情菜单编辑/清空（清空写 null） ----
+    // ---- CMP-36（v2.16 / 4.27）：固定第二行详情输入框直接编辑与清空写 null ----
 
     @Test
-    fun G7_CMP36_detail_menu_edit_focuses_field_and_clear_writes_null() {
+    fun G7_CMP36_detail_inline_edit_and_clear_writes_null() {
         val taskId = seedTask(detail = "旧详情")
         createViewModel()
         setDetailSheet()
         openDetail(taskId)
 
-        composeRule.onNodeWithContentDescription("编辑详情").performClick()
-        composeRule.onNodeWithText("编辑详情").assertIsDisplayed()
-        composeRule.onNodeWithContentDescription("清空详情").assertIsDisplayed()
-        // 菜单项与工具栏按钮同名：菜单在覆盖层后组合，用最后一个节点点菜单项。
-        composeRule.onAllNodes(hasContentDescription("编辑详情")).onLast().performClick()
-        composeRule.onNodeWithTag("task_detail_detail").assertIsFocused()
+        // 不再存在“编辑详情”工具栏菜单，详情在固定第二行 task_detail_detail 直接编辑即保存。
+        composeRule.onAllNodes(hasContentDescription("编辑详情", substring = true))
+            .assertCountEquals(0)
+        composeRule.onNodeWithTag("task_detail_detail")
+            .assertIsDisplayed()
+            .performClick()
+            .assertIsFocused()
+        composeRule.onNodeWithTag("task_detail_detail").performTextReplacement("新详情")
+        // 切换焦点至标题框触发失焦即保存。
+        composeRule.onNodeWithTag("task_detail_title").performClick()
+        waitTask(taskId) { it.detail == "新详情" }
 
-        composeRule.onNodeWithContentDescription("编辑详情").performClick()
-        composeRule.onNodeWithText("清空详情").performClick()
+        // 清空详情并失焦保存：空串归并为 null。
+        composeRule.onNodeWithTag("task_detail_detail").performClick()
+        composeRule.onNodeWithTag("task_detail_detail").performTextReplacement("")
+        composeRule.onNodeWithTag("task_detail_title").performClick()
         waitTask(taskId) { it.detail == null }
-        composeRule.onNodeWithContentDescription("编辑详情，当前为空").assertIsDisplayed()
     }
 
     // ---- CMP-37/AC-D-08：无效标题阻止离开并提示 ----
@@ -545,7 +552,7 @@ class G7DetailAttributeUiTest {
         openDetail(taskId)
 
         composeRule.onAllNodes(hasSetTextAction()).onFirst().performTextReplacement("   ")
-        composeRule.onNodeWithText("关闭").performClick()
+        composeRule.onNodeWithTag("detail_close_button").performClick()
 
         composeRule.onNodeWithText("标题不能为空").assertIsDisplayed()
         composeRule.onNodeWithText("请先修正无效标题").assertIsDisplayed()

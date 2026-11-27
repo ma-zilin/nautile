@@ -441,15 +441,19 @@ class AcSheetPullG4Test {
         }
     }
 
-    /** 100dp 低于 60% 面板高度的 25%（约 120dp），应回弹；旧 64dp 实现会关闭。 */
+    /**
+     * v2.16（4.27 / R5-8）：TaskDetailSheet 废除固定 60% 高度，改为与 NewTaskSheet 完全同构的
+     * 自适应高度下半屏（25% 高度低于 96dp，故生效阈值为 96dp）。
+     * 70dp 位于旧 64dp 与现行 96dp 之间，应回弹不请求关闭（与 NewTaskSheet 同口径）。
+     */
     @Test
-    fun G4_MOT08_task_detail_100dp_pull_rebounds_and_stays() {
+    fun G4_MOT08_task_detail_70dp_between_old_and_new_threshold_rebounds() {
         val host = setTaskDetailHost(taskState())
 
-        pullDown(100f, startYFraction = 0.2f)
+        pullDown(70f, startYFraction = 0.2f)
 
         composeRule.runOnIdle {
-            assertEquals("100dp 未超面板高度 25% 阈值应回弹、不请求关闭", 0, host.closeRequests)
+            assertEquals("70dp 未超 max(25% 高度, 96dp) 阈值应回弹、不请求关闭", 0, host.closeRequests)
             assertTrue(host.visible)
         }
         composeRule.onNodeWithText("任务详情").assertIsDisplayed()

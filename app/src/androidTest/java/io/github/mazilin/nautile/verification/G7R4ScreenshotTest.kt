@@ -35,8 +35,8 @@ import io.github.mazilin.nautile.ui.screen.settings.SettingsScreen
 import io.github.mazilin.nautile.ui.screen.todo.GtdSelector
 import io.github.mazilin.nautile.ui.screen.todo.NewTaskSheet
 import io.github.mazilin.nautile.ui.screen.todo.NewTaskUiState
-import io.github.mazilin.nautile.ui.screen.todo.TaskEditSheet
-import io.github.mazilin.nautile.ui.screen.todo.TaskEditUiState
+import io.github.mazilin.nautile.ui.screen.todo.TaskDetailSheet
+import io.github.mazilin.nautile.ui.screen.todo.TaskDetailUiState
 import io.github.mazilin.nautile.ui.screen.todo.TodoScreen
 import io.github.mazilin.nautile.ui.screen.todo.TodoUiState
 import io.github.mazilin.nautile.ui.theme.NautileTheme
@@ -346,22 +346,37 @@ class G7R4ScreenshotTest {
         capture("view_menu_light")
     }
 
-    private fun setEditSheet(dark: Boolean) {
+    /** v2.16（4.27 / R5-8）：原独立 TaskEditSheet 已废除，同步为同构 TaskDetailSheet 浅/深截图。 */
+    private fun setTaskDetailSheet(dark: Boolean) {
         composeRule.setContent {
             NautileTheme(darkTheme = dark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    TaskEditSheet(
-                        state = TaskEditUiState(
-                            taskId = TaskId(1L),
-                            title = "概率论刷题",
-                            detail = "第三章习题 1-5",
-                            priority = Priority.HIGH,
-                            dueDate = LocalDate.now(),
-                            dueTime = LocalTime.of(9, 30),
-                            projectId = ProjectId(7L),
+                    TaskDetailSheet(
+                        state = TaskDetailUiState(
+                            task = Task(
+                                id = TaskId(1L),
+                                title = "概率论刷题",
+                                detail = "第三章习题 1-5",
+                                priority = Priority.HIGH,
+                                dueDate = LocalDate.now(),
+                                dueTime = LocalTime.of(9, 30),
+                                projectId = ProjectId(7L),
+                                position = GtdPosition.NEXT_ACTION,
+                                createdAt = now,
+                                updatedAt = now,
+                            ),
+                            titleDraft = null,
+                            titleInvalid = false,
+                            saving = false,
+                            error = null,
+                            leaveBlocked = false,
+                            canReopen = false,
                             projectName = "课程项目",
-                            position = GtdPosition.NEXT_ACTION,
                         ),
+                        onTitleChanged = {},
+                        onCommitTitle = {},
+                        onReopen = {},
+                        onCloseRequested = {},
                         projects = listOf(project),
                     )
                 }
@@ -370,17 +385,17 @@ class G7R4ScreenshotTest {
     }
 
     @Test
-    fun g7r4_edit_sheet_light() {
-        setEditSheet(dark = false)
+    fun g7r4_task_detail_light() {
+        setTaskDetailSheet(dark = false)
         composeRule.onNodeWithText("概率论刷题").assertExists()
-        capture("edit_sheet_light")
+        capture("task_detail_light")
     }
 
     @Test
-    fun g7r4_edit_sheet_dark() {
-        setEditSheet(dark = true)
+    fun g7r4_task_detail_dark() {
+        setTaskDetailSheet(dark = true)
         composeRule.onNodeWithText("概率论刷题").assertExists()
-        capture("edit_sheet_dark")
+        capture("task_detail_dark")
     }
 
     /** v2.16（4.26 / R5-7）：按住任务行分步向右拖 80dp，行内容右移、露出左侧“完成”色条与图标（不松手，不触发完成）。 */

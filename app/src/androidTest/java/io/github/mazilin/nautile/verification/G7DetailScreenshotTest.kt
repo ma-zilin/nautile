@@ -125,10 +125,9 @@ class G7DetailScreenshotTest {
     }
 
     @Test
-    fun G7_screenshot_detail_menu() {
+    fun G7_screenshot_detail_inline_field() {
         setSheet(state(task(detail = "先看条件概率，再做习题 3-5")))
-        composeRule.onNodeWithContentDescription("编辑详情").performClick()
-        capture("detail_menu")
+        capture("detail_inline_field")
     }
 
     @Test

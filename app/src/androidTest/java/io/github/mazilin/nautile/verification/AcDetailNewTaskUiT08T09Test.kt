@@ -1,11 +1,13 @@
 package io.github.mazilin.nautile.verification
 
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
@@ -212,7 +214,13 @@ class AcDetailNewTaskUiT08T09Test {
 
         composeRule.onNodeWithText("子任务一").assertIsDisplayed()
         composeRule.onNodeWithText("子任务二").assertIsDisplayed()
-        composeRule.onNodeWithText("收起子任务").performClick()
+        // v2.16（4.27 / R5-9）：子任务折叠改为纯 chevron 图标按钮，无可见文字，带 contentDescription。
+        composeRule.onAllNodesWithText("收起子任务").assertCountEquals(0)
+        composeRule.onAllNodesWithText("展开子任务").assertCountEquals(0)
+        composeRule.onNodeWithTag("project_children_toggle")
+            .assertIsDisplayed()
+            .assertContentDescriptionEquals("收起子任务")
+            .performClick()
 
         composeRule.runOnIdle { assertEquals(1, toggles) }
     }
