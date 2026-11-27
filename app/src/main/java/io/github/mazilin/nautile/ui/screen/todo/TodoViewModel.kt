@@ -162,12 +162,6 @@ class TodoViewModel(
     private val taskTitleInvalid = MutableStateFlow(false)
     private val taskDetailExtras = MutableStateFlow(DetailExtras())
 
-    /** 任务/项目编辑面板状态（R4 G5、CMP-37.1）：编辑未保存前只存在于内存。 */
-    private val taskEditStateFlow = MutableStateFlow<TaskEditUiState?>(null)
-    val taskEdit: StateFlow<TaskEditUiState?> = taskEditStateFlow.asStateFlow()
-    private val projectEditStateFlow = MutableStateFlow<ProjectEditUiState?>(null)
-    val projectEdit: StateFlow<ProjectEditUiState?> = projectEditStateFlow.asStateFlow()
-
     private val projectDetailId = MutableStateFlow<ProjectId?>(null)
     private val projectNameDraft = MutableStateFlow<String?>(null)
     private val projectNameInvalid = MutableStateFlow(false)
@@ -641,7 +635,6 @@ class TodoViewModel(
         taskDetailDraft.value = null
         taskTitleInvalid.value = false
         taskDetailExtras.value = DetailExtras()
-        taskEditStateFlow.value = null
         taskDetailId.value = taskId
     }
 
@@ -649,7 +642,6 @@ class TodoViewModel(
         projectNameDraft.value = null
         projectNameInvalid.value = false
         projectDetailExtras.value = DetailExtras()
-        projectEditStateFlow.value = null
         projectDetailId.value = projectId
     }
 
@@ -659,12 +651,10 @@ class TodoViewModel(
         taskDetailDraft.value = null
         taskTitleInvalid.value = false
         taskDetailExtras.value = DetailExtras()
-        taskEditStateFlow.value = null
         projectDetailId.value = null
         projectNameDraft.value = null
         projectNameInvalid.value = false
         projectDetailExtras.value = DetailExtras()
-        projectEditStateFlow.value = null
     }
 
     fun onTaskTitleChanged(text: String) {
@@ -867,282 +857,6 @@ class TodoViewModel(
         }
     }
 
-    // ---- 编辑面板（R4 G5、CMP-37.1、AC-D-07）：预填、一次保存、无效阻止 ----
-
-    /** 详情头部“编辑”：从当前任务（含未提交草稿）预填，打开与创建同构的编辑面板。 */
-    fun openTaskEdit() {
-        val taskId = taskDetailId.value ?: return
-        val task = allTasks.value.firstOrNull { it.id == taskId } ?: return
-        taskEditStateFlow.value = TaskEditUiState(
-            taskId = task.id,
-            title = taskTitleDraft.value ?: task.title,
-            detail = taskDetailDraft.value ?: task.detail.orEmpty(),
-            priority = task.priority,
-            dueDate = task.dueDate,
-            dueTime = task.dueTime,
-            projectId = task.projectId,
-            projectName = task.projectId?.let { id ->
-                allProjects.value.firstOrNull { it.id == id }?.name
-            },
-            position = task.position,
-            closed = task.closedOutcome != null,
-        )
-    }
-
-    /** 关闭编辑面板：保存中或标题无效时阻止并提示；有效时丢弃未保存输入。 */
-    fun requestTaskEditDismiss(): Boolean {
-        val current = taskEditStateFlow.value ?: return true
-        if (current.saving) return false
-        if (TaskRules.validateTitle(current.title) != null) {
-            taskEditStateFlow.update {
-                it?.copy(titleInvalid = true, error = "标题不能为空")
-            }
-            return false
-        }
-        taskEditStateFlow.value = null
-        return true
-    }
-
-    fun onTaskEditTitleChanged(text: String) {
-        taskEditStateFlow.update {
-            it?.copy(
-                title = text,
-                titleInvalid = TaskRules.validateTitle(text) != null,
-                error = null,
-            )
-        }
-    }
-
-    fun onTaskEditDetailChanged(text: String) {
-        taskEditStateFlow.update { it?.copy(detail = text, error = null) }
-    }
-
-    fun onTaskEditPriorityChanged(priority: Priority) {
-        taskEditStateFlow.update { it?.copy(priority = priority) }
-    }
-
-    /** 日期清除时一并清空时刻（CMP-32）。 */
-    fun onTaskEditDueDateChanged(date: LocalDate?) {
-        taskEditStateFlow.update {
-            it?.copy(dueDate = date, dueTime = if (date == null) null else it.dueTime)
-        }
-    }
-
-    /** 时刻必须依附日期；无日期时忽略写入（CMP-32）。 */
-    fun onTaskEditDueTimeChanged(time: LocalTime?) {
-        taskEditStateFlow.update {
-            if (it == null || it.dueDate == null) it else it.copy(dueTime = time)
-        }
-    }
-
-    fun onTaskEditProjectChanged(projectId: ProjectId?) {
-        taskEditStateFlow.update {
-            it?.copy(
-                projectId = projectId,
-                projectName = projectId?.let { id ->
-                    allProjects.value.firstOrNull { project -> project.id == id }?.name
-                },
-                projectDraftError = null,
-            )
-        }
-    }
-
-    fun onTaskEditProjectDraftChanged(text: String) {
-        taskEditStateFlow.update { it?.copy(projectDraftName = text, projectDraftError = null) }
-    }
-
-    /** 编辑面板内“新建项目”：成功后回填为当前项目，失败保留名称与错误（CMP-34）。 */
-    fun createProjectForTaskEdit() {
-        val current = taskEditStateFlow.value ?: return
-        if (current.creatingProject) return
-        if (ProjectRules.validateName(current.projectDraftName) != null) {
-            taskEditStateFlow.update { it?.copy(projectDraftError = "项目名称不能为空") }
-            return
-        }
-        viewModelScope.launch {
-            taskEditStateFlow.update {
-                it?.copy(creatingProject = true, projectDraftError = null)
-            }
-            when (val created = projectCommands.create(current.projectDraftName)) {
-                is ProjectCommandResult.Success -> taskEditStateFlow.update {
-                    it?.copy(
-                        projectId = created.project.id,
-                        projectName = created.project.name,
-                        projectDraftName = "",
-                        projectDraftError = null,
-                        creatingProject = false,
-                    )
-                }
-
-                is ProjectCommandResult.Invalid -> taskEditStateFlow.update {
-                    it?.copy(creatingProject = false, projectDraftError = "项目名称不能为空")
-                }
-
-                else -> taskEditStateFlow.update {
-                    it?.copy(creatingProject = false, projectDraftError = "创建失败，请重试")
-                }
-            }
-        }
-    }
-
-    /** GTD 清单选择：ENDED 不可选（moveToGtd 校验，CMP-35）。 */
-    fun onTaskEditPositionChanged(position: GtdPosition) {
-        if (position == GtdPosition.ENDED) return
-        taskEditStateFlow.update { it?.copy(position = position, error = null) }
-    }
-
-    /**
-     * 一次保存编辑面板全部字段；只写与当前任务不同的部分，失败保留输入并显示错误。
-     * 成功后才关闭面板，回写由任务流回流到详情与列表。
-     */
-    fun saveTaskEdit() {
-        val current = taskEditStateFlow.value ?: return
-        if (current.saving) return
-        if (TaskRules.validateTitle(current.title) != null) {
-            taskEditStateFlow.update {
-                it?.copy(titleInvalid = true, error = "标题不能为空")
-            }
-            return
-        }
-        val command = PendingTaskCommand.SaveTaskEdit(
-            taskId = current.taskId,
-            title = current.title,
-            detail = current.detail,
-            priority = current.priority,
-            dueDate = current.dueDate,
-            dueTime = current.dueTime,
-            projectId = current.projectId,
-            position = current.position,
-        )
-        viewModelScope.launch {
-            taskEditStateFlow.update { it?.copy(saving = true, error = null) }
-            finishTaskEditSave(command, applyTaskEdit(command), isRetry = false)
-        }
-    }
-
-    /** 编辑保存结果：成功关闭并清掉详情草稿；失败保留输入；重开确认只重试一次。 */
-    private fun finishTaskEditSave(
-        command: PendingTaskCommand.SaveTaskEdit,
-        result: TaskCommandResult,
-        isRetry: Boolean,
-    ) {
-        when (result) {
-            is TaskCommandResult.Success -> {
-                taskEditStateFlow.value = null
-                taskTitleDraft.value = null
-                taskDetailDraft.value = null
-                taskTitleInvalid.value = false
-                taskDetailExtras.update { it.copy(saving = false, error = null) }
-            }
-
-            is TaskCommandResult.Invalid -> taskEditStateFlow.update {
-                it?.copy(
-                    saving = false,
-                    titleInvalid = result.error == TaskCommandError.BLANK_TITLE,
-                    error = taskErrorText(result.error),
-                )
-            }
-
-            is TaskCommandResult.NotFound -> taskEditStateFlow.update {
-                it?.copy(saving = false, error = "任务不存在")
-            }
-
-            is TaskCommandResult.NeedsProjectReopen -> {
-                if (isRetry) {
-                    taskEditStateFlow.update {
-                        it?.copy(saving = false, error = "项目状态已变化，请重试")
-                    }
-                    return
-                }
-                val project = allProjects.value.firstOrNull { it.id == result.projectId }
-                taskEditStateFlow.update { it?.copy(saving = false) }
-                if (project == null) {
-                    taskEditStateFlow.update {
-                        it?.copy(error = "项目不存在，未执行任务操作")
-                    }
-                } else {
-                    projectReopenPrompt.value = ProjectReopenPrompt(
-                        projectId = project.id,
-                        projectName = project.name,
-                        status = project.status,
-                        pending = command,
-                    )
-                }
-            }
-
-            TaskCommandResult.Deleted -> taskEditStateFlow.update {
-                it?.copy(saving = false, error = "任务不存在")
-            }
-        }
-    }
-
-    /**
-     * 按当前任务逐字段写入编辑目标值；未变化字段跳过，全部复用既有命令。
-     * 项目已结项时返回 NeedsProjectReopen，由调用方走重开确认。
-     */
-    private suspend fun applyTaskEdit(
-        command: PendingTaskCommand.SaveTaskEdit,
-    ): TaskCommandResult {
-        var task = allTasks.value.firstOrNull { it.id == command.taskId }
-            ?: return TaskCommandResult.NotFound(command.taskId)
-
-        // 先写会触发重开/结项守卫的项目与清单，守卫失败时不留下其他字段的半成品。
-        if (command.projectId != task.projectId) {
-            val result = taskCommands.updateField(
-                task.id,
-                TaskFieldUpdate.Project(command.projectId),
-            )
-            if (result !is TaskCommandResult.Success) return result
-            task = result.task
-        }
-        if (command.position != task.position) {
-            val result = taskCommands.moveToGtd(task.id, command.position)
-            if (result !is TaskCommandResult.Success) return result
-            task = result.task
-        }
-
-        if (command.title != task.title) {
-            val result = taskCommands.updateField(task.id, TaskFieldUpdate.Title(command.title))
-            if (result !is TaskCommandResult.Success) return result
-            task = result.task
-        }
-        val desiredDetail = command.detail.takeIf { it.isNotBlank() }
-        if (desiredDetail != task.detail) {
-            val result = taskCommands.updateField(task.id, TaskFieldUpdate.Detail(command.detail))
-            if (result !is TaskCommandResult.Success) return result
-            task = result.task
-        }
-        if (command.priority != task.priority) {
-            val result = taskCommands.updateField(
-                task.id,
-                TaskFieldUpdate.Priority(command.priority),
-            )
-            if (result !is TaskCommandResult.Success) return result
-            task = result.task
-        }
-        // 先清时刻再清日期，避免出现“无日期有时刻”的非法中间状态（CMP-32）。
-        if (command.dueDate == null && task.dueTime != null) {
-            val result = taskCommands.updateField(task.id, TaskFieldUpdate.DueTime(null))
-            if (result !is TaskCommandResult.Success) return result
-            task = result.task
-        }
-        if (command.dueDate != task.dueDate) {
-            val result = taskCommands.updateField(
-                task.id,
-                TaskFieldUpdate.DueDate(command.dueDate),
-            )
-            if (result !is TaskCommandResult.Success) return result
-            task = result.task
-        }
-        val desiredTime = if (command.dueDate == null) null else command.dueTime
-        if (command.dueDate != null && desiredTime != task.dueTime) {
-            val result = taskCommands.updateField(task.id, TaskFieldUpdate.DueTime(desiredTime))
-            if (result !is TaskCommandResult.Success) return result
-            task = result.task
-        }
-        return TaskCommandResult.Success(task)
-    }
-
     fun onProjectNameChanged(text: String) {
         projectNameDraft.value = text
         projectNameInvalid.value = ProjectRules.validateName(text) != null
@@ -1178,81 +892,21 @@ class TodoViewModel(
         }
     }
 
-    // ---- 项目编辑面板（R4 G5、CMP-37.1）：仅名称，空名阻止关闭 ----
-
-    /** 项目详情头部“编辑”：用当前名称（含未提交草稿）预填。 */
-    fun openProjectEdit() {
-        val projectId = projectDetailId.value ?: return
-        val project = allProjects.value.firstOrNull { it.id == projectId } ?: return
-        projectEditStateFlow.value = ProjectEditUiState(
-            projectId = project.id,
-            name = projectNameDraft.value ?: project.name,
-        )
-    }
-
-    /** 关闭项目编辑面板：保存中或名称为空时阻止并提示；有效时丢弃未保存输入。 */
-    fun requestProjectEditDismiss(): Boolean {
-        val current = projectEditStateFlow.value ?: return true
-        if (current.saving) return false
-        if (ProjectRules.validateName(current.name) != null) {
-            projectEditStateFlow.update {
-                it?.copy(nameInvalid = true, error = "项目名称不能为空")
-            }
-            return false
-        }
-        projectEditStateFlow.value = null
-        return true
-    }
-
-    fun onProjectEditNameChanged(text: String) {
-        projectEditStateFlow.update {
-            it?.copy(
-                name = text,
-                nameInvalid = ProjectRules.validateName(text) != null,
-                error = null,
-            )
-        }
-    }
-
-    /** 一次保存项目名称；未变化直接关闭，失败保留输入并显示错误。 */
-    fun saveProjectEdit() {
-        val current = projectEditStateFlow.value ?: return
-        if (current.saving) return
-        if (ProjectRules.validateName(current.name) != null) {
-            projectEditStateFlow.update {
-                it?.copy(nameInvalid = true, error = "项目名称不能为空")
-            }
-            return
-        }
-        val project = allProjects.value.firstOrNull { it.id == current.projectId }
-        if (project == null) {
-            projectEditStateFlow.update { it?.copy(error = "项目不存在") }
-            return
-        }
-        if (project.name == current.name) {
-            projectEditStateFlow.value = null
-            return
-        }
+    /** 已结项项目在项目详情内直接重新打开：只恢复项目为活跃，不修改任何子任务（AC-T-28）。 */
+    fun reopenProject(projectId: ProjectId) {
         viewModelScope.launch {
-            projectEditStateFlow.update { it?.copy(saving = true, error = null) }
-            when (val result = projectCommands.rename(project.id, current.name)) {
+            projectDetailExtras.update { it.copy(saving = true, error = null) }
+            when (projectCommands.reopen(projectId, confirmed = true)) {
                 is ProjectCommandResult.Success -> {
-                    projectEditStateFlow.value = null
-                    projectNameDraft.value = null
-                    projectNameInvalid.value = false
-                    projectDetailExtras.update { it.copy(error = null) }
+                    projectDetailExtras.update { it.copy(saving = false, error = null) }
                 }
 
-                is ProjectCommandResult.Invalid -> projectEditStateFlow.update {
-                    it?.copy(saving = false, nameInvalid = true, error = "项目名称不能为空")
+                is ProjectCommandResult.NotFound -> {
+                    projectDetailExtras.update { it.copy(saving = false, error = "项目不存在") }
                 }
 
-                is ProjectCommandResult.NotFound -> projectEditStateFlow.update {
-                    it?.copy(saving = false, error = "项目不存在")
-                }
-
-                else -> projectEditStateFlow.update {
-                    it?.copy(saving = false, error = "保存失败，请重试")
+                else -> {
+                    projectDetailExtras.update { it.copy(saving = false, error = "重新打开失败，请重试") }
                 }
             }
         }
@@ -1263,15 +917,6 @@ class TodoViewModel(
      * 避免“保存失败却已关闭”。返回 true 才允许关闭覆盖层。
      */
     fun requestDetailLeave(): Boolean {
-        // 编辑面板打开时返回只关编辑面板，详情保持（返回顺序：菜单→编辑面板→详情）。
-        if (taskEditStateFlow.value != null) {
-            requestTaskEditDismiss()
-            return false
-        }
-        if (projectEditStateFlow.value != null) {
-            requestProjectEditDismiss()
-            return false
-        }
         val taskId = taskDetailId.value
         val taskDraft = taskTitleDraft.value
         if (taskId != null && taskDraft != null) {
@@ -1572,18 +1217,7 @@ class TodoViewModel(
         viewModelScope.launch {
             when (val result = projectCommands.reopen(prompt.projectId, confirmed = true)) {
                 is ProjectCommandResult.Success -> {
-                    val pending = prompt.pending
-                    if (pending is PendingTaskCommand.SaveTaskEdit) {
-                        // 编辑面板保存的重开重试：只重试一次，失败保留输入（CMP-37.1）。
-                        taskEditStateFlow.update { it?.copy(saving = true, error = null) }
-                        finishTaskEditSave(
-                            command = pending,
-                            result = applyTaskEdit(pending),
-                            isRetry = true,
-                        )
-                    } else {
-                        runTaskCommand(pending, isRetry = true)
-                    }
+                    runTaskCommand(prompt.pending, isRetry = true)
                 }
 
                 is ProjectCommandResult.NotFound -> setDetailError("项目不存在，未执行任务操作")
@@ -1637,7 +1271,6 @@ class TodoViewModel(
         is PendingTaskCommand.Reopen -> taskCommands.reopen(command.taskId)
         is PendingTaskCommand.UpdateField ->
             taskCommands.updateField(command.taskId, command.update)
-        is PendingTaskCommand.SaveTaskEdit -> applyTaskEdit(command)
     }
 
     private fun setDetailSaving(saving: Boolean) {

@@ -3,6 +3,7 @@ package io.github.mazilin.nautile.ui.screen.todo
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,8 +100,8 @@ import java.time.ZoneOffset
  * 只承载视图与语义：选中值由调用方状态提供，选择/清除立即回调；本文件不写业务数据。
  */
 
-/** 属性入口顺序固定：日期、优先级、项目、清单、详情（CMP-30）。 */
-internal enum class TaskAttribute { DATE, PRIORITY, PROJECT, CHECKLIST, DETAIL }
+/** 属性入口固定为四项：日期、优先级、项目、清单（R5-8、03 规格 §2.4）。 */
+internal enum class TaskAttribute { DATE, PRIORITY, PROJECT, CHECKLIST }
 
 /**
  * 底部面板内日期与 24h 时间圆盘分层子视图（R5-3/R5-4、03 规格 §1.5、§2.5）。
@@ -128,10 +129,12 @@ internal fun AttributeToolbarItem(
     onBounds: (Rect) -> Unit,
     iconTint: Color = LocalContentColor.current,
     enabled: Boolean = true,
+    testTag: String? = null,
 ) {
     Box(
         modifier = Modifier
             .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier)
             .clip(MaterialTheme.shapes.small)
             .clickable(enabled = enabled, onClick = onActivate)
             .onGloballyPositioned { onBounds(it.boundsInRoot()) }
@@ -148,6 +151,7 @@ internal fun AttributeToolbarItem(
                     disabled()
                 }
             }
+            .alpha(if (enabled) 1f else NautileStates.DISABLED_CONTENT_ALPHA)
             .padding(horizontal = NautileSpacing.space1, vertical = NautileSpacing.space1),
         contentAlignment = Alignment.Center,
     ) {
@@ -167,6 +171,152 @@ internal fun AttributeToolbarItem(
                     modifier = Modifier.widthIn(max = 96.dp),
                 )
             }
+        }
+    }
+}
+
+/**
+ * 统一的四属性工具栏（R5-8、03 规格 §2.4）：新建与待办详情完全同构共用。
+ *
+ * 固定顺序四项：日期、优先级、项目、清单；始终“图标 + 文字”，未设置显示属性名、设置后显示摘要；
+ * 清单始终显示当前清单名，已结项任务在详情中禁用清单入口并说明原因。
+ */
+@Composable
+internal fun TaskAttributeToolbar(
+    dueDate: LocalDate?,
+    dueTime: LocalTime?,
+    priority: Priority,
+    projectName: String?,
+    position: GtdPosition,
+    onOpenDatePanel: () -> Unit,
+    onToggleMenu: (TaskAttribute) -> Unit,
+    onAnchorBounds: (TaskAttribute, Rect) -> Unit,
+    checklistEnabled: Boolean = true,
+    checklistDisabledDescription: String = "已结项，请在详情重新打开",
+) {
+    val dueSummary = dueSummaryText(dueDate, dueTime)
+    val prioritySummary = priority.chineseLabel()
+    val dueLabel = dueSummary ?: "日期"
+    val priorityLabel = if (priority == Priority.NONE) "优先级" else prioritySummary
+    val projectLabel = projectName ?: "项目"
+    val priorityTint = when (priority) {
+        Priority.HIGH -> MaterialTheme.colorScheme.error
+        Priority.MEDIUM -> MaterialTheme.colorScheme.primary
+        Priority.LOW -> MaterialTheme.colorScheme.secondary
+        Priority.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val checklistDescription = if (checklistEnabled) {
+        "移动到 GTD 清单，当前：${position.title}"
+    } else {
+        checklistDisabledDescription
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = NautileSpacing.space2)
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space2),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AttributeToolbarItem(
+            iconRes = R.drawable.ic_calendar_today,
+            summary = dueLabel,
+            description = "设置截止日期，当前：${dueSummary ?: "未设置"}",
+            onActivate = onOpenDatePanel,
+            onBounds = { onAnchorBounds(TaskAttribute.DATE, it) },
+            testTag = "attr_date",
+        )
+        AttributeToolbarItem(
+            iconRes = R.drawable.ic_flag,
+            summary = priorityLabel,
+            description = "设置优先级，当前：$prioritySummary",
+            iconTint = priorityTint,
+            onActivate = { onToggleMenu(TaskAttribute.PRIORITY) },
+            onBounds = { onAnchorBounds(TaskAttribute.PRIORITY, it) },
+            testTag = "attr_priority",
+        )
+        AttributeToolbarItem(
+            iconRes = R.drawable.ic_folder,
+            summary = projectLabel,
+            description = "设置项目，当前：${projectName ?: "无项目"}",
+            onActivate = { onToggleMenu(TaskAttribute.PROJECT) },
+            onBounds = { onAnchorBounds(TaskAttribute.PROJECT, it) },
+            testTag = "attr_project",
+        )
+        AttributeToolbarItem(
+            iconRes = R.drawable.ic_checklist,
+            summary = position.title,
+            description = checklistDescription,
+            enabled = checklistEnabled,
+            onActivate = { onToggleMenu(TaskAttribute.CHECKLIST) },
+            onBounds = { onAnchorBounds(TaskAttribute.CHECKLIST, it) },
+            testTag = "attr_checklist",
+        )
+    }
+}
+
+/**
+ * 新建与待办详情共用的无遮罩锚定菜单宿主（R5-8、03 规格 §2.4/§2.7）。
+ */
+@Composable
+internal fun TaskAttributeMenuHost(
+    openMenu: TaskAttribute?,
+    anchors: Map<TaskAttribute, Rect>,
+    origin: Offset,
+    rootSize: IntSize,
+    priority: Priority,
+    projectId: ProjectId?,
+    projects: List<Project>,
+    projectDraftName: String,
+    projectDraftError: String?,
+    creatingProject: Boolean,
+    position: GtdPosition,
+    onDismiss: () -> Unit,
+    onPrioritySelected: (Priority) -> Unit,
+    onProjectSelected: (ProjectId?) -> Unit,
+    onProjectDraftChanged: (String) -> Unit,
+    onCreateProject: () -> Unit,
+    onPositionSelected: (GtdPosition) -> Unit,
+) {
+    if (openMenu == null) return
+    AttributeMenuOverlay(
+        anchor = anchors[openMenu],
+        origin = origin,
+        rootSize = rootSize,
+        onDismiss = onDismiss,
+    ) {
+        when (openMenu) {
+            TaskAttribute.PRIORITY -> PriorityMenuContent(
+                selected = priority,
+                onSelect = { level ->
+                    onPrioritySelected(level)
+                    onDismiss()
+                },
+            )
+
+            TaskAttribute.PROJECT -> ProjectMenuContent(
+                selectedProjectId = projectId,
+                projects = projects,
+                draftName = projectDraftName,
+                draftError = projectDraftError,
+                creating = creatingProject,
+                onProjectSelected = { id ->
+                    onProjectSelected(id)
+                    onDismiss()
+                },
+                onDraftChanged = onProjectDraftChanged,
+                onCreateProject = onCreateProject,
+            )
+
+            TaskAttribute.CHECKLIST -> ChecklistMenuContent(
+                selected = position,
+                onSelect = { target ->
+                    onPositionSelected(target)
+                    onDismiss()
+                },
+            )
+
+            TaskAttribute.DATE -> Unit
         }
     }
 }
@@ -430,34 +580,6 @@ internal fun ChecklistMenuContent(
             leading = { MenuLeadingIcon(R.drawable.ic_checklist) },
         )
     }
-}
-
-@Composable
-internal fun DetailMenuContent(
-    detail: String,
-    onEditDetail: () -> Unit,
-    onClearDetail: () -> Unit,
-) {
-    AttributeMenuItem(
-        text = "编辑详情",
-        description = "编辑详情",
-        selected = false,
-        onClick = onEditDetail,
-        leading = {
-            Icon(
-                painter = painterResource(R.drawable.ic_notes),
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-            )
-        },
-    )
-    AttributeMenuItem(
-        text = "清空详情",
-        description = if (detail.isBlank()) "清空详情，当前为空" else "清空详情",
-        selected = false,
-        onClick = onClearDetail,
-        leading = { MenuLeadingIcon(R.drawable.ic_close) },
-    )
 }
 
 /**

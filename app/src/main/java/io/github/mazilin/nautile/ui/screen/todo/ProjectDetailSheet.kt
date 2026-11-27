@@ -1,5 +1,11 @@
 package io.github.mazilin.nautile.ui.screen.todo
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -12,7 +18,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -20,13 +28,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -54,10 +61,16 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.domain.model.TaskId
+import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
 import io.github.mazilin.nautile.ui.designsystem.dragScrimFactor
 import io.github.mazilin.nautile.ui.designsystem.nautileSheetBottomInsets
 import io.github.mazilin.nautile.ui.designsystem.nautileSheetPullDown
@@ -71,14 +84,13 @@ import io.github.mazilin.nautile.ui.theme.NautileStates
 import kotlinx.coroutines.launch
 
 /**
- * 项目半屏详情（S1-T08、T-071/D-02/D-03、AC-D-06、FR-V-08、MOT-08）。
+ * 项目半屏详情（R5-9、AC-D-06、FR-V-08、03 规格 §2.6、ANIM-13）。
  *
- * - 项目名称编辑即保存；子任务只读展示，点按先关项目详情再开任务详情（单主覆盖层）；
- * - 折叠状态由父层内存持有，不持久化；
- * - 拖柄或内容到顶继续下拉都先经父层 canLeave 检查，无效字段阻止并提示；
- * - 内边距与 inset 与 [TaskDetailSheet] 一致：24/8/24 + 导航栏 inset，面板唯一消费 inset；
- * - 下拉阈值 max(25% 高度, 96dp) 或速度 800dp/s，未过阈值用 BoundaryRebound 回弹；
- * 退出动效结束后才回调 [onExitFinished]。
+ * - 废除独立编辑面板与头部编辑图标，右上角使用关闭图标按钮 `project_detail_close_button`；
+ * - 项目名称内联编辑即保存，空名报错并阻止全部关闭路径；
+ * - 子任务收起/展开使用纯图标按钮 `project_children_toggle`（`ic_expand_more`，0°↔180° 旋转，无文字），
+ *   子任务区通过 `AnimatedVisibility` + `NautileMotion.ContainerExpand` 平滑展开/收起；
+ * - 保留已结项项目“重新打开”操作位、完成率/计数展示与子任务项只读列表（点按进入任务详情）。
  */
 @Composable
 fun ProjectDetailSheet(
@@ -88,7 +100,7 @@ fun ProjectDetailSheet(
     onToggleCollapsed: () -> Unit,
     onOpenChild: (TaskId) -> Unit = {},
     onCloseRequested: () -> Unit,
-    onOpenEdit: () -> Unit = {},
+    onReopen: () -> Unit = {},
     visible: Boolean = true,
     onExitFinished: () -> Unit = {},
 ) {
@@ -118,6 +130,7 @@ fun ProjectDetailSheet(
             ): Offset {
                 // T-088：输入框起手/聚焦的手势不累计，避免输入框内拖动误关。
                 if (gestureFromInput.value ||
+                    inputActive() ||
                     source != NestedScrollSource.UserInput ||
                     available.y <= 0f ||
                     scrollState.canScrollBackward
@@ -131,9 +144,9 @@ fun ProjectDetailSheet(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (visible && !gestureFromInput.value && contentPull > 0f) {
+                if (visible && !gestureFromInput.value && !inputActive() && contentPull > 0f) {
                     if (motion.shouldCommit(density, contentPull, available.y)) {
-                        onCloseRequested()
+                        currentOnCloseRequested()
                         motion.settle(scope, 0f, NautileMotion.StandardEffects)
                     } else {
                         motion.settle(scope, 0f, NautileMotion.BoundaryRebound)
@@ -150,6 +163,15 @@ fun ProjectDetailSheet(
     val scrimColor = MaterialTheme.colorScheme.scrim
     val sheetShape = nautileSheetShape()
     val sheetInsets = nautileSheetBottomInsets()
+    // ANIM-13：子任务折叠 chevron 旋转（收起 0° 朝下 ↔ 展开 180° 朝上）。
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (state.collapsed) 0f else 180f,
+        animationSpec = NautileMotion.StandardSpatial,
+        label = "project_children_chevron_rotation",
+    )
+    val statusSummary = state.completionPercent?.let { percent ->
+        "状态：${state.closedLabel} · 已完成 ${state.completedChildCount}/${state.totalChildCount}（$percent%）"
+    } ?: "状态：${state.closedLabel}"
 
     Box(
         modifier = Modifier
@@ -161,7 +183,7 @@ fun ProjectDetailSheet(
                 motion = motion,
                 visible = { currentVisible },
                 scope = scope,
-                onCommitClose = onCloseRequested,
+                onCommitClose = { currentOnCloseRequested() },
                 pass = PointerEventPass.Initial,
                 canStart = {
                     !scrollState.canScrollBackward && !scrollState.canScrollForward
@@ -175,9 +197,7 @@ fun ProjectDetailSheet(
                 },
             ),
     ) {
-        // 遮罩层：绘制与“点按遮罩关闭”都只在遮罩层完成（MOT-08.3、COL-10、T-088）。
-        // 遮罩位于面板下方，面板区域的点按由上层 Surface 自行消费，不会被误判为点按遮罩；
-        // 无效名称仍由父层 canDismiss 阻止。
+        // 遮罩层：绘制与“点按遮罩关闭”均在遮罩层完成；无效名称由父层 canDismiss 阻止。
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -185,7 +205,6 @@ fun ProjectDetailSheet(
                 .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA))
                 .pointerInput(Unit) {
                     awaitEachGesture {
-                        // 遮罩上的按下；已在别处消费的按下（按钮、输入框等）不参与点按判定。
                         val down = awaitFirstDown(requireUnconsumed = true)
                         var dragged = false
                         while (true) {
@@ -216,7 +235,6 @@ fun ProjectDetailSheet(
                 .fillMaxHeight(0.6f)
                 .onSizeChanged { motion.sheetHeightPx = it.height.toFloat() }
                 .graphicsLayer {
-                    // 面板从自身高度滑入/滑出；60% 高度与 28dp 圆角形态保持（MOT-08、MOT-12）。
                     translationY = (1f - motion.reveal.value) * size.height + motion.dragOffsetPx
                 },
             shape = sheetShape,
@@ -233,7 +251,7 @@ fun ProjectDetailSheet(
                             motion = motion,
                             visible = { currentVisible },
                             scope = scope,
-                            onCommitClose = onCloseRequested,
+                            onCommitClose = { currentOnCloseRequested() },
                             // 输入框聚焦时拖拽柄也不参与下拉（T-088）。
                             isExcluded = { inputActive() },
                         ),
@@ -270,14 +288,14 @@ fun ProjectDetailSheet(
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.weight(1f),
                         )
-                        // 头部“编辑”入口（CMP-37.1）：打开只含名称的编辑面板。
-                        IconButton(onClick = onOpenEdit) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_edit),
-                                contentDescription = "编辑项目",
-                            )
-                        }
+                        NautileIconButton(
+                            iconRes = R.drawable.ic_close,
+                            contentDescription = "关闭",
+                            onClick = { currentOnCloseRequested() },
+                            testTag = "project_detail_close_button",
+                        )
                     }
+                    Spacer(modifier = Modifier.height(NautileSpacing.space2))
                     OutlinedTextField(
                         value = state.nameValue,
                         onValueChange = onNameChanged,
@@ -285,7 +303,14 @@ fun ProjectDetailSheet(
                         singleLine = true,
                         isError = state.nameInvalid,
                         supportingText = if (state.nameInvalid) {
-                            { Text("项目名称不能为空") }
+                            {
+                                Text(
+                                    text = "项目名称不能为空",
+                                    modifier = Modifier.semantics {
+                                        liveRegion = LiveRegionMode.Polite
+                                    },
+                                )
+                            }
                         } else {
                             null
                         },
@@ -297,12 +322,41 @@ fun ProjectDetailSheet(
                             .onFocusChanged { focus ->
                                 nameFocused.value = focus.isFocused
                                 if (!focus.isFocused && state.nameDraft != null) onCommitName()
-                            },
+                            }
+                            .testTag("project_detail_name"),
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("状态：${state.closedLabel}", modifier = Modifier.weight(1f))
-                        TextButton(onClick = onToggleCollapsed) {
-                            Text(if (state.collapsed) "展开子任务" else "收起子任务")
+                    Spacer(modifier = Modifier.height(NautileSpacing.space2))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "子任务（${state.totalChildCount}）",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = statusSummary,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        // R5-9：纯图标折叠按钮（无文字），随展开态旋转 0°↔180°。
+                        NautileIconButton(
+                            iconRes = R.drawable.ic_expand_more,
+                            contentDescription = if (state.collapsed) "展开子任务" else "收起子任务",
+                            onClick = onToggleCollapsed,
+                            modifier = Modifier.graphicsLayer { rotationZ = chevronRotation },
+                            testTag = "project_children_toggle",
+                        )
+                    }
+                    if (state.canReopen) {
+                        Spacer(modifier = Modifier.height(NautileSpacing.space2))
+                        Button(onClick = onReopen) {
+                            Text("重新打开")
                         }
                     }
                     if (state.saving) {
@@ -313,35 +367,67 @@ fun ProjectDetailSheet(
                             text = message,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                         )
                     }
-                    if (!state.collapsed) {
-                        if (state.children.isEmpty()) {
-                            Text("暂无子任务", style = MaterialTheme.typography.bodySmall)
-                        } else {
-                            state.children.forEach { child ->
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onOpenChild(child.id) }
-                                        .testTag("project_child_${child.id.value}")
-                                        .padding(vertical = NautileSpacing.space2),
-                                ) {
-                                    Text(child.title, style = MaterialTheme.typography.bodyMedium)
-                                    Text(
-                                        text = child.detailStatusLabel(),
-                                        style = MaterialTheme.typography.labelSmall,
-                                    )
+                    AnimatedVisibility(
+                        visible = !state.collapsed,
+                        enter = expandVertically(animationSpec = NautileMotion.ContainerExpand) +
+                            fadeIn(animationSpec = NautileMotion.StandardEffects),
+                        exit = shrinkVertically(animationSpec = NautileMotion.ContainerExpand) +
+                            fadeOut(animationSpec = NautileMotion.StandardEffects),
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            if (state.children.isEmpty()) {
+                                Text(
+                                    text = "暂无子任务",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(vertical = NautileSpacing.space2),
+                                )
+                            } else {
+                                state.children.forEach { child ->
+                                    val closed = child.closedOutcome != null
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(min = 48.dp)
+                                            .clickable { onOpenChild(child.id) }
+                                            .testTag("project_child_${child.id.value}")
+                                            .padding(vertical = NautileSpacing.space2),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = child.title,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = if (closed) {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurface
+                                                },
+                                                textDecoration = if (closed) {
+                                                    TextDecoration.LineThrough
+                                                } else {
+                                                    TextDecoration.None
+                                                },
+                                            )
+                                            Text(
+                                                text = child.detailStatusLabel(),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        Icon(
+                                            painter = painterResource(R.drawable.ic_chevron_right),
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                    Spacer(modifier = Modifier.height(NautileSpacing.space2))
-                    TextButton(
-                        onClick = onCloseRequested,
-                        modifier = Modifier.align(Alignment.End),
-                    ) {
-                        Text("关闭")
                     }
                 }
             }

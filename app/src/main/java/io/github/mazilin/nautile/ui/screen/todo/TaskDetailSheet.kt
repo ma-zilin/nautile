@@ -4,34 +4,26 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,8 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -62,7 +52,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Velocity
@@ -72,6 +64,7 @@ import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Priority
 import io.github.mazilin.nautile.domain.model.Project
 import io.github.mazilin.nautile.domain.model.ProjectId
+import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
 import io.github.mazilin.nautile.ui.designsystem.dragScrimFactor
 import io.github.mazilin.nautile.ui.designsystem.nautileSheetBottomInsets
 import io.github.mazilin.nautile.ui.designsystem.nautileSheetPullDown
@@ -87,22 +80,19 @@ import java.time.LocalTime
 import kotlinx.coroutines.launch
 
 /**
- * 任务半屏详情（S1-T08、AC-D-06/08、AC-T-29、MOT-08；G7 属性编辑）。
+ * 待办下半屏详情（R5-8、FR-D-01/02/03、FR-G-19、AC-D-06/07/08/09、AC-T-29、03 规格 §2.4）。
  *
- * 无整页保存按钮：标题在字段结束/IME 完成时提交；无效标题由父层阻止离开并提示。
- * 下滑关闭与关闭按钮都先经父层 canLeave 检查；本组件不自行修改业务数据。
+ * 与 [NewTaskSheet] 完全同构的自适应高度下半屏布局（废除独立编辑面板与旧 60% 固定高度）：
+ * - 顶部拖拽柄 + 简洁头部（左侧“任务详情”，右侧关闭图标按钮 `detail_close_button`，无编辑图标）；
+ * - 第一行标题、固定第二行小字详情：直接编辑即保存（失焦 / IME Done / 关闭前提交），空标题报错并阻止关闭；
+ * - 底部四属性工具栏（日期、优先级、项目、清单）：与新建共用 [TaskAttributeToolbar] 与 [TaskAttributeMenuHost]，
+ *   始终“图标 + 文字”，选择即保存；已结项任务禁用清单入口并保留“重新打开”操作位；
+ * - 下拉关闭（含 T-088 输入框聚焦/起手排除）、遮罩点按关闭、系统返回分层递退
+ *   （锚定菜单 → 24h 时间圆盘 → 日期日历 → IME → 面板关闭校验）全部经过无效字段守卫。
  *
- * G7：标题、详情之下是与新建面板相同的五图标属性工具栏（CMP-30—CMP-37）：
- * 日期在面板内切换为选择面板，优先级/项目/清单/详情打开锚定菜单；
- * 选择/清除立即回调（编辑即保存），摘要显示当前值；系统返回先关菜单再关面板。
- *
- * 视觉按 SPC-08/CMP-17：surfaceContainerLow、顶部 28dp 圆角、22dp 拖拽柄区、
- * 内容内边距左右 24dp、顶部 8dp、底部 24dp + 导航栏 inset（面板唯一消费 inset）；
- * 下拉跟手 1:1，阈值 max(25% 高度, 96dp) 或速度 800dp/s，未过阈值用 BoundaryRebound 回弹；
- * 退出动效结束后才回调 [onExitFinished]（CMP-19）。
- *
- * @param visible 进出场目标可见性；默认 true，直接组合时仍为最终静止态。
- * @param projects 项目菜单可选项；只应传入活跃项目（调用方过滤）。
+ * @param visible 进出场目标可见性；退出动效结束后才回调 [onExitFinished]。
+ * @param projects 项目菜单可选项；调用方只应传入活跃项目。
+ * @param onClearDetail 兼容保留参数，不再通过工具栏菜单触发（详情直接支持输入框清空即保存）。
  */
 @Composable
 fun TaskDetailSheet(
@@ -123,8 +113,8 @@ fun TaskDetailSheet(
     onGtdChanged: (GtdPosition) -> Unit = {},
     onProjectDraftChanged: (String) -> Unit = {},
     onCreateProjectForTask: () -> Unit = {},
+    @Suppress("UNUSED_PARAMETER")
     onClearDetail: () -> Unit = {},
-    onOpenEdit: () -> Unit = {},
 ) {
     val density = LocalDensity.current
     val scrollState = rememberScrollState()
@@ -133,17 +123,15 @@ fun TaskDetailSheet(
     val currentVisible by rememberUpdatedState(visible)
     val currentOnCloseRequested by rememberUpdatedState(onCloseRequested)
 
-    // ---- G7/R5-G4 属性菜单与日期/24h时间圆盘子视图：面板内瞬时界面状态，不持久化 ----
+    // 面板内瞬时界面状态：无遮罩锚定菜单、日期日历与 24h 时间圆盘子视图（不持久化）。
     var openMenu by remember { mutableStateOf<TaskAttribute?>(null) }
     var dateSubView by remember { mutableStateOf(DateSubView.NONE) }
     val attributeAnchors = remember { mutableStateMapOf<TaskAttribute, Rect>() }
     var rootSize by remember { mutableStateOf(IntSize.Zero) }
-    val detailFocusRequester = remember { FocusRequester() }
-    val detailBringIntoView = remember { BringIntoViewRequester() }
-    // 项目菜单内“新建项目”等待新项目回填；成功后关闭菜单（CMP-34）。
+    // 项目菜单内“新建项目”等待新项目回填；成功后自动关闭菜单。
     var awaitingProjectCreate by remember { mutableStateOf(false) }
 
-    // 系统返回单层递退：锚定菜单 → 24h时间圆盘 → 日期日历 → 表单（03 规格 §1.5）。
+    // 系统返回单层递退：锚定菜单 → 24h 时间圆盘 → 日期日历 → 表单（03 规格 §1.5）。
     BackHandler(enabled = visible && (openMenu != null || dateSubView != DateSubView.NONE)) {
         when {
             openMenu != null -> openMenu = null
@@ -152,7 +140,6 @@ fun TaskDetailSheet(
             else -> Unit
         }
     }
-    // 编辑面板打开时详情让位（单宿主切换）；关闭残留的菜单/日期子视图，避免回来后停在子面板。
     LaunchedEffect(visible) {
         if (!visible) {
             openMenu = null
@@ -195,6 +182,7 @@ fun TaskDetailSheet(
                 // 内容已到顶仍继续下拉时累计；无效字段由父层阻止关闭。
                 // T-088：输入框起手/聚焦或日历/时间圆盘子视图打开时不累计，避免拖动误关。
                 if (gestureFromInput.value ||
+                    inputActive() ||
                     dateSubView != DateSubView.NONE ||
                     source != NestedScrollSource.UserInput ||
                     available.y <= 0f ||
@@ -212,9 +200,9 @@ fun TaskDetailSheet(
                 consumed: Velocity,
                 available: Velocity,
             ): Velocity {
-                if (visible && !gestureFromInput.value && contentPull > 0f) {
+                if (visible && !gestureFromInput.value && !inputActive() && contentPull > 0f) {
                     if (motion.shouldCommit(density, contentPull, available.y)) {
-                        onCloseRequested()
+                        currentOnCloseRequested()
                         motion.settle(scope, 0f, NautileMotion.StandardEffects)
                     } else {
                         motion.settle(scope, 0f, NautileMotion.BoundaryRebound)
@@ -231,23 +219,7 @@ fun TaskDetailSheet(
     val scrimColor = MaterialTheme.colorScheme.scrim
     val sheetShape = nautileSheetShape()
     val sheetInsets = nautileSheetBottomInsets()
-
-    // G7 摘要与语义文本（CMP-30.3、CMP-37）：与新建面板同一套格式。
-    val dueSummary = dueSummaryText(state.task.dueDate, state.task.dueTime)
-    val prioritySummary = state.task.priority.chineseLabel()
-    val priorityTint = when (state.task.priority) {
-        Priority.HIGH -> MaterialTheme.colorScheme.error
-        Priority.MEDIUM -> MaterialTheme.colorScheme.primary
-        Priority.LOW -> MaterialTheme.colorScheme.secondary
-        Priority.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    // 已结项任务的 GTD 清单入口禁用并说明原因（CMP-35）。
     val checklistEnabled = state.task.closedOutcome == null
-    val checklistDescription = if (checklistEnabled) {
-        "移动到 GTD 清单，当前：${state.task.position.title}"
-    } else {
-        "已结项，请在详情重新打开"
-    }
 
     Box(
         modifier = Modifier
@@ -255,13 +227,13 @@ fun TaskDetailSheet(
             .onGloballyPositioned { boxOrigin.value = it.positionInRoot() }
             .onSizeChanged { rootSize = it }
             // 祖先层 Initial pass 观察下拉，不与内容 verticalScroll 竞争；
-            // 仅内容不可滚动时进入拖拽，不遮挡输入框/按钮；拖拽柄由自身手势处理，避免双重位移。
+            // 仅内容不可滚动时进入拖拽；拖拽柄由自身手势处理，避免双重位移。
             // T-088：输入框聚焦或起点在输入框内时整段手势不参与下拉关闭。
             .nautileSheetPullDown(
                 motion = motion,
                 visible = { currentVisible },
                 scope = scope,
-                onCommitClose = onCloseRequested,
+                onCommitClose = { currentOnCloseRequested() },
                 pass = PointerEventPass.Initial,
                 canStart = {
                     !scrollState.canScrollBackward && !scrollState.canScrollForward
@@ -275,11 +247,9 @@ fun TaskDetailSheet(
                     excluded
                 },
             ),
+        contentAlignment = Alignment.BottomCenter,
     ) {
-        // 遮罩层：绘制与“点按遮罩关闭”都只在遮罩层完成（MOT-08.3、COL-10、T-088）。
-        // 遮罩位于面板下方，面板区域的点按由上层 Surface 自行消费，不会被误判为点按遮罩。
-        // 只有未移动的点按才关闭；拖动被排除参与下拉时（输入框聚焦/起点在框内）上层不消费位移，
-        // 这里按 touch slop 判定为拖动并消费，避免整段滑动被误判为点按而关闭面板。
+        // 遮罩层：绘制与“点按遮罩关闭”均在遮罩层完成，面板区域点按由上层 Surface 消费。
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -287,7 +257,6 @@ fun TaskDetailSheet(
                 .background(scrimColor.copy(alpha = NautileStates.SCRIM_ALPHA))
                 .pointerInput(Unit) {
                     awaitEachGesture {
-                        // 遮罩上的按下；已在别处消费的按下（按钮、输入框等）不参与点按判定。
                         val down = awaitFirstDown(requireUnconsumed = true)
                         var dragged = false
                         while (true) {
@@ -302,16 +271,18 @@ fun TaskDetailSheet(
                             }
                             if (dragged) change.consume()
                             if (!change.pressed) {
-                                // 点按遮罩关闭（§15 CMP-46）：先关菜单，再关时间圆盘，再关日期日历，最后关详情。
+                                // 点按遮罩分层关闭：菜单 → 时间圆盘 → 日期日历 → 详情（含无效字段守卫）。
                                 if (!dragged && currentVisible) {
                                     when {
                                         openMenu != null -> openMenu = null
                                         dateSubView == DateSubView.TIME_PICKER -> {
                                             dateSubView = DateSubView.CALENDAR
                                         }
+
                                         dateSubView == DateSubView.CALENDAR -> {
                                             dateSubView = DateSubView.NONE
                                         }
+
                                         else -> currentOnCloseRequested()
                                     }
                                 }
@@ -323,21 +294,19 @@ fun TaskDetailSheet(
         )
         Surface(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                // inset 只在此消费一次：键盘与导航栏取较大者（SPC-08、CMP-17）。
+                // inset 仅在此处消费一次：键盘与导航栏取较大者，贴键盘无空隙（SPC-08）。
                 .windowInsetsPadding(sheetInsets)
-                .fillMaxHeight(0.6f)
                 .onSizeChanged { motion.sheetHeightPx = it.height.toFloat() }
                 .graphicsLayer {
-                    // 面板从自身高度滑入/滑出；60% 高度与 28dp 圆角形态保持（MOT-08、MOT-12）。
+                    // 自适应高度下半屏：从自身高度滑入/滑出，与 NewTaskSheet 完全同构（R5-8）。
                     translationY = (1f - motion.reveal.value) * size.height + motion.dragOffsetPx
                 },
             shape = sheetShape,
             color = MaterialTheme.colorScheme.surfaceContainerLow,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -347,9 +316,9 @@ fun TaskDetailSheet(
                             motion = motion,
                             visible = { currentVisible },
                             scope = scope,
-                            onCommitClose = onCloseRequested,
-                            // 输入框聚焦时拖拽柄也不参与下拉（T-088）。
-                            isExcluded = { inputActive() },
+                            onCommitClose = { currentOnCloseRequested() },
+                            // 输入框聚焦或处于日期/时间圆盘子视图时拖拽柄不参与下拉关闭。
+                            isExcluded = { inputActive() || dateSubView != DateSubView.NONE },
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -366,7 +335,6 @@ fun TaskDetailSheet(
                 val contentHorizontalPadding = if (inDateSubView) 0.dp else NautileSpacing.space6
                 Column(
                     modifier = Modifier
-                        .weight(1f)
                         .fillMaxWidth()
                         .padding(
                             start = contentHorizontalPadding,
@@ -374,6 +342,7 @@ fun TaskDetailSheet(
                             top = NautileSpacing.space2,
                             bottom = NautileSpacing.space6,
                         )
+                        // 200% 字体或子视图增高时内容可滚动，不锁死高度也不裁切（A11Y-13）。
                         .verticalScroll(scrollState)
                         .nestedScroll(contentConnection),
                 ) {
@@ -390,17 +359,15 @@ fun TaskDetailSheet(
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.weight(1f),
                         )
-                        // 头部“编辑”入口（CMP-37.1）：打开与创建同构的编辑面板。
-                        IconButton(onClick = onOpenEdit) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_edit),
-                                contentDescription = "编辑任务",
-                            )
-                        }
+                        NautileIconButton(
+                            iconRes = R.drawable.ic_close,
+                            contentDescription = "关闭",
+                            onClick = { currentOnCloseRequested() },
+                            testTag = "detail_close_button",
+                        )
                     }
-                    Spacer(modifier = Modifier.height(NautileSpacing.space2))
                     if (inDateSubView) {
-                        // 日期/24h时间圆盘为同一面板内的选择子视图，不叠第二层遮罩（R5-3/R5-4）。
+                        // 日期日历与 24h 时间圆盘在同一面板内切换，不叠加第二层遮罩（R5-3/R5-4）。
                         DateAttributePanel(
                             subView = dateSubView,
                             dueDate = state.task.dueDate,
@@ -409,15 +376,8 @@ fun TaskDetailSheet(
                             onDueTimeChanged = onDueTimeChanged,
                             onSubViewChanged = { dateSubView = it },
                         )
-                        state.error?.let { message ->
-                            Text(
-                                text = message,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(horizontal = NautileSpacing.space6),
-                            )
-                        }
                     } else {
+                        Spacer(modifier = Modifier.height(NautileSpacing.space2))
                         OutlinedTextField(
                             value = state.titleValue,
                             onValueChange = onTitleChanged,
@@ -425,7 +385,14 @@ fun TaskDetailSheet(
                             singleLine = true,
                             isError = state.titleInvalid,
                             supportingText = if (state.titleInvalid) {
-                                { Text("标题不能为空") }
+                                {
+                                    Text(
+                                        text = "标题不能为空",
+                                        modifier = Modifier.semantics {
+                                            liveRegion = LiveRegionMode.Polite
+                                        },
+                                    )
+                                }
                             } else {
                                 null
                             },
@@ -437,9 +404,10 @@ fun TaskDetailSheet(
                                 .onFocusChanged { focus ->
                                     titleFocused.value = focus.isFocused
                                     if (!focus.isFocused && state.titleDraft != null) onCommitTitle()
-                                },
+                                }
+                                .testTag("task_detail_title"),
                         )
-                        // 详情紧跟标题：多行自由文本，编辑即保存（FR-D-03、AC-D-09）。
+                        // 固定第二行：小字详情输入框，与 NewTaskSheet 同构，直接编辑即保存（FR-D-03）。
                         OutlinedTextField(
                             value = state.detailValue,
                             onValueChange = onDetailChanged,
@@ -451,194 +419,88 @@ fun TaskDetailSheet(
                             keyboardActions = KeyboardActions(onDone = { onCommitDetail() }),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .focusRequester(detailFocusRequester)
-                                .bringIntoViewRequester(detailBringIntoView)
                                 .onGloballyPositioned { detailBounds.value = it.boundsInRoot() }
                                 .onFocusChanged { focus ->
                                     detailFocused.value = focus.isFocused
-                                    if (!focus.isFocused && state.detailDraft != null) onCommitDetail()
+                                    if (!focus.isFocused && state.detailDraft != null) {
+                                        onCommitDetail()
+                                    }
                                 }
                                 .testTag("task_detail_detail"),
                         )
-                        // G7 属性工具栏：与新建面板同一套五图标与摘要（CMP-30/31、CMP-37）。
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = NautileSpacing.space2)
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(
-                                NautileSpacing.space2,
-                            ),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            AttributeToolbarItem(
-                                iconRes = R.drawable.ic_calendar_today,
-                                summary = dueSummary,
-                                description = "设置截止日期，当前：" +
-                                    (dueSummary ?: "未设置"),
-                                onActivate = {
-                                    openMenu = null
-                                    dateSubView = DateSubView.CALENDAR
-                                },
-                                onBounds = {
-                                    attributeAnchors[TaskAttribute.DATE] = it
-                                },
-                            )
-                            AttributeToolbarItem(
-                                iconRes = R.drawable.ic_flag,
-                                summary = prioritySummary,
-                                description = "设置优先级，当前：$prioritySummary",
-                                iconTint = priorityTint,
-                                onActivate = {
-                                    openMenu = if (openMenu == TaskAttribute.PRIORITY) {
-                                        null
-                                    } else {
-                                        TaskAttribute.PRIORITY
-                                    }
-                                },
-                                onBounds = {
-                                    attributeAnchors[TaskAttribute.PRIORITY] = it
-                                },
-                            )
-                            AttributeToolbarItem(
-                                iconRes = R.drawable.ic_folder,
-                                summary = state.projectName,
-                                description = "设置项目，当前：${state.projectName ?: "无项目"}",
-                                onActivate = {
-                                    openMenu = if (openMenu == TaskAttribute.PROJECT) {
-                                        null
-                                    } else {
-                                        TaskAttribute.PROJECT
-                                    }
-                                },
-                                onBounds = {
-                                    attributeAnchors[TaskAttribute.PROJECT] = it
-                                },
-                            )
-                            AttributeToolbarItem(
-                                iconRes = R.drawable.ic_checklist,
-                                summary = state.task.position.title,
-                                description = checklistDescription,
-                                enabled = checklistEnabled,
-                                onActivate = {
-                                    openMenu = if (openMenu == TaskAttribute.CHECKLIST) {
-                                        null
-                                    } else {
-                                        TaskAttribute.CHECKLIST
-                                    }
-                                },
-                                onBounds = {
-                                    attributeAnchors[TaskAttribute.CHECKLIST] = it
-                                },
-                            )
-                            AttributeToolbarItem(
-                                iconRes = R.drawable.ic_notes,
-                                summary = null,
-                                description = if (state.detailValue.isBlank()) {
-                                    "编辑详情，当前为空"
-                                } else {
-                                    "编辑详情"
-                                },
-                                onActivate = {
-                                    openMenu = if (openMenu == TaskAttribute.DETAIL) {
-                                        null
-                                    } else {
-                                        TaskAttribute.DETAIL
-                                    }
-                                },
-                                onBounds = {
-                                    attributeAnchors[TaskAttribute.DETAIL] = it
-                                },
-                            )
-                        }
+                        // 与新建完全同构的四属性工具栏：日期、优先级、项目、清单，选择即保存。
+                        TaskAttributeToolbar(
+                            dueDate = state.task.dueDate,
+                            dueTime = state.task.dueTime,
+                            priority = state.task.priority,
+                            projectName = state.projectName,
+                            position = state.task.position,
+                            onOpenDatePanel = {
+                                openMenu = null
+                                dateSubView = DateSubView.CALENDAR
+                            },
+                            onToggleMenu = { attr ->
+                                openMenu = if (openMenu == attr) null else attr
+                            },
+                            onAnchorBounds = { attr, rect ->
+                                attributeAnchors[attr] = rect
+                            },
+                            checklistEnabled = checklistEnabled,
+                        )
+                        // 仅已结项任务显示“重新打开”主操作位（FR-G-19 / AC-T-29）；活跃任务无底部文字按钮。
                         if (state.canReopen) {
                             Spacer(modifier = Modifier.height(NautileSpacing.space2))
                             Button(onClick = onReopen) {
                                 Text("重新打开")
                             }
                         }
-                        if (state.saving) {
-                            Text("保存中…", style = MaterialTheme.typography.labelSmall)
-                        }
-                        state.error?.let { message ->
-                            Text(
-                                text = message,
-                                color = MaterialTheme.colorScheme.error,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(NautileSpacing.space2))
-                        TextButton(
-                            onClick = onCloseRequested,
-                            modifier = Modifier.align(Alignment.End),
-                        ) {
-                            Text("关闭")
-                        }
+                    }
+                    if (state.saving) {
+                        Text(
+                            text = "保存中…",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(
+                                horizontal = if (inDateSubView) NautileSpacing.space6 else 0.dp,
+                            ),
+                        )
+                    }
+                    state.error?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier
+                                .padding(
+                                    horizontal = if (inDateSubView) NautileSpacing.space6 else 0.dp,
+                                )
+                                .semantics { liveRegion = LiveRegionMode.Polite },
+                        )
                     }
                 }
             }
         }
-        // G7 锚定菜单：面板内浮层，透明点按层关闭菜单，不加遮罩、不收键盘（CMP-31.1）。
-        val menu = openMenu
-        if (menu != null) {
-            AttributeMenuOverlay(
-                anchor = attributeAnchors[menu],
-                origin = boxOrigin.value,
-                rootSize = rootSize,
-                onDismiss = { openMenu = null },
-            ) {
-                when (menu) {
-                    TaskAttribute.PRIORITY -> PriorityMenuContent(
-                        selected = state.task.priority,
-                        onSelect = { level ->
-                            onPriorityChanged(level)
-                            openMenu = null
-                        },
-                    )
-
-                    TaskAttribute.PROJECT -> ProjectMenuContent(
-                        selectedProjectId = state.task.projectId,
-                        projects = projects,
-                        draftName = state.projectDraftName,
-                        draftError = state.projectDraftError,
-                        creating = state.creatingProject,
-                        onProjectSelected = { id ->
-                            onProjectChanged(id)
-                            openMenu = null
-                        },
-                        onDraftChanged = onProjectDraftChanged,
-                        onCreateProject = {
-                            awaitingProjectCreate = true
-                            onCreateProjectForTask()
-                        },
-                    )
-
-                    TaskAttribute.CHECKLIST -> ChecklistMenuContent(
-                        selected = state.task.position,
-                        onSelect = { position ->
-                            onGtdChanged(position)
-                            openMenu = null
-                        },
-                    )
-
-                    TaskAttribute.DETAIL -> DetailMenuContent(
-                        detail = state.detailValue,
-                        onEditDetail = {
-                            openMenu = null
-                            scope.launch {
-                                detailFocusRequester.requestFocus()
-                                detailBringIntoView.bringIntoView()
-                            }
-                        },
-                        onClearDetail = {
-                            openMenu = null
-                            onClearDetail()
-                        },
-                    )
-
-                    TaskAttribute.DATE -> Unit
-                }
-            }
-        }
+        // 与新建共用的无遮罩锚定菜单：打开不收键盘、点菜单外或系统返回先关菜单。
+        TaskAttributeMenuHost(
+            openMenu = openMenu,
+            anchors = attributeAnchors,
+            origin = boxOrigin.value,
+            rootSize = rootSize,
+            priority = state.task.priority,
+            projectId = state.task.projectId,
+            projects = projects,
+            projectDraftName = state.projectDraftName,
+            projectDraftError = state.projectDraftError,
+            creatingProject = state.creatingProject,
+            position = state.task.position,
+            onDismiss = { openMenu = null },
+            onPrioritySelected = onPriorityChanged,
+            onProjectSelected = onProjectChanged,
+            onProjectDraftChanged = onProjectDraftChanged,
+            onCreateProject = {
+                awaitingProjectCreate = true
+                onCreateProjectForTask()
+            },
+            onPositionSelected = onGtdChanged,
+        )
     }
 }
