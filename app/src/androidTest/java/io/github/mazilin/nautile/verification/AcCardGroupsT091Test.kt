@@ -17,7 +17,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.mazilin.nautile.domain.model.AppPage
@@ -175,8 +175,9 @@ class AcCardGroupsT091Test {
         composeRule.onNodeWithText("子任务A").assertIsDisplayed().performClick()
         composeRule.runOnIdle { assertEquals(TaskId(1L), openedTask) }
 
-        composeRule.onNodeWithText("子任务A").performTouchInput { swipeLeft() }
-        composeRule.runOnIdle { assertEquals("组内行左滑仍应完成", TaskId(1L), completed) }
+        // v2.16（4.26 / R5-7）：组内任务行改为右滑完成。
+        composeRule.onNodeWithText("子任务A").performTouchInput { swipeRight() }
+        composeRule.runOnIdle { assertEquals("组内行右滑应完成", TaskId(1L), completed) }
     }
 
     /** FR-V-01、D-07：“单独任务”组仅在有未归属项目任务时出现，且带数量。 */
@@ -248,11 +249,16 @@ class AcCardGroupsT091Test {
             }
         }
 
-        val toggleNodes = composeRule.onAllNodes(
+        // v2.16（4.26 / R5-5）：任务行前置标准 M3 Checkbox 携带 ToggleableState；
+        // 分组卡片组头仍不折叠，非任务行 Checkbox 的可切换节点必须为空。
+        val nonCheckboxToggleNodes = composeRule.onAllNodes(
             SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState),
             useUnmergedTree = true,
-        ).fetchSemanticsNodes()
-        assertTrue("本轮不折叠，不应出现可切换节点", toggleNodes.isEmpty())
+        ).fetchSemanticsNodes().filterNot { node ->
+            val tag = node.config.getOrElseNullable(SemanticsProperties.TestTag) { null }
+            tag?.startsWith("task_checkbox_") == true
+        }
+        assertTrue("分组卡片本轮不折叠，不应出现非任务 Checkbox 的可切换节点", nonCheckboxToggleNodes.isEmpty())
 
         listOf("展开", "收起", "折叠").forEach { label ->
             val nodes = composeRule.onAllNodes(

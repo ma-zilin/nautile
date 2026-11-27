@@ -161,15 +161,16 @@ class AcTodoT07Test {
     }
 
     @Test
-    fun AC_G_04_item_swipe_abandons_item_and_does_not_open_selector() {
+    fun AC_G_04_item_swipe_completes_item_and_does_not_open_selector() {
+        // v2.16（4.26 / R5-7）：右滑任务行触发完成且由条目消费，绝不触发 GTD 左抽屉。
         var opened = false
-        var abandoned: TaskId? = null
+        var completed: TaskId? = null
         composeRule.setContent {
             NautileTheme {
                 TodoScreen(
                     state = stateWith(listOf(task(1L, "任务A"))),
                     onOpenSelector = { opened = true },
-                    onAbandonTask = { abandoned = it },
+                    onCompleteTask = { completed = it },
                 )
             }
         }
@@ -178,43 +179,53 @@ class AcTodoT07Test {
 
         composeRule.runOnIdle {
             assertFalse("条目滑动不应打开 GTD 选择器", opened)
-            assertEquals(TaskId(1L), abandoned)
+            assertEquals(TaskId(1L), completed)
         }
     }
 
     @Test
-    fun AC_T_17_task_swipe_left_completes_item() {
-        var completed: TaskId? = null
+    fun AC_T_17_task_swipe_left_abandons_item() {
+        // v2.16（4.26 / R5-7）：左滑任务行触发放弃。
+        var abandoned: TaskId? = null
         composeRule.setContent {
             NautileTheme {
                 TodoScreen(
                     state = stateWith(listOf(task(1L, "任务A"))),
-                    onCompleteTask = { completed = it },
+                    onAbandonTask = { abandoned = it },
                 )
             }
         }
 
         composeRule.onNodeWithText("任务A").performTouchInput { swipeLeft() }
 
-        composeRule.runOnIdle { assertEquals(TaskId(1L), completed) }
+        composeRule.runOnIdle { assertEquals(TaskId(1L), abandoned) }
     }
 
     @Test
-    fun AC_T_17_project_swipe_right_requests_abandon_confirmation() {
-        var requested: Pair<ProjectId, ClosedOutcome>? = null
+    fun AC_T_17_project_swipe_requests_complete_and_abandon_confirmation() {
+        // v2.16（4.26 / R5-7）：项目行右滑完成、左滑放弃，均先请求批量子待办数量确认。
+        val requested = mutableListOf<Pair<ProjectId, ClosedOutcome>>()
         composeRule.setContent {
             NautileTheme {
                 TodoScreen(
                     state = projectState("课程项目", listOf(task(1L, "子任务"))),
-                    onRequestProjectClose = { id, outcome -> requested = id to outcome },
+                    onRequestProjectClose = { id, outcome -> requested += id to outcome },
                 )
             }
         }
 
         composeRule.onNodeWithText("课程项目（1）").performTouchInput { swipeRight() }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("课程项目（1）").performTouchInput { swipeLeft() }
 
         composeRule.runOnIdle {
-            assertEquals(ProjectId(7L) to ClosedOutcome.ABANDONED, requested)
+            assertEquals(
+                listOf(
+                    ProjectId(7L) to ClosedOutcome.COMPLETED,
+                    ProjectId(7L) to ClosedOutcome.ABANDONED,
+                ),
+                requested,
+            )
         }
     }
 

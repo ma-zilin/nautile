@@ -1,0 +1,8 @@
+task=R5-G3
+time=2026-11-27T21:36:58+08:00
+head=9bb4c01d50e731f9adfa2e48be197628b69a596d
+dirty_entries=16
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_R5-G3_20261127T213626.log

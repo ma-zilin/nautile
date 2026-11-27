@@ -383,26 +383,26 @@ class G7R4ScreenshotTest {
         capture("edit_sheet_dark")
     }
 
-    /** 按住任务行分步向左拖 80dp：行内容左移、露出右侧“完成”色条与图标（不松手，不触发完成）。 */
+    /** v2.16（4.26 / R5-7）：按住任务行分步向右拖 80dp，行内容右移、露出左侧“完成”色条与图标（不松手，不触发完成）。 */
     @Test
     fun g7r4_swipe_complete_light() {
         setTodo(dark = false)
         val before = rootBitmap()
-        swipeHeld("概率论刷题", -80f) { during ->
+        swipeHeld("概率论刷题", 80f) { during ->
             val changed = changedPixelCount(before, during)
-            assertTrue("左滑后画面应有位移/露出完成色条：变化采样点=$changed", changed > 2_000)
+            assertTrue("右滑后画面应有位移/露出完成色条：变化采样点=$changed", changed > 2_000)
             captureBitmap("swipe_complete_light", during)
         }
     }
 
-    /** 按住任务行分步向右拖 80dp：行内容右移、露出左侧“放弃”色条与图标（不松手，不触发放弃）。 */
+    /** v2.16（4.26 / R5-7）：按住任务行分步向左拖 80dp，行内容左移、露出右侧“放弃”色条与图标（不松手，不触发放弃）。 */
     @Test
     fun g7r4_swipe_abandon_light() {
         setTodo(dark = false)
         val before = rootBitmap()
-        swipeHeld("概率论刷题", 80f) { during ->
+        swipeHeld("概率论刷题", -80f) { during ->
             val changed = changedPixelCount(before, during)
-            assertTrue("右滑后画面应有位移/露出放弃色条：变化采样点=$changed", changed > 2_000)
+            assertTrue("左滑后画面应有位移/露出放弃色条：变化采样点=$changed", changed > 2_000)
             captureBitmap("swipe_abandon_light", during)
         }
     }
@@ -411,9 +411,9 @@ class G7R4ScreenshotTest {
     fun g7r4_swipe_complete_dark() {
         setTodo(dark = true)
         val before = rootBitmap()
-        swipeHeld("概率论刷题", -80f) { during ->
+        swipeHeld("概率论刷题", 80f) { during ->
             val changed = changedPixelCount(before, during)
-            assertTrue("深色左滑后画面应有位移/露出完成色条：变化采样点=$changed", changed > 2_000)
+            assertTrue("深色右滑后画面应有位移/露出完成色条：变化采样点=$changed", changed > 2_000)
             captureBitmap("swipe_complete_dark", during)
         }
     }

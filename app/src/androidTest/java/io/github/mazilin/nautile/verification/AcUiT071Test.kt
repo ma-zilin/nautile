@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -159,6 +160,7 @@ class AcUiT071Test {
 
     @Test
     fun T_10_closed_row_does_not_swipe_and_opens_detail() {
+        var completed: TaskId? = null
         var abandoned: TaskId? = null
         var opened: TaskId? = null
         val closed = task(id = 9L, title = "已结项任务", closed = true)
@@ -166,15 +168,22 @@ class AcUiT071Test {
             NautileTheme {
                 TodoScreen(
                     state = todoState(listOf(closed), GtdPosition.ENDED),
+                    onCompleteTask = { completed = it },
                     onAbandonTask = { abandoned = it },
                     onOpenTaskDetail = { opened = it },
                 )
             }
         }
 
-        composeRule.onNodeWithText("已结项").assertIsDisplayed()
+        // v2.16（4.26 / 03 规格 §2.2）：已结项行尾状态标签区分“已完成”/“已放弃”，且 Checkbox 与左右滑均禁用。
+        composeRule.onNodeWithText("已完成").assertIsDisplayed()
+        composeRule.onNodeWithTag("task_checkbox_9").assertIsNotEnabled()
         composeRule.onNodeWithText("已结项任务").performTouchInput { swipeRight() }
-        composeRule.runOnIdle { assertNull("已结项行不应响应放弃滑动", abandoned) }
+        composeRule.onNodeWithText("已结项任务").performTouchInput { swipeLeft() }
+        composeRule.runOnIdle {
+            assertNull("已结项行不应响应完成滑动", completed)
+            assertNull("已结项行不应响应放弃滑动", abandoned)
+        }
 
         composeRule.onNodeWithText("已结项任务").performClick()
         composeRule.runOnIdle { assertEquals(TaskId(9L), opened) }

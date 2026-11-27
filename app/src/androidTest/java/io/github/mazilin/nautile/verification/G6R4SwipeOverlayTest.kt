@@ -435,16 +435,48 @@ class G6R4SwipeOverlayTest {
         val rowRight = rootWidth - rowLeft
         val centerY = node.boundsInRoot.center.y
 
-        // 右滑 56dp（< 72dp）：露出左侧“放弃”，色条为 errorContainer、图标为 onErrorContainer。
+        // v2.16（4.26 / R5-7）：右滑 56dp（< 72dp）露出左侧“完成”（primaryContainer + ic_check onPrimaryContainer）。
         withHeldSwipe("滑动任务", 56f) {
             val bitmap = captureRoot()
             listOf(-10f, 0f, 10f).forEach { dy ->
-                assertPixel(bitmap, rowLeft + 4f * density, centerY + dy * density, errorContainer, "任务左滑色条 errorContainer")
+                assertPixel(bitmap, rowLeft + 4f * density, centerY + dy * density, primaryContainer, "任务右滑色条 primaryContainer")
             }
             val iconPixels = countTint(
                 bitmap,
                 rowLeft + 16f * density,
                 rowLeft + 40f * density,
+                centerY - 12f * density,
+                centerY + 12f * density,
+                onPrimaryContainer,
+            )
+            assertTrue("右滑应绘制 check 图标（onPrimaryContainer 像素=$iconPixels）", iconPixels >= 20)
+        }
+        assertNull("未超阈值不得完成任务", completed)
+
+        // 广角证据截图：露出完整“check 图标 + 完成”；先退回 0 再松手，不提交动作。
+        withHeldSwipe("滑动任务", 140f, releaseDp = 0f) {
+            saveEvidence("task_swipe_complete", captureRoot())
+        }
+        assertNull("退回后松手不得完成任务", completed)
+
+        // 回弹：释放后表面重新覆盖色条。
+        val reset = captureRoot()
+        assertNotEquals(
+            "未超阈值释放后应回弹，不应继续露出 primaryContainer",
+            true,
+            closeTo(reset.getPixel((rowLeft + 4f * density).roundToInt(), centerY.roundToInt()), primaryContainer),
+        )
+
+        // 左滑 56dp（< 72dp）：露出右侧“放弃”（errorContainer + ic_close onErrorContainer）。
+        withHeldSwipe("滑动任务", -56f) {
+            val bitmap = captureRoot()
+            listOf(-10f, 0f, 10f).forEach { dy ->
+                assertPixel(bitmap, rowRight - 4f * density, centerY + dy * density, errorContainer, "任务左滑色条 errorContainer")
+            }
+            val iconPixels = countTint(
+                bitmap,
+                rowRight - 40f * density,
+                rowRight - 16f * density,
                 centerY - 12f * density,
                 centerY + 12f * density,
                 onErrorContainer,
@@ -453,51 +485,19 @@ class G6R4SwipeOverlayTest {
         }
         assertNull("未超阈值不得放弃任务", abandoned)
 
-        // 广角证据截图：露出完整“close 图标 + 放弃”；先退回 0 再松手，不提交动作。
-        withHeldSwipe("滑动任务", 140f, releaseDp = 0f) {
+        // 广角证据截图：露出完整“放弃 + close 图标”；先退回 0 再松手，不提交动作。
+        withHeldSwipe("滑动任务", -140f, releaseDp = 0f) {
             saveEvidence("task_swipe_abandon", captureRoot())
         }
         assertNull("退回后松手不得放弃任务", abandoned)
 
-        // 回弹：释放后表面重新覆盖色条。
-        val reset = captureRoot()
-        assertNotEquals(
-            "未超阈值释放后应回弹，不应继续露出 errorContainer",
-            true,
-            closeTo(reset.getPixel((rowLeft + 4f * density).roundToInt(), centerY.roundToInt()), errorContainer),
-        )
-
-        // 左滑 56dp（< 72dp）：露出右侧“完成”，色条为 primaryContainer、图标为 onPrimaryContainer。
-        withHeldSwipe("滑动任务", -56f) {
-            val bitmap = captureRoot()
-            listOf(-10f, 0f, 10f).forEach { dy ->
-                assertPixel(bitmap, rowRight - 4f * density, centerY + dy * density, primaryContainer, "任务左滑色条 primaryContainer")
-            }
-            val iconPixels = countTint(
-                bitmap,
-                rowRight - 40f * density,
-                rowRight - 16f * density,
-                centerY - 12f * density,
-                centerY + 12f * density,
-                onPrimaryContainer,
-            )
-            assertTrue("左滑应绘制 check 图标（onPrimaryContainer 像素=$iconPixels）", iconPixels >= 20)
-        }
-        assertNull("未超阈值不得完成任务", completed)
-
-        // 广角证据截图：露出完整“完成 + check 图标”；先退回 0 再松手，不提交动作。
-        withHeldSwipe("滑动任务", -140f, releaseDp = 0f) {
-            saveEvidence("task_swipe_complete", captureRoot())
-        }
-        assertNull("退回后松手不得完成任务", completed)
-
-        // 超过阈值才提交动作（阈值 72dp 未改动）。
+        // 超过阈值才提交动作（阈值 72dp 未改动）：先测左滑放弃，再测右滑完成（右滑会触发退场收拢）。
         composeRule.onNodeWithText("滑动任务").performTouchInput { swipeLeft() }
         composeRule.waitForIdle()
-        assertEquals("超过阈值左滑完成任务", TaskId(1L), completed)
+        assertEquals("超过阈值左滑放弃任务", TaskId(1L), abandoned)
         composeRule.onNodeWithText("滑动任务").performTouchInput { swipeRight() }
         composeRule.waitForIdle()
-        assertEquals("超过阈值右滑放弃任务", TaskId(1L), abandoned)
+        assertEquals("超过阈值右滑完成任务", TaskId(1L), completed)
     }
 
     @Test
@@ -512,7 +512,7 @@ class G6R4SwipeOverlayTest {
             )
         }
 
-        // 项目行与任务行各一套“放弃/完成”背景（图标+文字），项目行同样生效。
+        // 项目行与任务行各一套“完成/放弃”背景（图标+文字），项目行同样生效。
         composeRule.onAllNodesWithText("放弃").assertCountEquals(2)
         composeRule.onAllNodesWithText("完成").assertCountEquals(2)
 
@@ -523,38 +523,39 @@ class G6R4SwipeOverlayTest {
         val rowRight = rootWidth - rowLeft
         val centerY = node.boundsInRoot.center.y
 
+        // v2.16（4.26 / R5-7）：右滑露出左侧 primaryContainer 完成色条，左滑露出右侧 errorContainer 放弃色条。
         withHeldSwipe("课程项目（1）", 56f) {
             val bitmap = captureRoot()
-            assertPixel(bitmap, rowLeft + 4f * density, centerY, errorContainer, "项目行左滑 errorContainer")
+            assertPixel(bitmap, rowLeft + 4f * density, centerY, primaryContainer, "项目行右滑 primaryContainer")
         }
         assertTrue("未超阈值不得请求结项项目", requested.isEmpty())
 
         withHeldSwipe("课程项目（1）", -56f) {
             val bitmap = captureRoot()
-            assertPixel(bitmap, rowRight - 4f * density, centerY, primaryContainer, "项目行右滑 primaryContainer")
+            assertPixel(bitmap, rowRight - 4f * density, centerY, errorContainer, "项目行左滑 errorContainer")
         }
         assertTrue("未超阈值不得请求结项项目", requested.isEmpty())
 
         // 广角证据截图：项目行同样显示图标 + 文字；退回 0 再松手，不提交。
         withHeldSwipe("课程项目（1）", 140f, releaseDp = 0f) {
-            saveEvidence("project_swipe_abandon", captureRoot())
+            saveEvidence("project_swipe_complete", captureRoot())
         }
         withHeldSwipe("课程项目（1）", -140f, releaseDp = 0f) {
-            saveEvidence("project_swipe_complete", captureRoot())
+            saveEvidence("project_swipe_abandon", captureRoot())
         }
         assertTrue("退回后松手不得请求结项项目", requested.isEmpty())
 
-        composeRule.onNodeWithText("课程项目（1）").performTouchInput { swipeLeft() }
-        composeRule.waitForIdle()
-        assertEquals(
-            "项目行左滑请求完成并先确认数量",
-            listOf(project.id to ClosedOutcome.COMPLETED),
-            requested,
-        )
         composeRule.onNodeWithText("课程项目（1）").performTouchInput { swipeRight() }
         composeRule.waitForIdle()
         assertEquals(
-            "项目行右滑请求放弃",
+            "项目行右滑请求完成并先确认数量",
+            listOf(project.id to ClosedOutcome.COMPLETED),
+            requested,
+        )
+        composeRule.onNodeWithText("课程项目（1）").performTouchInput { swipeLeft() }
+        composeRule.waitForIdle()
+        assertEquals(
+            "项目行左滑请求放弃",
             listOf(project.id to ClosedOutcome.COMPLETED, project.id to ClosedOutcome.ABANDONED),
             requested,
         )
