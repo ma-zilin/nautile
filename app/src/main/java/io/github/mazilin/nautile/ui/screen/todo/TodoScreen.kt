@@ -3,6 +3,8 @@ package io.github.mazilin.nautile.ui.screen.todo
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -525,8 +527,14 @@ fun TodoScreen(
                             testTag = "settings_entry",
                         )
                     }
-                    // 搜索栏插在标题行下方，标题与三图标保持可见（CMP-38/43）。
-                    if (state.searchActive) {
+                    // 搜索栏插在标题行下方，标题与三图标保持可见（CMP-38/43、ANIM-11）。
+                    AnimatedVisibility(
+                        visible = state.searchActive,
+                        enter = expandVertically(animationSpec = NautileMotion.ContainerExpand) +
+                            fadeIn(animationSpec = NautileMotion.StandardEffects),
+                        exit = shrinkVertically(animationSpec = NautileMotion.ContainerExpand) +
+                            fadeOut(animationSpec = NautileMotion.StandardEffects),
+                    ) {
                         SearchBar(
                             query = state.searchQuery,
                             onQueryChanged = onSearchQueryChanged,
@@ -804,7 +812,7 @@ private fun SearchBar(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         )
         NautileIconButton(
-            iconRes = R.drawable.ic_cancel,
+            iconRes = R.drawable.ic_close,
             contentDescription = "清除搜索",
             onClick = onClear,
             enabled = query.isNotEmpty(),
@@ -1221,7 +1229,10 @@ private fun TaskRowContent(
                             text = statusLabel,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(
+                                horizontal = NautileSpacing.space2,
+                                vertical = NautileSpacing.space1,
+                            ),
                         )
                     }
                 }
