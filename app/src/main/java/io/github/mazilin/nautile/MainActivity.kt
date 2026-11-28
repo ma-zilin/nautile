@@ -36,6 +36,8 @@ import io.github.mazilin.nautile.interaction.FullScreenPage
 import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.interaction.PreviewBackdrop
 import io.github.mazilin.nautile.ui.AppRoot
+import io.github.mazilin.nautile.ui.screen.ai.AiScreen
+import io.github.mazilin.nautile.ui.screen.ai.AiViewModel
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
 import io.github.mazilin.nautile.ui.screen.settings.AiSettingsUiState
 import io.github.mazilin.nautile.ui.screen.settings.AiSettingsViewModel
@@ -129,9 +131,20 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                 )
+                // AI 页只持草稿/停止收尾等本地状态，业务状态来自进程级协调器（架构 §7.2/§7.5）。
+                val aiViewModel: AiViewModel = viewModel(
+                    factory = remember {
+                        viewModelFactory {
+                            initializer {
+                                AiViewModel(container.aiChatCoordinator)
+                            }
+                        }
+                    },
+                )
                 val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
                 val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
                 val aiSettings by aiSettingsViewModel.uiState.collectAsStateWithLifecycle()
+                val aiState by aiViewModel.uiState.collectAsStateWithLifecycle()
                 val startup by settingsViewModel.startup.collectAsStateWithLifecycle()
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
                 val projectDetailState by todoViewModel.projectDetail.collectAsStateWithLifecycle()
@@ -221,6 +234,8 @@ class MainActivity : ComponentActivity() {
                         navigation = container.navigationCoordinator,
                         overlays = container.overlayBackStack,
                         scrollNavigationVisible = if (activeTab == AppTab.TODO) scrollNavigationVisible else true,
+                        // 06 §9.3 架构裁定：仅 AI tab 且 IME 可见时隐藏底导，发送后收键盘即恢复。
+                        bottomBarVisible = !(activeTab == AppTab.AI && imeVisible),
                         tabContent = { tab ->
                             when (tab) {
                                 AppTab.TODO -> TodoScreen(
@@ -271,6 +286,19 @@ class MainActivity : ComponentActivity() {
                                     onDismissViewError = todoViewModel::dismissViewError,
                                     newTaskOpen = newTaskState != null,
                                     navigationUpdatesEnabled = !imeVisible && overlayEntry == null,
+                                )
+
+                                AppTab.AI -> AiScreen(
+                                    state = aiState,
+                                    onDraftChange = aiViewModel::onDraftChange,
+                                    onSend = aiViewModel::send,
+                                    onStop = aiViewModel::stop,
+                                    // 打开设置前先收键盘；切页/开设置不取消处理中请求。
+                                    onOpenSettings = {
+                                        hideIme()
+                                        container.navigationCoordinator.navigateToSettings()
+                                    },
+                                    onScreenVisible = aiViewModel::refreshKeyPresence,
                                 )
 
                                 else -> PlaceholderScreen(
@@ -330,6 +358,16 @@ class MainActivity : ComponentActivity() {
                                             projectReopenPrompt = null,
                                         ),
                                     )
+
+                                    // AI 预览用只读实例：不传回调，不触发发送/刷新。
+                                    AppTab.AI -> AiScreen(
+                                        state = aiState,
+                                        onDraftChange = {},
+                                        onSend = {},
+                                        onStop = {},
+                                        onOpenSettings = {},
+                                    )
+
                                     else -> PlaceholderScreen(
                                         title = backdrop.tab.title,
                                         onOpenSettings = {},

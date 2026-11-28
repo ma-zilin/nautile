@@ -71,12 +71,16 @@ class AiSettingsViewModel(
         _uiState.update { it.copy(savingKey = true, keyFeedback = null) }
         viewModelScope.launch {
             when (keyCommands.save(trimmed)) {
-                KeySaveResult.Saved -> _uiState.update {
-                    it.copy(
-                        savingKey = false,
-                        keyConfigured = true,
-                        keyFeedback = AiSettingsFeedback.KeySaved,
-                    )
+                KeySaveResult.Saved -> {
+                    _uiState.update {
+                        it.copy(
+                            savingKey = false,
+                            keyConfigured = true,
+                            keyFeedback = AiSettingsFeedback.KeySaved,
+                        )
+                    }
+                    // 同步协调器 Key 存在性，返回 AI 页时不再误报“尚未配置”（只读取一次存在性）。
+                    coordinator.refreshKeyPresence()
                 }
 
                 KeySaveResult.Failed -> _uiState.update {
@@ -95,12 +99,16 @@ class AiSettingsViewModel(
         _uiState.update { it.copy(clearingKey = true, keyFeedback = null) }
         viewModelScope.launch {
             when (keyCommands.clear()) {
-                KeyClearResult.Cleared -> _uiState.update {
-                    it.copy(
-                        clearingKey = false,
-                        keyConfigured = false,
-                        keyFeedback = AiSettingsFeedback.KeyCleared,
-                    )
+                KeyClearResult.Cleared -> {
+                    _uiState.update {
+                        it.copy(
+                            clearingKey = false,
+                            keyConfigured = false,
+                            keyFeedback = AiSettingsFeedback.KeyCleared,
+                        )
+                    }
+                    // 清除后同步协调器；返回 AI 页显示 Key 缺失提示且发送禁用。
+                    coordinator.refreshKeyPresence()
                 }
 
                 KeyClearResult.Failed -> _uiState.update {

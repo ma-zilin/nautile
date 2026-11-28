@@ -72,6 +72,12 @@ fun AppRoot(
     fullScreenContent: @Composable (FullScreenPage) -> Unit,
     modifier: Modifier = Modifier,
     scrollNavigationVisible: Boolean = true,
+    /**
+     * 额外控制底部导航是否可显示（06 §9.3 架构裁定 2026-11-28）。
+     *
+     * 仅 AI tab 且 IME 可见时由宿主传 false；其他页面与既有滚动显隐规则不变。
+     */
+    bottomBarVisible: Boolean = true,
     predictiveBackEnabled: Boolean = false,
     overlayContent: @Composable (Overlay) -> Unit = {},
     previewContent: @Composable (PreviewBackdrop) -> Unit = {},
@@ -220,7 +226,11 @@ fun AppRoot(
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 bottomBar = {
-                    if (scrollNavigationVisible && overlayEntry == null && topFullScreen == null) {
+                    if (scrollNavigationVisible &&
+                        bottomBarVisible &&
+                        overlayEntry == null &&
+                        topFullScreen == null
+                    ) {
                         NavigationBar {
                             AppTab.entries.forEach { tab ->
                                 NavigationBarItem(

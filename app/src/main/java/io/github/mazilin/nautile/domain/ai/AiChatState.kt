@@ -36,6 +36,13 @@ data class AiChatState(
     val streamingMessageId: AiMessageId? = null,
     val streamingText: String = "",
     val keyMissing: Boolean = false,
+    /**
+     * 清除会话成功计数；每次成功清除自增。
+     *
+     * 只供 UI 观察以清空本地草稿（用户 2026-11-28 确认：清除后 AI 页草稿清空），
+     * 不参与请求构造、门闩或落库语义。
+     */
+    val clearGeneration: Long = 0L,
 )
 
 /**

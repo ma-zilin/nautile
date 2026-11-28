@@ -192,6 +192,8 @@ class AiChatCoordinator(
                             phase = AiPhase.Idle,
                             streamingMessageId = null,
                             streamingText = "",
+                            // 自增后由 AI 页观察并清空本地草稿（不改变请求与落库语义）。
+                            clearGeneration = it.clearGeneration + 1,
                         )
                     }
                 }
