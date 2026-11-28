@@ -1,9 +1,16 @@
 package io.github.mazilin.nautile.ui.screen.log
 
+import io.github.mazilin.nautile.domain.model.ChartSlice
+import io.github.mazilin.nautile.domain.model.DayTimeStats
+import io.github.mazilin.nautile.domain.model.LocalDateRange
+import io.github.mazilin.nautile.domain.model.ParentAggregate
+import io.github.mazilin.nautile.domain.model.RangeTimeStats
+import io.github.mazilin.nautile.domain.model.StatsPeriod
 import io.github.mazilin.nautile.domain.model.TimeCategory
 import io.github.mazilin.nautile.domain.model.TimeCategoryId
 import io.github.mazilin.nautile.domain.model.TimeLog
 import io.github.mazilin.nautile.domain.model.TimeLogId
+import io.github.mazilin.nautile.domain.rule.StatsPeriodRules
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -11,8 +18,54 @@ import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/** 日志页模式；本轮只实现记录模式，统计属 G5。 */
+/** 日志页模式；记录为默认，统计需经标题按钮的半屏选择器进入（AC-T-20/FR-T-21）。 */
 enum class LogMode { RECORD, STATS }
+
+/**
+ * 统计页状态（架构 §5.2；05 §2.5/§3.5）。
+ *
+ * 日/月/年/自定义全部显示饼图；多日分母 = 24h × 范围天数 + 重复计时，
+ * 未追踪 = 24h × 范围天数 − 去重覆盖；范围天数对当前月/当前年只算到含今天的日数
+ * （用户 2026-11-28 定），[slices] 为父级分类 + 未追踪片。
+ * 周期不持久化，切回记录或离开日志后重置今日（AC-T-25）。
+ */
+data class StatsUiState(
+    val today: LocalDate = LocalDate.now(),
+    val period: StatsPeriod = StatsPeriod.Day(today),
+    val range: LocalDateRange = StatsPeriodRules.rangeFor(period, today),
+    val day: DayTimeStats? = null,
+    val rangeStats: RangeTimeStats? = null,
+    val slices: List<ChartSlice> = emptyList(),
+    val panelOpen: Boolean = false,
+    val customStart: LocalDate? = null,
+    val customEnd: LocalDate? = null,
+    val validationError: String? = null,
+    val expandedParentIds: Set<TimeCategoryId> = emptySet(),
+) {
+
+    val isMultiDay: Boolean get() = period !is StatsPeriod.Day
+
+    val parents: List<ParentAggregate>
+        get() = rangeStats?.parents ?: day?.parents.orEmpty()
+
+    /** 分母：单日 24h + 重复计时；多日 24h × 天数 + 重复计时。 */
+    val denominator: Duration
+        get() = rangeStats?.denominator ?: day?.denominator ?: Duration.ZERO
+
+    val untracked: Duration
+        get() = rangeStats?.untracked ?: day?.untracked ?: Duration.ZERO
+
+    val totalAccumulated: Duration
+        get() = rangeStats?.totalAccumulated ?: day?.totalAccumulated ?: Duration.ZERO
+
+    val duplicateDuration: Duration
+        get() = rangeStats?.duplicateDuration ?: day?.duplicateDuration ?: Duration.ZERO
+
+    /** 范围内没有任何记录（未追踪片仍按口径显示）。 */
+    val hasRecords: Boolean get() = parents.isNotEmpty()
+
+    val rangeTitle: String get() = StatsPeriodRules.title(period, range)
+}
 
 /** 运行中计时（架构 §5.2）：[elapsed] 由 `max(0, now - startAt)` 计算。 */
 data class RunningTimerUi(
@@ -33,9 +86,10 @@ data class TimeLogRow(
 )
 
 /**
- * 日志记录页状态（架构 §5.2；05 §2.4/§3.3）。
+ * 日志页状态（架构 §5.2；05 §2.4/§2.5、§3.3/§3.5）。
  *
- * 只承载记录模式数据；统计属 G5，不在此伪造。
+ * 记录模式数据与统计状态同源：都来自同一份日志与分类快照；
+ * 模式由标题按钮的半屏选择器切换，统计周期不持久化。
  */
 data class LogUiState(
     val mode: LogMode = LogMode.RECORD,
@@ -49,6 +103,10 @@ data class LogUiState(
     val zoneId: ZoneId = ZoneId.systemDefault(),
     val isLoading: Boolean = false,
     val message: String? = null,
+    /** 统计页状态；记录模式下也保留，切回统计时由 ViewModel 重置为今日。 */
+    val stats: StatsUiState = StatsUiState(),
+    /** 标题按钮打开的半屏模式选择器（AC-T-20）。 */
+    val modeSelectorOpen: Boolean = false,
 ) {
 
     val isEmpty: Boolean get() = logs.isEmpty() && running.isEmpty()

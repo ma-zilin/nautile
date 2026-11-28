@@ -37,6 +37,7 @@ import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.interaction.PreviewBackdrop
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
+import io.github.mazilin.nautile.ui.screen.log.LogModeOverlayHost
 import io.github.mazilin.nautile.ui.screen.log.LogOverlayHost
 import io.github.mazilin.nautile.ui.screen.log.LogScreen
 import io.github.mazilin.nautile.ui.screen.log.LogViewModel
@@ -249,6 +250,35 @@ class MainActivity : ComponentActivity() {
                         logViewModel.closeDetail()
                     }
                 }
+                // R6-G5：模式选择器/统计范围面板是主覆盖层，遮罩铺满全屏；
+                // 覆盖层关闭（遮罩/下拉/关闭图标/系统返回）后同步 ViewModel 开关状态。
+                val modeSelectorOverlayOpen = scheduleOverlay == Overlay.LogModeSelector
+                val statsPeriodOverlayOpen = scheduleOverlay == Overlay.StatsPeriodSelector
+                LaunchedEffect(modeSelectorOverlayOpen) {
+                    if (!modeSelectorOverlayOpen && logState.modeSelectorOpen) {
+                        logViewModel.onDismissModeSelector()
+                    }
+                }
+                LaunchedEffect(statsPeriodOverlayOpen) {
+                    if (!statsPeriodOverlayOpen && logState.stats.panelOpen) {
+                        logViewModel.onDismissPeriodPanel()
+                    }
+                }
+                // 选择“记录/统计”或“确定”自定义范围后，ViewModel 关闭状态，这里同步关闭覆盖层。
+                LaunchedEffect(logState.modeSelectorOpen) {
+                    if (!logState.modeSelectorOpen &&
+                        container.overlayBackStack.current?.overlay == Overlay.LogModeSelector
+                    ) {
+                        container.overlayBackStack.close()
+                    }
+                }
+                LaunchedEffect(logState.stats.panelOpen) {
+                    if (!logState.stats.panelOpen &&
+                        container.overlayBackStack.current?.overlay == Overlay.StatsPeriodSelector
+                    ) {
+                        container.overlayBackStack.close()
+                    }
+                }
                 if (startup == StartupState.Loading || !startupApplied) {
                     StartupPlaceholder()
                     return@NautileTheme
@@ -400,6 +430,28 @@ class MainActivity : ComponentActivity() {
                                     onNavigationVisibilityChanged = {
                                         logScrollNavigationVisible = it
                                     },
+                                    // R6-G5：模式按钮与“自定义”只打开覆盖层；选择/确定后才切换。
+                                    onOpenModeSelector = {
+                                        logViewModel.onOpenModeSelector()
+                                        val opened = container.overlayBackStack.open(
+                                            Overlay.LogModeSelector,
+                                            canDismiss = { true },
+                                        )
+                                        if (!opened) logViewModel.onDismissModeSelector()
+                                    },
+                                    onSelectDayPeriod = logViewModel::onSelectDayPeriod,
+                                    onSelectMonthPeriod = logViewModel::onSelectMonthPeriod,
+                                    onSelectYearPeriod = logViewModel::onSelectYearPeriod,
+                                    onOpenPeriodPanel = {
+                                        logViewModel.onOpenPeriodPanel()
+                                        val opened = container.overlayBackStack.open(
+                                            Overlay.StatsPeriodSelector,
+                                            canDismiss = { true },
+                                        )
+                                        if (!opened) logViewModel.onDismissPeriodPanel()
+                                    },
+                                    onToggleStatsParent = logViewModel::onStatsParentToggled,
+                                    onLeaveScreen = logViewModel::onLeaveScreen,
                                 )
 
                                 else -> PlaceholderScreen(
@@ -679,6 +731,22 @@ class MainActivity : ComponentActivity() {
                         onCategoryPicked = logViewModel::onCategoryQuickTap,
                         onPickerClosed = { container.overlayBackStack.close() },
                         onOverlayClosed = { container.overlayBackStack.close() },
+                    )
+                    // R6-G5：模式选择器与统计范围面板；渲染在 AppRoot 之上，遮罩覆盖导航与计时条。
+                    LogModeOverlayHost(
+                        modeSelectorOpen = modeSelectorOverlayOpen,
+                        periodPanelOpen = statsPeriodOverlayOpen,
+                        mode = logState.mode,
+                        stats = logState.stats,
+                        onModeSelected = { mode ->
+                            logViewModel.onModeSelected(mode)
+                            container.overlayBackStack.close()
+                        },
+                        onDismissModeSelector = { container.overlayBackStack.close() },
+                        onStartChanged = logViewModel::onCustomStartChanged,
+                        onEndChanged = logViewModel::onCustomEndChanged,
+                        onConfirmPeriod = logViewModel::onConfirmCustomRange,
+                        onDismissPeriodPanel = { container.overlayBackStack.close() },
                     )
                 }
             }

@@ -2,6 +2,8 @@ package io.github.mazilin.nautile.ui.screen.log
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.mazilin.nautile.domain.model.StatsPeriod
+import io.github.mazilin.nautile.domain.model.TimeCategory
 import io.github.mazilin.nautile.domain.model.TimeCategoryId
 import io.github.mazilin.nautile.domain.model.TimeLog
 import io.github.mazilin.nautile.domain.model.TimeLogId
@@ -10,7 +12,9 @@ import io.github.mazilin.nautile.domain.port.Clock
 import io.github.mazilin.nautile.domain.repository.SettingsRepository
 import io.github.mazilin.nautile.domain.repository.TimeCategoryRepository
 import io.github.mazilin.nautile.domain.repository.TimeLogRepository
+import io.github.mazilin.nautile.domain.rule.StatsPeriodRules
 import io.github.mazilin.nautile.domain.rule.TimeLogRules
+import io.github.mazilin.nautile.domain.rule.TimeStats
 import io.github.mazilin.nautile.domain.usecase.TimeLogCommandResult
 import io.github.mazilin.nautile.domain.usecase.TimeLogCommands
 import io.github.mazilin.nautile.domain.usecase.TimeLogError
@@ -18,6 +22,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.time.ZoneId
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -57,6 +62,22 @@ class LogViewModel(
 
     private val message = MutableStateFlow<String?>(null)
 
+    /** 页内控制状态：模式、模式选择器、统计周期与自定义草稿（不持久化，AC-T-20/25）。 */
+    private data class StatsControls(
+        val mode: LogMode = LogMode.RECORD,
+        val modeSelectorOpen: Boolean = false,
+        val period: StatsPeriod,
+        val panelOpen: Boolean = false,
+        val customStart: LocalDate? = null,
+        val customEnd: LocalDate? = null,
+        val validationError: String? = null,
+        val expanded: Set<TimeCategoryId> = emptySet(),
+    )
+
+    private val controls = MutableStateFlow(
+        StatsControls(period = StatsPeriod.Day(clock.now().atZone(zoneId).toLocalDate())),
+    )
+
     private val editorState = MutableStateFlow<LogEditorUiState?>(null)
     val editor: StateFlow<LogEditorUiState?> = editorState.asStateFlow()
 
@@ -90,7 +111,7 @@ class LogViewModel(
 
     private data class Base(
         val logs: List<TimeLog>,
-        val categories: List<io.github.mazilin.nautile.domain.model.TimeCategory>,
+        val categories: List<TimeCategory>,
         val recentIds: List<TimeCategoryId>,
         val running: List<TimeLog>,
         val now: Instant,
@@ -106,7 +127,7 @@ class LogViewModel(
         Base(logs = logList, categories = categoryList, recentIds = recent, running = running, now = now)
     }
 
-    val uiState: StateFlow<LogUiState> = combine(base, message) { base, message ->
+    val uiState: StateFlow<LogUiState> = combine(base, message, controls) { base, message, control ->
         val runningIds = base.running.map { it.id }.toSet()
         val rows = base.logs.map { log ->
             val duration = if (log.isRunning) {
@@ -135,8 +156,24 @@ class LogViewModel(
                 elapsed = TimeLogRules.elapsed(log.startAt, base.now),
             )
         }
+        val statsToday = currentDate()
+        val stats = if (control.mode == LogMode.STATS) {
+            buildStats(base, control, statsToday)
+        } else {
+            // 记录模式不计算统计，避免无谓重算；周期状态保留供下次进入重置。
+            StatsUiState(
+                today = statsToday,
+                period = control.period,
+                range = StatsPeriodRules.rangeFor(control.period, statsToday),
+                panelOpen = control.panelOpen,
+                customStart = control.customStart,
+                customEnd = control.customEnd,
+                validationError = control.validationError,
+                expandedParentIds = control.expanded,
+            )
+        }
         LogUiState(
-            mode = LogMode.RECORD,
+            mode = control.mode,
             today = base.now.atZone(zoneId).toLocalDate(),
             logs = rows,
             categories = base.categories,
@@ -146,6 +183,8 @@ class LogViewModel(
             zoneId = zoneId,
             isLoading = false,
             message = message,
+            stats = stats,
+            modeSelectorOpen = control.modeSelectorOpen,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -158,9 +197,169 @@ class LogViewModel(
         ),
     )
 
+    /**
+     * 统计计算（架构 §3.4）：日范围走 [TimeStats.computeDay]，
+     * 月/年/自定义走 [TimeStats.computeRange]；饼图分片含未追踪片。
+     */
+    private fun buildStats(base: Base, control: StatsControls, today: LocalDate): StatsUiState {
+        val range = StatsPeriodRules.rangeFor(control.period, today)
+        val day = if (control.period is StatsPeriod.Day) {
+            TimeStats.computeDay(base.logs, base.categories, control.period.date, zoneId, base.now)
+        } else {
+            null
+        }
+        val rangeStats = if (control.period is StatsPeriod.Day) {
+            null
+        } else {
+            TimeStats.computeRange(base.logs, base.categories, range, zoneId, base.now)
+        }
+        val parents = rangeStats?.parents ?: day?.parents.orEmpty()
+        val denominator = rangeStats?.denominator ?: day?.denominator ?: Duration.ZERO
+        val untracked = rangeStats?.untracked ?: day?.untracked ?: Duration.ZERO
+        val names = base.categories.associate { it.id to it.name }
+        return StatsUiState(
+            today = today,
+            period = control.period,
+            range = range,
+            day = day,
+            rangeStats = rangeStats,
+            slices = TimeStats.chartSlices(parents, names, denominator, untracked),
+            panelOpen = control.panelOpen,
+            customStart = control.customStart,
+            customEnd = control.customEnd,
+            validationError = control.validationError,
+            expandedParentIds = control.expanded,
+        )
+    }
+
     fun onDismissMessage() {
         message.value = null
     }
+
+    // ---- 模式与统计周期（AC-T-20/25、AC-L-07/11） ----
+
+    fun onOpenModeSelector() {
+        controls.update { it.copy(modeSelectorOpen = true) }
+    }
+
+    fun onDismissModeSelector() {
+        controls.update { it.copy(modeSelectorOpen = false) }
+    }
+
+    /** 选记录/统计；两种切换都恢复“日/今天”，不保留上次周期（AC-T-25）。 */
+    fun onModeSelected(mode: LogMode) {
+        val today = currentDate()
+        controls.update {
+            it.copy(
+                mode = mode,
+                modeSelectorOpen = false,
+                period = StatsPeriod.Day(today),
+                panelOpen = false,
+                customStart = null,
+                customEnd = null,
+                validationError = null,
+                expanded = emptySet(),
+            )
+        }
+    }
+
+    /** 离开日志页：统计状态丢弃，再次进入默认记录与今日（AC-T-25）。 */
+    fun onLeaveScreen() {
+        onModeSelected(LogMode.RECORD)
+    }
+
+    fun onSelectDayPeriod() {
+        selectPeriod(StatsPeriod.Day(currentDate()))
+    }
+
+    fun onSelectMonthPeriod() {
+        selectPeriod(StatsPeriod.Month(YearMonth.from(currentDate())))
+    }
+
+    fun onSelectYearPeriod() {
+        selectPeriod(StatsPeriod.Year(currentDate().year))
+    }
+
+    private fun selectPeriod(period: StatsPeriod) {
+        controls.update {
+            it.copy(
+                period = period,
+                panelOpen = false,
+                customStart = null,
+                customEnd = null,
+                validationError = null,
+                expanded = emptySet(),
+            )
+        }
+    }
+
+    /** 打开自定义范围面板；默认今天单日，避免一打开就出现“未来结束”错误。 */
+    fun onOpenPeriodPanel() {
+        val today = currentDate()
+        controls.update {
+            it.copy(
+                panelOpen = true,
+                customStart = today,
+                customEnd = today,
+                validationError = null,
+            )
+        }
+    }
+
+    fun onDismissPeriodPanel() {
+        controls.update { it.copy(panelOpen = false, validationError = null) }
+    }
+
+    fun onCustomStartChanged(date: LocalDate) {
+        controls.update {
+            it.copy(
+                customStart = date,
+                validationError = StatsPeriodRules.validateCustom(date, it.customEnd, currentDate()),
+            )
+        }
+    }
+
+    fun onCustomEndChanged(date: LocalDate) {
+        controls.update {
+            it.copy(
+                customEnd = date,
+                validationError = StatsPeriodRules.validateCustom(it.customStart, date, currentDate()),
+            )
+        }
+    }
+
+    /** 确定自定义范围：非法保持面板并内联提示，合法立即刷新统计（AC-L-11）。 */
+    fun onConfirmCustomRange() {
+        val today = currentDate()
+        controls.update {
+            val start = it.customStart
+            val end = it.customEnd
+            val error = StatsPeriodRules.validateCustom(start, end, today)
+            if (error != null || start == null || end == null) {
+                it.copy(validationError = error)
+            } else {
+                it.copy(
+                    period = StatsPeriod.Custom(start, end),
+                    panelOpen = false,
+                    validationError = null,
+                    expanded = emptySet(),
+                )
+            }
+        }
+    }
+
+    fun onStatsParentToggled(parentId: TimeCategoryId) {
+        controls.update {
+            val expanded = if (parentId in it.expanded) {
+                it.expanded - parentId
+            } else {
+                it.expanded + parentId
+            }
+            it.copy(expanded = expanded)
+        }
+    }
+
+    private fun currentDate(): LocalDate = clock.now().atZone(zoneId).toLocalDate()
 
     // ---- 计时（AC-T-21/22） ----
 

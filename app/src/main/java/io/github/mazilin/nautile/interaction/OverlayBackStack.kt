@@ -28,6 +28,12 @@ sealed interface Overlay {
 
     /** “全部分类”两级选择器；选中分类后开始计时并关闭（AC-T-21）。 */
     data object LogCategoryPicker : Overlay
+
+    /** 日志模式选择器半屏；打开不改变模式，选中“记录/统计”后才切换并关闭（AC-T-20）。 */
+    data object LogModeSelector : Overlay
+
+    /** 统计自定义范围半屏；确认合法范围后关闭并刷新统计（AC-L-07/11）。 */
+    data object StatsPeriodSelector : Overlay
 }
 
 /**

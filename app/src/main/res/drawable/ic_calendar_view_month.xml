@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- calendar_view_month：月范围选项（Material Symbols Outlined 线性风格，24dp/2dp 描边） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M4,5L20,5A2,2 0 0 1 22,7L22,17A2,2 0 0 1 20,19L4,19A2,2 0 0 1 2,17L2,7A2,2 0 0 1 4,5ZM2,9L22,9 M5,12H8V14H5Z M10.5,12H13.5V14H10.5Z M16,12H19V14H16Z M5,16H8V18H5Z M10.5,16H13.5V18H10.5Z M16,16H19V18H16Z"
+        android:strokeColor="@android:color/black"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />
+</vector>
