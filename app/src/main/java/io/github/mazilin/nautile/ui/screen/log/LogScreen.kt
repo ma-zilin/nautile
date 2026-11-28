@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.screen.log
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,7 @@ import io.github.mazilin.nautile.domain.model.TimeCategoryId
 import io.github.mazilin.nautile.domain.model.TimeLogId
 import io.github.mazilin.nautile.ui.designsystem.NautileEmptyState
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import java.time.LocalDate
 
@@ -110,26 +112,38 @@ fun LogScreen(
                 onOpenSettings = onOpenSettings,
                 onOpenModeSelector = onOpenModeSelector,
             )
-            if (state.mode == LogMode.RECORD) {
-                LogRecordContent(
-                    state = state,
-                    listState = listState,
-                    onCategoryTap = onCategoryTap,
-                    onShowAllCategories = onShowAllCategories,
-                    onOpenLog = onOpenLog,
-                    onDismissMessage = onDismissMessage,
-                )
-            } else {
-                StatsContent(
-                    state = state.stats,
-                    categories = state.categories,
-                    onSelectDay = onSelectDayPeriod,
-                    onSelectMonth = onSelectMonthPeriod,
-                    onSelectYear = onSelectYearPeriod,
-                    onOpenCustom = onOpenPeriodPanel,
-                    onToggleParent = onToggleStatsParent,
-                    modifier = Modifier.weight(1f),
-                )
+            // ANIM-S13：记录 ↔ 统计只做内容区 crossfade，不新建页面、不重播顶栏。
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                Crossfade(
+                    targetState = state.mode,
+                    animationSpec = NautileMotion.StandardEffects,
+                    label = "log_mode_content_crossfade",
+                    modifier = Modifier.fillMaxSize(),
+                ) { mode ->
+                    when (mode) {
+                        LogMode.RECORD -> Column(modifier = Modifier.fillMaxSize()) {
+                            LogRecordContent(
+                                state = state,
+                                listState = listState,
+                                onCategoryTap = onCategoryTap,
+                                onShowAllCategories = onShowAllCategories,
+                                onOpenLog = onOpenLog,
+                                onDismissMessage = onDismissMessage,
+                            )
+                        }
+
+                        LogMode.STATS -> StatsContent(
+                            state = state.stats,
+                            categories = state.categories,
+                            onSelectDay = onSelectDayPeriod,
+                            onSelectMonth = onSelectMonthPeriod,
+                            onSelectYear = onSelectYearPeriod,
+                            onOpenCustom = onOpenPeriodPanel,
+                            onToggleParent = onToggleStatsParent,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
             }
         }
         if (state.mode == LogMode.RECORD) {

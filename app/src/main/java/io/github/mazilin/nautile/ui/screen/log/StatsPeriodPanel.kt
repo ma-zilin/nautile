@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.screen.log
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.ui.designsystem.NautileBottomSheet
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import java.time.Instant
 import java.time.LocalDate
@@ -92,12 +94,19 @@ fun StatsPeriodPanel(
         contentModifier = Modifier
             .fillMaxWidth()
             .verticalScroll(scrollState),
+        contentScrollState = scrollState,
     ) {
-        when (subview) {
+        // 面板内日期日历与范围表单切换只做内容区 crossfade（ANIM-S08 同源）。
+        Crossfade(
+            targetState = subview,
+            animationSpec = NautileMotion.StandardEffects,
+            label = "stats_period_subview_crossfade",
+        ) { currentSubview ->
+            when (currentSubview) {
             StatsPeriodSubview.START,
             StatsPeriodSubview.END,
             -> {
-                val isStart = subview == StatsPeriodSubview.START
+                val isStart = currentSubview == StatsPeriodSubview.START
                 StatsDatePanel(
                     date = (if (isStart) state.customStart else state.customEnd)
                         ?: state.today,
@@ -111,6 +120,7 @@ fun StatsPeriodPanel(
             }
 
             StatsPeriodSubview.NONE -> {
+                Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -184,6 +194,8 @@ fun StatsPeriodPanel(
                         Text("确定")
                     }
                 }
+                }
+            }
             }
         }
     }

@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- category：日志分类/全部分类（Material Symbols Outlined 线性风格，24dp/2dp 描边） -->
+<!-- category：日志分类/全部分类（Material Symbols Outlined 官方图形 24dp，Apache 2.0） -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="?android:attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/transparent"
-        android:pathData="M4,4L10,4L10,10L4,10Z M14,4L20,4L20,10L14,10Z M4,14L10,14L10,20L4,20Z M14,14L20,14L20,20L14,20Z"
-        android:strokeColor="@android:color/black"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="2" />
+    <!-- 官方 960 坐标系按 0.025 缩放到 24 viewport，视觉尺寸保持 24dp。 -->
+    <group
+        android:scaleX="0.025"
+        android:scaleY="0.025"
+        android:translateY="24">
+        <path
+            android:fillColor="@android:color/black"
+            android:pathData="m260-520 220-360 220 360H260ZM700-80q-75 0-127.5-52.5T520-260q0-75 52.5-127.5T700-440q75 0 127.5 52.5T880-260q0 75-52.5 127.5T700-80Zm-580-20v-320h320v320H120Zm580-60q42 0 71-29t29-71q0-42-29-71t-71-29q-42 0-71 29t-29 71q0 42 29 71t71 29Zm-500-20h160v-160H200v160Zm202-420h156l-78-126-78 126Zm78 0ZM360-340Zm340 80Z" />
+    </group>
 </vector>

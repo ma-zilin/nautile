@@ -1,6 +1,7 @@
 package io.github.mazilin.nautile.ui.screen.log
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,9 @@ import io.github.mazilin.nautile.domain.model.TimeCategoryId
 import io.github.mazilin.nautile.domain.rule.ScheduleRules
 import io.github.mazilin.nautile.ui.designsystem.NautileBottomSheet
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
+import io.github.mazilin.nautile.ui.designsystem.SheetInputExclusion
+import io.github.mazilin.nautile.ui.designsystem.sheetInputArea
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import java.time.Instant
 import java.time.LocalDate
@@ -81,9 +85,13 @@ fun LogEditorSheet(
 ) {
     var subview by remember { mutableStateOf(LogEditorSubview.NONE) }
     val scrollState = rememberScrollState()
+    val inputExclusion = remember { SheetInputExclusion() }
 
     LaunchedEffect(visible) {
-        if (!visible) subview = LogEditorSubview.NONE
+        if (!visible) {
+            subview = LogEditorSubview.NONE
+            inputExclusion.clear()
+        }
     }
 
     LogSheetBackHandler(
@@ -108,8 +116,16 @@ fun LogEditorSheet(
         contentModifier = Modifier
             .fillMaxWidth()
             .verticalScroll(scrollState),
+        contentScrollState = scrollState,
+        pullDownInputExclusion = inputExclusion,
     ) {
-        when (subview) {
+        // 面板内子视图（表单/分类/日期/时间）切换只做内容区 crossfade（ANIM-S08 同源）。
+        Crossfade(
+            targetState = subview,
+            animationSpec = NautileMotion.StandardEffects,
+            label = "log_editor_subview_crossfade",
+        ) { currentSubview ->
+            when (currentSubview) {
             LogEditorSubview.CATEGORY -> CategoryPicker(
                 state = pickerState,
                 onSelect = { categoryId ->
@@ -131,7 +147,7 @@ fun LogEditorSheet(
             LogEditorSubview.START_TIME,
             LogEditorSubview.END_TIME,
             -> {
-                val isStart = subview == LogEditorSubview.START_TIME
+                val isStart = currentSubview == LogEditorSubview.START_TIME
                 LogTimePanel(
                     label = if (isStart) "开始" else "结束",
                     time = if (isStart) state.startTime else state.endTime,
@@ -144,10 +160,12 @@ fun LogEditorSheet(
                         subview = LogEditorSubview.NONE
                     },
                     onBack = { subview = LogEditorSubview.NONE },
+                    inputExclusion = inputExclusion,
                 )
             }
 
             LogEditorSubview.NONE -> {
+                Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -230,6 +248,8 @@ fun LogEditorSheet(
                 if (state.isSaving) {
                     Text("保存中…", style = MaterialTheme.typography.labelSmall)
                 }
+                }
+            }
             }
         }
     }
@@ -392,6 +412,7 @@ internal fun LogTimePanel(
     onConfirmed: (LocalTime) -> Unit,
     onCleared: () -> Unit,
     onBack: () -> Unit,
+    inputExclusion: SheetInputExclusion? = null,
 ) {
     val timePickerState = rememberTimePickerState(
         initialHour = time?.hour ?: DEFAULT_HOUR,
@@ -464,6 +485,13 @@ internal fun LogTimePanel(
             ),
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    if (inputExclusion != null) {
+                        Modifier.sheetInputArea(inputExclusion, "log_time_input")
+                    } else {
+                        Modifier
+                    },
+                )
                 .semantics { liveRegion = LiveRegionMode.Polite }
                 .testTag("log_time_input"),
         )

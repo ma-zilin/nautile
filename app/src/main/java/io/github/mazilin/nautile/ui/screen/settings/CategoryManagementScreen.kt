@@ -36,6 +36,8 @@ import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.domain.model.TimeCategory
 import io.github.mazilin.nautile.ui.designsystem.NautileBottomSheet
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
+import io.github.mazilin.nautile.ui.designsystem.SheetInputExclusion
+import io.github.mazilin.nautile.ui.designsystem.sheetInputArea
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 
 /**
@@ -257,11 +259,16 @@ private fun CategoryEditSheet(
     onDismissRequest: () -> Unit,
     onExitFinished: () -> Unit,
 ) {
+    val inputExclusion = remember { SheetInputExclusion() }
+    LaunchedEffect(visible) {
+        if (!visible) inputExclusion.clear()
+    }
     NautileBottomSheet(
         visible = visible,
         onDismissRequest = onDismissRequest,
         canDismiss = { !state.isSaving },
         onDismissed = onExitFinished,
+        pullDownInputExclusion = inputExclusion,
     ) {
         Text(
             text = state.title,
@@ -284,6 +291,7 @@ private fun CategoryEditSheet(
             },
             modifier = Modifier
                 .fillMaxWidth()
+                .sheetInputArea(inputExclusion, "category_name")
                 .testTag("category_name_field"),
         )
         Row(

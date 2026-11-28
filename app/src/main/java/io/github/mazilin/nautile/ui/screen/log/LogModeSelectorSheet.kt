@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -97,11 +96,6 @@ private fun ModeOption(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val background = if (selected) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else {
-        Color.Transparent
-    }
     val contentColor = if (selected) {
         MaterialTheme.colorScheme.onSecondaryContainer
     } else {
@@ -112,7 +106,13 @@ private fun ModeOption(
             .fillMaxWidth()
             .heightIn(min = 64.dp)
             .clip(MaterialTheme.shapes.small)
-            .background(background)
+            .then(
+                if (selected) {
+                    Modifier.background(MaterialTheme.colorScheme.secondaryContainer)
+                } else {
+                    Modifier
+                },
+            )
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = NautileSpacing.space4, vertical = NautileSpacing.space2)
             .testTag(

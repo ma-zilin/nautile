@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animate
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -32,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,14 +42,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSheetMetrics
@@ -77,6 +89,48 @@ internal object SheetDragMetrics {
     /** 速度提交阈值：800dp/s。 */
     const val VELOCITY_DP_PER_SEC = 800f
 }
+
+/**
+ * 面板内文本输入区登记（CMP-46、T-088）。
+ *
+ * 记录输入框的聚焦状态与在根窗口中的边界，供下拉关闭判定排除“输入框聚焦”与
+ * “手势起手在输入框内”两种情况，避免拖动光标/选择文本时误关面板。
+ * 只存 UI 瞬时状态，不参与业务与持久化。
+ */
+@Stable
+class SheetInputExclusion {
+
+    private val focused = mutableStateMapOf<String, Boolean>()
+    private val bounds = mutableStateMapOf<String, Rect>()
+
+    /** 更新某输入框的聚焦状态；key 在同一面板内唯一。 */
+    fun updateFocus(key: String, isFocused: Boolean) {
+        focused[key] = isFocused
+    }
+
+    /** 更新某输入框在根窗口中的边界。 */
+    fun updateBounds(key: String, rect: Rect) {
+        bounds[key] = rect
+    }
+
+    /** 面板关闭时清空，避免下次打开沿用失效的焦点/边界。 */
+    fun clear() {
+        focused.clear()
+        bounds.clear()
+    }
+
+    /** 是否有输入框处于聚焦状态。 */
+    fun isActive(): Boolean = focused.values.any { it }
+
+    /** 点（根窗口坐标）是否落在任一输入框内。 */
+    fun contains(pointInRoot: Offset): Boolean =
+        bounds.values.any { it.contains(pointInRoot) }
+}
+
+/** 把文本输入框登记到 [SheetInputExclusion]；直接贴在输入框外层 Modifier 上。 */
+fun Modifier.sheetInputArea(exclusion: SheetInputExclusion, key: String): Modifier = this
+    .onFocusChanged { exclusion.updateFocus(key, it.isFocused) }
+    .onGloballyPositioned { exclusion.updateBounds(key, it.boundsInRoot()) }
 
 /** 面板顶部 28dp 圆角、底角 0（SHP-02、CMP-17）；拖动与回弹中不做 shape morph（MOT-12）。 */
 @Composable
@@ -197,11 +251,18 @@ internal fun Modifier.nautileSheetPullDown(
 }
 
 /**
- * 底部面板结构（设计 §7.5 CMP-15/16/17/19、SPC-08）。
+ * 底部面板结构（设计 §7.5 CMP-15/16/17/19、SPC-08；05 §6.3 CMP-46）。
  *
  * 遮罩 32%、surfaceContainerLow 底、顶部 28dp 圆角（底角 0）、22dp 拖拽柄区；
  * 内容内边距左右 24dp、顶部 8dp、底部 24dp + 导航栏 inset；inset 只在此处消费一次。
  * 进入/退出/下拉/回弹按 MOT-08，退出动效结束后才回调 [onDismissed]。
+ *
+ * 下拉关闭同时覆盖拖拽柄与内容区：内容可滚动时到顶继续下拉由嵌套滚动接管；
+ * 内容不可滚动时由祖先 Initial pass 观察起手；[pullDownInputExclusion] 排除输入框
+ * 聚焦与起手在输入框内的手势（T-088），避免拖动光标/选择文本时误关面板。
+ *
+ * @param contentScrollState 内容区的滚动状态；内容不可滚动时传 null。
+ * @param pullDownInputExclusion 面板内文本输入区登记；无输入框时传 null。
  */
 @Composable
 fun NautileBottomSheet(
@@ -211,17 +272,85 @@ fun NautileBottomSheet(
     onDismissed: () -> Unit,
     modifier: Modifier = Modifier,
     contentModifier: Modifier = Modifier,
+    contentScrollState: ScrollState? = null,
+    pullDownInputExclusion: SheetInputExclusion? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val motion = rememberSheetMotion(visible = visible, onExitFinished = onDismissed)
     val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
     val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
     val currentCanDismiss by rememberUpdatedState(canDismiss)
+    val currentVisible by rememberUpdatedState(visible)
+    val currentExclusion by rememberUpdatedState(pullDownInputExclusion)
     if (!motion.rendered) return
 
     val sheetShape = nautileSheetShape()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    var rootOrigin by remember { mutableStateOf(Offset.Zero) }
+    var handleBounds by remember { mutableStateOf<Rect?>(null) }
+    // 起手是否在输入框内：祖先 Initial pass 在按下时记录，供内容区嵌套滚动复用。
+    val pointerDownExcluded = remember { mutableStateOf(false) }
+    // 内容区到顶后的累计下拉位移，用于松手时判定提交或回弹。
+    val contentPull = remember { mutableFloatStateOf(0f) }
+
+    val contentConnection = remember(motion, contentScrollState, visible, density) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                // 内容先滚动；到顶继续下拉才累计并拖动面板（MOT-08.3）。
+                if (currentExclusion?.isActive() == true ||
+                    pointerDownExcluded.value ||
+                    source != NestedScrollSource.UserInput ||
+                    available.y <= 0f ||
+                    contentScrollState?.canScrollBackward == true
+                ) {
+                    return Offset.Zero
+                }
+                contentPull.floatValue += available.y
+                if (visible) motion.dragBy(available.y)
+                return Offset(0f, available.y)
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (visible && currentExclusion?.isActive() != true && contentPull.floatValue > 0f) {
+                    if (motion.shouldCommit(density, contentPull.floatValue, available.y)) {
+                        currentOnDismissRequest()
+                        motion.settle(scope, 0f, NautileMotion.StandardEffects)
+                    } else {
+                        motion.settle(scope, 0f, NautileMotion.BoundaryRebound)
+                    }
+                }
+                contentPull.floatValue = 0f
+                return Velocity.Zero
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { rootOrigin = it.positionInRoot() }
+            // 祖先 Initial pass 观察起手：内容不可滚动时由这里拖拽；可滚动时只记录输入框排除。
+            .nautileSheetPullDown(
+                motion = motion,
+                visible = { currentVisible },
+                scope = scope,
+                onCommitClose = { currentOnDismissRequest() },
+                pass = PointerEventPass.Initial,
+                canStart = { contentScrollState == null },
+                isExcluded = { point ->
+                    val inRoot = point + rootOrigin
+                    val excluded = currentExclusion?.let { it.isActive() || it.contains(inRoot) } == true ||
+                        handleBounds?.contains(inRoot) == true
+                    pointerDownExcluded.value = excluded
+                    excluded
+                },
+            ),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -257,11 +386,14 @@ fun NautileBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(NautileSheetMetrics.HANDLE_AREA_DP)
+                        .onGloballyPositioned { handleBounds = it.boundsInRoot() }
                         .nautileSheetPullDown(
                             motion = motion,
-                            visible = { visible },
+                            visible = { currentVisible },
                             scope = scope,
                             onCommitClose = { currentOnDismissRequest() },
+                            // 输入框聚焦时拖拽柄也不参与下拉（T-088）。
+                            isExcluded = { currentExclusion?.isActive() == true },
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -282,6 +414,8 @@ fun NautileBottomSheet(
                             top = NautileSpacing.space2,
                             bottom = NautileSpacing.space6,
                         )
+                        // 嵌套滚动必须位于内容 verticalScroll 外层（祖先），才能接收其剩余位移。
+                        .nestedScroll(contentConnection)
                         .then(contentModifier),
                     content = content,
                 )

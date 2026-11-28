@@ -1,6 +1,7 @@
 package io.github.mazilin.nautile.ui.screen.schedule
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +46,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.domain.rule.ScheduleRules
+import io.github.mazilin.nautile.ui.designsystem.SheetInputExclusion
+import io.github.mazilin.nautile.ui.designsystem.sheetInputArea
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import java.time.Instant
 import java.time.LocalDate
@@ -60,6 +64,9 @@ import java.time.format.DateTimeFormatter
  *   非法文本内联报错、禁用“确定”、不静默修正（AC-M-01 辅助核对）。
  * - 分层返回：时间圆盘 → 日期视图 → 表单；时间文本非法时留在圆盘并提示。
  * - 确认时间后回到日期视图，行内由父表单显示 `HH:mm`，右侧可清除。
+ * - 日期日历 ↔ 时间圆盘用 `ANIM-S08` 内容区 crossfade（`StandardEffects`），面板外框不变。
+ *
+ * @param inputExclusion 父面板的输入区登记；时间直输框据此排除下拉关闭（T-088）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +81,7 @@ fun ScheduleDateTimePanel(
     onBackToForm: () -> Unit,
     modifier: Modifier = Modifier,
     backEnabled: Boolean = true,
+    inputExclusion: SheetInputExclusion? = null,
 ) {
     val fieldLabel = if (field == ScheduleEditorField.START) "开始" else "结束"
     var showTime by remember(field, startWithTime) { mutableStateOf(startWithTime) }
@@ -96,38 +104,47 @@ fun ScheduleDateTimePanel(
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     BackHandler(enabled = backEnabled && !imeVisible) { back() }
 
-    if (showTime) {
-        TimeDialContent(
-            fieldLabel = fieldLabel,
-            time = time,
-            onBack = { back() },
-            // 确认后回到日期视图；行内 HH:mm 由父表单显示，仍可清除。
-            onTimeConfirmed = { confirmed ->
-                onTimeConfirmed(confirmed)
-                timeTextInvalid = false
-                showTime = false
-            },
-            onTimeCleared = {
-                timeTextInvalid = false
-                onTimeCleared()
-                showTime = false
-            },
-            onInvalidChanged = { timeTextInvalid = it },
-            modifier = modifier,
-        )
-    } else {
-        DateCalendarContent(
-            fieldLabel = fieldLabel,
-            date = date,
-            time = time,
-            onDateSelected = onDateSelected,
-            onOpenTime = {
-                timeTextInvalid = false
-                showTime = true
-            },
-            onBackToForm = onBackToForm,
-            modifier = modifier,
-        )
+    // ANIM-S08：日期日历 ↔ 24h 时间圆盘只做内容区 crossfade，面板外框与遮罩不重播。
+    Crossfade(
+        targetState = showTime,
+        animationSpec = NautileMotion.StandardEffects,
+        label = "schedule_datetime_crossfade",
+        modifier = modifier,
+    ) { isTimeView ->
+        if (isTimeView) {
+            TimeDialContent(
+                fieldLabel = fieldLabel,
+                time = time,
+                onBack = { back() },
+                // 确认后回到日期视图；行内 HH:mm 由父表单显示，仍可清除。
+                onTimeConfirmed = { confirmed ->
+                    onTimeConfirmed(confirmed)
+                    timeTextInvalid = false
+                    showTime = false
+                },
+                onTimeCleared = {
+                    timeTextInvalid = false
+                    onTimeCleared()
+                    showTime = false
+                },
+                onInvalidChanged = { timeTextInvalid = it },
+                inputExclusion = inputExclusion,
+                modifier = Modifier,
+            )
+        } else {
+            DateCalendarContent(
+                fieldLabel = fieldLabel,
+                date = date,
+                time = time,
+                onDateSelected = onDateSelected,
+                onOpenTime = {
+                    timeTextInvalid = false
+                    showTime = true
+                },
+                onBackToForm = onBackToForm,
+                modifier = Modifier,
+            )
+        }
     }
 }
 
@@ -226,6 +243,7 @@ private fun TimeDialContent(
     onTimeCleared: () -> Unit,
     onInvalidChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    inputExclusion: SheetInputExclusion? = null,
 ) {
     val timePickerState = rememberTimePickerState(
         initialHour = time?.hour ?: DEFAULT_HOUR,
@@ -316,6 +334,13 @@ private fun TimeDialContent(
             ),
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    if (inputExclusion != null) {
+                        Modifier.sheetInputArea(inputExclusion, "schedule_time_input")
+                    } else {
+                        Modifier
+                    },
+                )
                 .semantics { liveRegion = LiveRegionMode.Polite }
                 .testTag("schedule_time_input"),
         )

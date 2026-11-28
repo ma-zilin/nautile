@@ -1,19 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- today：回到今天（Material Symbols Outlined 线性风格，24dp/2dp 描边） -->
+<!-- today：回到今天（Material Symbols Outlined 官方图形 24dp，Apache 2.0） -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="?android:attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/transparent"
-        android:pathData="M8,3L8,6M16,3L16,6M4,5.5L20,5.5A2,2 0 0 1 22,7.5L22,19A2,2 0 0 1 20,21L4,21A2,2 0 0 1 2,19L2,7.5A2,2 0 0 1 4,5.5ZM2,9L22,9"
-        android:strokeColor="@android:color/black"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="2" />
-    <path
-        android:fillColor="@android:color/black"
-        android:pathData="M12,12A2,2 0 1 0 12,16A2,2 0 1 0 12,12Z" />
+    <!-- 官方 960 坐标系按 0.025 缩放到 24 viewport，视觉尺寸保持 24dp。 -->
+    <group
+        android:scaleX="0.025"
+        android:scaleY="0.025"
+        android:translateY="24">
+        <path
+            android:fillColor="@android:color/black"
+            android:pathData="M360-300q-42 0-71-29t-29-71q0-42 29-71t71-29q42 0 71 29t29 71q0 42-29 71t-71 29ZM200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Zm0 0v-80 80Z" />
+    </group>
 </vector>

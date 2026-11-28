@@ -1,16 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- play_arrow：分类快捷入口开始计时辅助（装饰，Material Symbols Outlined 线性风格） -->
+<!-- play_arrow：分类快捷入口开始计时辅助（Material Symbols Outlined 官方图形 24dp，Apache 2.0） -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="?android:attr/colorControlNormal">
-    <path
-        android:fillColor="@android:color/transparent"
-        android:pathData="M8,5L19,12L8,19Z"
-        android:strokeColor="@android:color/black"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="2" />
+    <!-- 官方 960 坐标系按 0.025 缩放到 24 viewport，视觉尺寸保持 24dp。 -->
+    <group
+        android:scaleX="0.025"
+        android:scaleY="0.025"
+        android:translateY="24">
+        <path
+            android:fillColor="@android:color/black"
+            android:pathData="M320-200v-560l440 280-440 280Zm80-280Zm0 134 210-134-210-134v268Z" />
+    </group>
 </vector>

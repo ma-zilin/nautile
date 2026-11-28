@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.screen.log
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,8 @@ import io.github.mazilin.nautile.domain.model.TimeCategoryId
 import io.github.mazilin.nautile.domain.rule.TimeLogRules
 import io.github.mazilin.nautile.ui.designsystem.NautileBottomSheet
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
+import io.github.mazilin.nautile.ui.designsystem.SheetInputExclusion
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import java.time.Instant
 import java.time.LocalDate
@@ -64,11 +67,13 @@ fun LogDetailSheet(
     var subview by remember { mutableStateOf(LogDetailSubview.NONE) }
     var confirmDelete by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+    val inputExclusion = remember { SheetInputExclusion() }
 
     LaunchedEffect(visible) {
         if (!visible) {
             subview = LogDetailSubview.NONE
             confirmDelete = false
+            inputExclusion.clear()
         }
     }
 
@@ -94,8 +99,16 @@ fun LogDetailSheet(
         contentModifier = Modifier
             .fillMaxWidth()
             .verticalScroll(scrollState),
+        contentScrollState = scrollState,
+        pullDownInputExclusion = inputExclusion,
     ) {
-        when (subview) {
+        // 面板内子视图（详情/分类/日期/时间）切换只做内容区 crossfade（ANIM-S08 同源）。
+        Crossfade(
+            targetState = subview,
+            animationSpec = NautileMotion.StandardEffects,
+            label = "log_detail_subview_crossfade",
+        ) { currentSubview ->
+            when (currentSubview) {
             LogDetailSubview.CATEGORY -> CategoryPicker(
                 state = pickerState,
                 onSelect = { categoryId ->
@@ -117,7 +130,7 @@ fun LogDetailSheet(
             LogDetailSubview.START_TIME,
             LogDetailSubview.END_TIME,
             -> {
-                val isStart = subview == LogDetailSubview.START_TIME
+                val isStart = currentSubview == LogDetailSubview.START_TIME
                 LogTimePanel(
                     label = if (isStart) "开始" else "结束",
                     time = if (isStart) state.startTime else state.endTime,
@@ -130,10 +143,12 @@ fun LogDetailSheet(
                         subview = LogDetailSubview.NONE
                     },
                     onBack = { subview = LogDetailSubview.NONE },
+                    inputExclusion = inputExclusion,
                 )
             }
 
             LogDetailSubview.NONE -> {
+                Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -272,6 +287,8 @@ fun LogDetailSheet(
                 if (state.isSaving) {
                     Text("保存中…", style = MaterialTheme.typography.labelSmall)
                 }
+                }
+            }
             }
         }
     }

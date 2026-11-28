@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.screen.schedule
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -21,6 +22,8 @@ import androidx.compose.ui.platform.testTag
 import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.ui.designsystem.NautileBottomSheet
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
+import io.github.mazilin.nautile.ui.designsystem.SheetInputExclusion
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import java.time.LocalDate
 import java.time.LocalTime
@@ -56,17 +59,20 @@ fun ScheduleDetailSheet(
     var panelStartWithTime by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+    val inputExclusion = remember { SheetInputExclusion() }
 
     LaunchedEffect(visible) {
         if (!visible) {
             panelField = null
             panelStartWithTime = false
             confirmDelete = false
+            inputExclusion.clear()
         }
     }
 
     val dismissRequest: () -> Unit = {
         if (panelField != null) {
+            inputExclusion.clear()
             panelField = null
             panelStartWithTime = false
         } else if (canDismiss()) {
@@ -82,6 +88,8 @@ fun ScheduleDetailSheet(
         contentModifier = Modifier
             .fillMaxWidth()
             .verticalScroll(scrollState),
+        contentScrollState = scrollState,
+        pullDownInputExclusion = inputExclusion,
     ) {
         Row(
             modifier = Modifier
@@ -103,63 +111,75 @@ fun ScheduleDetailSheet(
         }
 
         val field = panelField
-        if (field == null) {
-            ScheduleEditorFields(
-                state = state,
-                onTitleChanged = onTitleChanged,
-                onCommitTitle = onCommitTitle,
-                onNoteChanged = onNoteChanged,
-                onCommitNote = onCommitNote,
-                onOpenDate = { selected ->
-                    panelStartWithTime = false
-                    panelField = selected
-                },
-                onOpenTime = { selected ->
-                    panelStartWithTime = true
-                    panelField = selected
-                },
-                onClearTime = onTimeCleared,
-                onCourseTagSelected = onCourseTagSelected,
-                onNoTagSelected = onNoTagSelected,
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = NautileSpacing.space2),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(
-                    onClick = { confirmDelete = true },
-                    enabled = !state.isSaving,
-                    modifier = Modifier.testTag("schedule_delete"),
+        // ANIM-S08：表单 ↔ 日期日历/时间圆盘只做内容区 crossfade，面板外框不变。
+        Crossfade(
+            targetState = field,
+            animationSpec = NautileMotion.StandardEffects,
+            label = "schedule_detail_form_crossfade",
+        ) { currentField ->
+            if (currentField == null) {
+                ScheduleEditorFields(
+                    state = state,
+                    onTitleChanged = onTitleChanged,
+                    onCommitTitle = onCommitTitle,
+                    onNoteChanged = onNoteChanged,
+                    onCommitNote = onCommitNote,
+                    onOpenDate = { selected ->
+                        inputExclusion.clear()
+                        panelStartWithTime = false
+                        panelField = selected
+                    },
+                    onOpenTime = { selected ->
+                        inputExclusion.clear()
+                        panelStartWithTime = true
+                        panelField = selected
+                    },
+                    onClearTime = onTimeCleared,
+                    onCourseTagSelected = onCourseTagSelected,
+                    onNoTagSelected = onNoTagSelected,
+                    inputExclusion = inputExclusion,
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = NautileSpacing.space2),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "删除日程",
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                    TextButton(
+                        onClick = { confirmDelete = true },
+                        enabled = !state.isSaving,
+                        modifier = Modifier.testTag("schedule_delete"),
+                    ) {
+                        Text(
+                            text = "删除日程",
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
+                if (state.isSaving) {
+                    Text("保存中…", style = MaterialTheme.typography.labelSmall)
+                }
+            } else {
+                val isStart = currentField == ScheduleEditorField.START
+                ScheduleDateTimePanel(
+                    field = currentField,
+                    date = if (isStart) state.startDate else state.endDate,
+                    time = if (isStart) state.startTime else state.endTime,
+                    startWithTime = panelStartWithTime,
+                    onDateSelected = { picked ->
+                        if (isStart) onStartDateSelected(picked) else onEndDateSelected(picked)
+                    },
+                    onTimeConfirmed = { onTimeConfirmed(currentField, it) },
+                    onTimeCleared = { onTimeCleared(currentField) },
+                    onBackToForm = {
+                        inputExclusion.clear()
+                        panelField = null
+                        panelStartWithTime = false
+                    },
+                    backEnabled = visible,
+                    inputExclusion = inputExclusion,
+                )
             }
-            if (state.isSaving) {
-                Text("保存中…", style = MaterialTheme.typography.labelSmall)
-            }
-        } else {
-            val isStart = field == ScheduleEditorField.START
-            ScheduleDateTimePanel(
-                field = field,
-                date = if (isStart) state.startDate else state.endDate,
-                time = if (isStart) state.startTime else state.endTime,
-                startWithTime = panelStartWithTime,
-                onDateSelected = { picked ->
-                    if (isStart) onStartDateSelected(picked) else onEndDateSelected(picked)
-                },
-                onTimeConfirmed = { onTimeConfirmed(field, it) },
-                onTimeCleared = { onTimeCleared(field) },
-                onBackToForm = {
-                    panelField = null
-                    panelStartWithTime = false
-                },
-                backEnabled = visible,
-            )
         }
     }
 

@@ -200,8 +200,9 @@ fun StatsPieChart(
     modifier: Modifier = Modifier,
 ) {
     val palette = statsPalette()
-    val untrackedColor = MaterialTheme.colorScheme.outlineVariant
-    val emptyColor = MaterialTheme.colorScheme.surfaceVariant
+    // 未追踪用中性 onSurfaceVariant：浅/深两套主题下都与背景有足够对比，不用低对比的容器色。
+    val untrackedColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val emptyColor = MaterialTheme.colorScheme.outline
     val description = buildChartDescription(slices)
 
     Canvas(
@@ -267,7 +268,7 @@ private fun StatsLegend(
     modifier: Modifier = Modifier,
 ) {
     val palette = statsPalette()
-    val untrackedColor = MaterialTheme.colorScheme.outlineVariant
+    val untrackedColor = MaterialTheme.colorScheme.onSurfaceVariant
     Column(modifier = modifier.fillMaxWidth()) {
         var colorIndex = 0
         slices.forEachIndexed { index, slice ->
@@ -395,15 +396,18 @@ private fun ChildShareList(children: List<ChildShare>) {
     }
 }
 
-/** 分类色板：只用现有主题角色，按顺序循环；未追踪用中性色，不靠颜色承担唯一信息。 */
+/**
+ * 分类色板：只用现有主题角色，按顺序循环；未追踪用中性灰。
+ *
+ * 使用 main 色而非容器色：容器色在深色主题下与 surface 对比不足（G6 深色可读性）。
+ * 颜色不承担唯一信息，图例逐项给出文字、时长与百分比。
+ */
 @Composable
 private fun statsPalette(): List<Color> = listOf(
     MaterialTheme.colorScheme.primary,
-    MaterialTheme.colorScheme.tertiary,
     MaterialTheme.colorScheme.secondary,
-    MaterialTheme.colorScheme.primaryContainer,
-    MaterialTheme.colorScheme.tertiaryContainer,
-    MaterialTheme.colorScheme.secondaryContainer,
+    MaterialTheme.colorScheme.tertiary,
+    MaterialTheme.colorScheme.error,
 )
 
 private fun buildChartDescription(slices: List<ChartSlice>): String {

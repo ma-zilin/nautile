@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.screen.schedule
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.ui.designsystem.NautileBottomSheet
 import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
+import io.github.mazilin.nautile.ui.designsystem.SheetInputExclusion
+import io.github.mazilin.nautile.ui.designsystem.sheetInputArea
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
 import java.time.LocalDate
 import java.time.LocalTime
@@ -75,12 +79,14 @@ fun NewScheduleSheet(
     var panelField by remember { mutableStateOf<ScheduleEditorField?>(null) }
     var panelStartWithTime by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+    val inputExclusion = remember { SheetInputExclusion() }
 
     // 退出后清空面板内子视图，避免下次打开停在圆盘。
     LaunchedEffect(visible) {
         if (!visible) {
             panelField = null
             panelStartWithTime = false
+            inputExclusion.clear()
         }
     }
 
@@ -88,6 +94,7 @@ fun NewScheduleSheet(
     // 面板关闭后仍由 canDismiss 校验，无效字段时下拉/遮罩不关闭。
     val dismissRequest: () -> Unit = {
         if (panelField != null) {
+            inputExclusion.clear()
             panelField = null
             panelStartWithTime = false
         } else if (canDismiss()) {
@@ -103,6 +110,8 @@ fun NewScheduleSheet(
         contentModifier = Modifier
             .fillMaxWidth()
             .verticalScroll(scrollState),
+        contentScrollState = scrollState,
+        pullDownInputExclusion = inputExclusion,
     ) {
         Text(
             text = "新建日程",
@@ -110,68 +119,80 @@ fun NewScheduleSheet(
             modifier = Modifier.testTag("new_schedule_sheet"),
         )
         val field = panelField
-        if (field == null) {
-            ScheduleEditorFields(
-                state = state,
-                onTitleChanged = onTitleChanged,
-                onCommitTitle = onCommitTitle,
-                onNoteChanged = onNoteChanged,
-                onCommitNote = onCommitNote,
-                onOpenDate = { selected ->
-                    panelStartWithTime = false
-                    panelField = selected
-                },
-                onOpenTime = { selected ->
-                    panelStartWithTime = true
-                    panelField = selected
-                },
-                onClearTime = onTimeCleared,
-                onCourseTagSelected = onCourseTagSelected,
-                onNoTagSelected = onNoTagSelected,
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = NautileSpacing.space2),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                TextButton(
-                    onClick = onCancel,
-                    enabled = !state.isSaving,
-                    modifier = Modifier.testTag("schedule_cancel"),
+        // ANIM-S08：表单 ↔ 日期日历/时间圆盘只做内容区 crossfade，面板外框不变。
+        Crossfade(
+            targetState = field,
+            animationSpec = NautileMotion.StandardEffects,
+            label = "schedule_form_crossfade",
+        ) { currentField ->
+            if (currentField == null) {
+                ScheduleEditorFields(
+                    state = state,
+                    onTitleChanged = onTitleChanged,
+                    onCommitTitle = onCommitTitle,
+                    onNoteChanged = onNoteChanged,
+                    onCommitNote = onCommitNote,
+                    onOpenDate = { selected ->
+                        inputExclusion.clear()
+                        panelStartWithTime = false
+                        panelField = selected
+                    },
+                    onOpenTime = { selected ->
+                        inputExclusion.clear()
+                        panelStartWithTime = true
+                        panelField = selected
+                    },
+                    onClearTime = onTimeCleared,
+                    onCourseTagSelected = onCourseTagSelected,
+                    onNoTagSelected = onNoTagSelected,
+                    inputExclusion = inputExclusion,
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = NautileSpacing.space2),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("取消")
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextButton(
+                        onClick = onCancel,
+                        enabled = !state.isSaving,
+                        modifier = Modifier.testTag("schedule_cancel"),
+                    ) {
+                        Text("取消")
+                    }
+                    Button(
+                        onClick = onCreate,
+                        enabled = state.isValid && !state.isSaving,
+                        modifier = Modifier.testTag("schedule_create"),
+                    ) {
+                        Text("创建")
+                    }
                 }
-                Button(
-                    onClick = onCreate,
-                    enabled = state.isValid && !state.isSaving,
-                    modifier = Modifier.testTag("schedule_create"),
-                ) {
-                    Text("创建")
+                if (state.isSaving) {
+                    Text("创建中…", style = MaterialTheme.typography.labelSmall)
                 }
+            } else {
+                val isStart = currentField == ScheduleEditorField.START
+                ScheduleDateTimePanel(
+                    field = currentField,
+                    date = if (isStart) state.startDate else state.endDate,
+                    time = if (isStart) state.startTime else state.endTime,
+                    startWithTime = panelStartWithTime,
+                    onDateSelected = { picked ->
+                        if (isStart) onStartDateSelected(picked) else onEndDateSelected(picked)
+                    },
+                    onTimeConfirmed = { onTimeConfirmed(currentField, it) },
+                    onTimeCleared = { onTimeCleared(currentField) },
+                    onBackToForm = {
+                        inputExclusion.clear()
+                        panelField = null
+                        panelStartWithTime = false
+                    },
+                    backEnabled = visible,
+                    inputExclusion = inputExclusion,
+                )
             }
-            if (state.isSaving) {
-                Text("创建中…", style = MaterialTheme.typography.labelSmall)
-            }
-        } else {
-            val isStart = field == ScheduleEditorField.START
-            ScheduleDateTimePanel(
-                field = field,
-                date = if (isStart) state.startDate else state.endDate,
-                time = if (isStart) state.startTime else state.endTime,
-                startWithTime = panelStartWithTime,
-                onDateSelected = { picked ->
-                    if (isStart) onStartDateSelected(picked) else onEndDateSelected(picked)
-                },
-                onTimeConfirmed = { onTimeConfirmed(field, it) },
-                onTimeCleared = { onTimeCleared(field) },
-                onBackToForm = {
-                    panelField = null
-                    panelStartWithTime = false
-                },
-                backEnabled = visible,
-            )
         }
     }
 }
@@ -194,6 +215,7 @@ internal fun ScheduleEditorFields(
     onCourseTagSelected: () -> Unit,
     onNoTagSelected: () -> Unit,
     modifier: Modifier = Modifier,
+    inputExclusion: SheetInputExclusion? = null,
 ) {
     val focusManager = LocalFocusManager.current
     var titleHadFocus by remember { mutableStateOf(false) }
@@ -231,6 +253,13 @@ internal fun ScheduleEditorFields(
                         onCommitTitle()
                     }
                 }
+                .then(
+                    if (inputExclusion != null) {
+                        Modifier.sheetInputArea(inputExclusion, "schedule_title")
+                    } else {
+                        Modifier
+                    },
+                )
                 .testTag("schedule_title_field"),
         )
         OutlinedTextField(
@@ -257,6 +286,13 @@ internal fun ScheduleEditorFields(
                         onCommitNote()
                     }
                 }
+                .then(
+                    if (inputExclusion != null) {
+                        Modifier.sheetInputArea(inputExclusion, "schedule_note")
+                    } else {
+                        Modifier
+                    },
+                )
                 .testTag("schedule_note_field"),
         )
 
