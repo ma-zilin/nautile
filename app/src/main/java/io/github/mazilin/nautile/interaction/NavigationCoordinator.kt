@@ -13,7 +13,7 @@ enum class AppTab(val title: String) {
     AI("AI"),
 }
 
-/** 全屏子页；S1 只有设置根与默认页（AC-N-21、D-11）。 */
+/** 全屏子页；AI Phase A 增加 DeepSeek Key 子页（AC-N-21、D-11、06 §6.2）。 */
 sealed interface FullScreenPage {
     val title: String
 
@@ -23,6 +23,11 @@ sealed interface FullScreenPage {
 
     data object DefaultPage : FullScreenPage {
         override val title: String = "默认页"
+    }
+
+    /** DeepSeek Key 全屏子页；从设置根进入，返回逐级 pop。 */
+    data object DeepSeekKey : FullScreenPage {
+        override val title: String = "DeepSeek Key"
     }
 }
 
@@ -73,6 +78,13 @@ class NavigationCoordinator {
     fun navigateToDefaultPage() {
         if (currentFullScreenPage != FullScreenPage.DefaultPage) {
             _fullScreenStack.update { it + FullScreenPage.DefaultPage }
+        }
+    }
+
+    /** 设置根“DeepSeek Key”行进入 Key 全屏子页（06 §6.1/§6.4）。 */
+    fun navigateToDeepSeekKey() {
+        if (currentFullScreenPage != FullScreenPage.DeepSeekKey) {
+            _fullScreenStack.update { it + FullScreenPage.DeepSeekKey }
         }
     }
 

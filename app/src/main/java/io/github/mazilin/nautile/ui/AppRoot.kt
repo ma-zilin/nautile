@@ -59,7 +59,7 @@ import kotlinx.coroutines.launch
  *   遮罩 0→0.32（StandardEffects）；pop 在状态移除后直接收尾；
  * - 预测性返回手势进行中直接按进度映射，不叠加自绘动画；初次进入不播放入场。
  *
- * 预测性返回（AC-N-21）：仅当开关开启且栈顶为设置根/默认页时注册预览；
+ * 预测性返回（AC-N-21）：仅当开关开启且栈顶为全屏子页（设置根/默认页/DeepSeek Key）时注册预览；
  * 手势进度大于 0 时在其下方组合一个无副作用的下层页面，随进度平移露出；
  * 归零/完成/取消时释放组合。下层页面使用无回调、独立本地状态的预览实例，
  * 不写数据、不改真实滚动、不触发导航显隐/覆盖层/返回栈。
@@ -179,6 +179,8 @@ fun AppRoot(
         when (page) {
             FullScreenPage.Settings -> PreviewBackdrop.Tab(activeTab)
             FullScreenPage.DefaultPage -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
+            // Key 子页的预览下层是设置根（06 §6.2 第 9 条）。
+            FullScreenPage.DeepSeekKey -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
         }
     }
     // pop 动画期间仍按最后一页渲染，结束后才移除（CMP-29）。
@@ -186,6 +188,7 @@ fun AppRoot(
         when (page) {
             FullScreenPage.Settings -> PreviewBackdrop.Tab(activeTab)
             FullScreenPage.DefaultPage -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
+            FullScreenPage.DeepSeekKey -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
         }
     }
     // pop 到上一个全屏页时，动画期间用只读实例绘制目标页，避免触发导航/数据副作用。

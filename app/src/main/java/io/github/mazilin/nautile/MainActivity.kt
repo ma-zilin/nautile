@@ -37,7 +37,10 @@ import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.interaction.PreviewBackdrop
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
+import io.github.mazilin.nautile.ui.screen.settings.AiSettingsUiState
+import io.github.mazilin.nautile.ui.screen.settings.AiSettingsViewModel
 import io.github.mazilin.nautile.ui.screen.settings.DefaultPageScreen
+import io.github.mazilin.nautile.ui.screen.settings.DeepSeekKeyScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsViewModel
 import io.github.mazilin.nautile.ui.screen.settings.StartupState
@@ -112,8 +115,22 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                 )
+                // AI 设置状态独立于 SettingsViewModel，避免改动其构造器与既有测试依赖（架构 §7.4）。
+                val aiSettingsViewModel: AiSettingsViewModel = viewModel(
+                    factory = remember {
+                        viewModelFactory {
+                            initializer {
+                                AiSettingsViewModel(
+                                    keyCommands = container.aiKeyCommands,
+                                    conversationRepository = container.aiConversationRepository,
+                                )
+                            }
+                        }
+                    },
+                )
                 val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
                 val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
+                val aiSettings by aiSettingsViewModel.uiState.collectAsStateWithLifecycle()
                 val startup by settingsViewModel.startup.collectAsStateWithLifecycle()
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
                 val projectDetailState by todoViewModel.projectDetail.collectAsStateWithLifecycle()
@@ -270,12 +287,24 @@ class MainActivity : ComponentActivity() {
                                         container.navigationCoordinator.navigateToDefaultPage()
                                     },
                                     onPredictiveBackChanged = settingsViewModel::setPredictiveBackEnabled,
+                                    aiSettings = aiSettings,
+                                    onOpenDeepSeekKey = {
+                                        container.navigationCoordinator.navigateToDeepSeekKey()
+                                    },
+                                    onClearAiConversation = aiSettingsViewModel::clearConversation,
                                 )
 
                                 FullScreenPage.DefaultPage -> DefaultPageScreen(
                                     currentPage = settings.defaultPage,
                                     onSelect = settingsViewModel::setDefaultPage,
                                     onBack = { container.navigationCoordinator.back() },
+                                )
+
+                                FullScreenPage.DeepSeekKey -> DeepSeekKeyScreen(
+                                    state = aiSettings,
+                                    onBack = { container.navigationCoordinator.back() },
+                                    onSaveKey = aiSettingsViewModel::saveKey,
+                                    onClearKey = aiSettingsViewModel::clearKey,
                                 )
                             }
                         },
@@ -312,12 +341,21 @@ class MainActivity : ComponentActivity() {
                                         onBack = {},
                                         onOpenDefaultPage = {},
                                         onPredictiveBackChanged = {},
+                                        aiSettings = aiSettings,
                                     )
 
                                     FullScreenPage.DefaultPage -> DefaultPageScreen(
                                         currentPage = settings.defaultPage,
                                         onSelect = {},
                                         onBack = {},
+                                    )
+
+                                    // 预览不读取、不回显 Key：只给空状态与无副作用回调。
+                                    FullScreenPage.DeepSeekKey -> DeepSeekKeyScreen(
+                                        state = AiSettingsUiState(),
+                                        onBack = {},
+                                        onSaveKey = {},
+                                        onClearKey = {},
                                     )
                                 }
                             }
