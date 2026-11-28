@@ -21,7 +21,9 @@ import io.github.mazilin.nautile.interaction.NavigationCoordinator
 import io.github.mazilin.nautile.interaction.OverlayBackStack
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
+import io.github.mazilin.nautile.ui.screen.settings.AiSettingsUiState
 import io.github.mazilin.nautile.ui.screen.settings.DefaultPageScreen
+import io.github.mazilin.nautile.ui.screen.settings.DeepSeekKeyScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsScreen
 import io.github.mazilin.nautile.ui.screen.todo.TodoScreen
 import io.github.mazilin.nautile.ui.theme.NautileTheme
@@ -85,6 +87,14 @@ class AcSettingsFullScreenG2R4Test {
                                 currentPage = settings.defaultPage,
                                 onSelect = { page2 -> settings = settings.copy(defaultPage = page2) },
                                 onBack = { navigation.back() },
+                            )
+
+                            // G2 新增 Key 全屏子页：补穷举分支，断言不变；预览态只读、不写 Key。
+                            FullScreenPage.DeepSeekKey -> DeepSeekKeyScreen(
+                                state = AiSettingsUiState(),
+                                onBack = { navigation.back() },
+                                onSaveKey = {},
+                                onClearKey = {},
                             )
                         }
                     },

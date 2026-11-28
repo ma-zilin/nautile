@@ -93,24 +93,123 @@ PY
     echo
     echo "===== [STEP] schema 产物 ====="
     SCHEMA_DIR="app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase"
-    SCHEMA_V1="$SCHEMA_DIR/1.json"
-    SCHEMA_V2="$SCHEMA_DIR/2.json"
-    SCHEMA_V3="$SCHEMA_DIR/3.json"
-    if [ -f "$SCHEMA_V1" ] && [ -f "$SCHEMA_V2" ] && [ -f "$SCHEMA_V3" ]; then
-        echo "schema 存在：$SCHEMA_V1（历史）、$SCHEMA_V2（历史）与 $SCHEMA_V3（当前）"
-        if grep -q '"version": 3' "$SCHEMA_V3" \
-            && grep -q '"tableName": "tasks"' "$SCHEMA_V3" \
-            && grep -q '"tableName": "projects"' "$SCHEMA_V3" \
-            && grep -q '"columnName": "detail"' "$SCHEMA_V3" \
-            && grep -q '"columnName": "manual_order"' "$SCHEMA_V3" \
-            && grep -q 'manual_order` INTEGER' "$SCHEMA_V3"; then
-            echo "[STEP] schema 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）"
-        else
-            echo "[STEP] schema 内容检查 EXIT=1（缺 version 3、tasks/projects/detail/manual_order）"
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$SCHEMA_DIR" <<'PY'
+import json
+import os
+import sys
+
+base = sys.argv[1]
+required = ["1.json", "2.json", "3.json", "4.json"]
+missing = [n for n in required if not os.path.isfile(os.path.join(base, n))]
+if missing:
+    print("schema 产物缺失：" + ", ".join(missing))
+    sys.exit(1)
+
+
+def load(name):
+    with open(os.path.join(base, name), encoding="utf-8") as handle:
+        return json.load(handle)["database"]
+
+
+def tables(db):
+    return {entity["tableName"]: entity for entity in db["entities"]}
+
+
+def fields(entity):
+    return {field["columnName"]: field for field in entity["fields"]}
+
+
+db1, db2, db3, db4 = (load(name) for name in required)
+failures = []
+
+
+def check(condition, message):
+    if not condition:
+        failures.append(message)
+
+
+# 历史 schema 1/2/3 保留既有检查，防止被覆盖或回退。
+check(db1["version"] == 1, "1.json 版本不是 1")
+check({"tasks", "projects"} <= set(tables(db1)), "1.json 缺少 tasks/projects")
+check(db2["version"] == 2, "2.json 版本不是 2")
+check("detail" in fields(tables(db2)["tasks"]), "2.json 缺少 detail")
+check("manual_order" not in fields(tables(db2)["tasks"]), "2.json 不应含 manual_order")
+check(db3["version"] == 3, "3.json 版本不是 3")
+check("manual_order" in fields(tables(db3)["tasks"]), "3.json 缺少 manual_order")
+
+# 当前 schema v4：两张旧表 + 两张 AI 表。
+check(db4["version"] == 4, "4.json 版本不是 4")
+t4 = tables(db4)
+check(
+    set(t4) == {"tasks", "projects", "ai_sessions", "ai_messages"},
+    "4.json 表集合不符：" + ",".join(sorted(t4)),
+)
+
+if "ai_sessions" in t4:
+    session_fields = fields(t4["ai_sessions"])
+    for column in ("id", "created_at", "updated_at"):
+        check(
+            column in session_fields and session_fields[column].get("notNull") is True,
+            f"ai_sessions.{column} 应存在且 NOT NULL",
+        )
+
+if "ai_messages" in t4:
+    message_entity = t4["ai_messages"]
+    message_fields = fields(message_entity)
+    for column in ("id", "session_id", "role", "content", "status", "created_at"):
+        check(
+            column in message_fields and message_fields[column].get("notNull") is True,
+            f"ai_messages.{column} 应存在且 NOT NULL",
+        )
+    check("error_code" in message_fields, "ai_messages 缺少 error_code")
+    if "error_code" in message_fields:
+        check(message_fields["error_code"].get("affinity") == "TEXT", "error_code 应为 TEXT")
+        check(message_fields["error_code"].get("notNull") is not True, "error_code 应可空")
+    create_sql = message_entity["createSql"]
+    check(
+        "`error_code` TEXT" in create_sql and "`error_code` TEXT NOT NULL" not in create_sql,
+        "ai_messages 建表 SQL 的 error_code 应为可空 TEXT",
+    )
+    check("DEFAULT" not in create_sql, "ai_messages 建表 SQL 不应含 DEFAULT")
+    indices = {index["name"]: index for index in message_entity.get("indices", [])}
+    check("index_ai_messages_session_id" in indices, "缺少 index_ai_messages_session_id")
+    if "index_ai_messages_session_id" in indices:
+        check(
+            indices["index_ai_messages_session_id"]["columnNames"] == ["session_id"],
+            "index_ai_messages_session_id 应建在 session_id",
+        )
+    foreign_key = next(
+        (fk for fk in message_entity.get("foreignKeys", []) if fk.get("table") == "ai_sessions"),
+        None,
+    )
+    check(foreign_key is not None, "ai_messages 缺少指向 ai_sessions 的外键")
+    if foreign_key is not None:
+        check(foreign_key.get("onDelete") == "RESTRICT", "ai_messages 外键应为 ON DELETE RESTRICT")
+        check(foreign_key.get("onUpdate") == "NO ACTION", "ai_messages 外键应为 ON UPDATE NO ACTION")
+        check(
+            foreign_key.get("columns") == ["session_id"]
+            and foreign_key.get("referencedColumns") == ["id"],
+            "ai_messages 外键列应为 session_id → ai_sessions.id",
+        )
+
+if failures:
+    for message in failures:
+        print("SCHEMA FAIL: " + message)
+    sys.exit(1)
+
+print(
+    "schema OK：1/2/3 历史保留；4.json version 4，"
+    "tasks/projects/ai_sessions/ai_messages、AI 关键列/索引/外键（RESTRICT）通过",
+)
+PY
+        SCHEMA_RC=$?
+        echo "[STEP] schema 内容检查 EXIT=$SCHEMA_RC"
+        if [ "$SCHEMA_RC" -ne 0 ]; then
             FAIL=1
         fi
     else
-        echo "[STEP] schema 产物检查 EXIT=1（1.json、2.json 或 3.json 不存在）"
+        echo "python3 不可用，无法校验 schema JSON；按 FAIL 处理。"
         FAIL=1
     fi
 
