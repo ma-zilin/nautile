@@ -37,6 +37,8 @@ import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.interaction.PreviewBackdrop
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
+import io.github.mazilin.nautile.ui.screen.schedule.ScheduleScreen
+import io.github.mazilin.nautile.ui.screen.schedule.ScheduleViewModel
 import io.github.mazilin.nautile.ui.screen.settings.DefaultPageScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsViewModel
@@ -113,7 +115,21 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                 )
+                // R6-G2-T4：日程页接入真实 ViewModel；时区与时钟由容器/默认注入，UI 不直接读系统时钟。
+                val scheduleViewModel: ScheduleViewModel = viewModel(
+                    factory = remember {
+                        viewModelFactory {
+                            initializer {
+                                ScheduleViewModel(
+                                    repository = container.scheduleRepository,
+                                    clock = container.clock,
+                                )
+                            }
+                        }
+                    },
+                )
                 val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
+                val scheduleState by scheduleViewModel.uiState.collectAsStateWithLifecycle()
                 val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
                 val startup by settingsViewModel.startup.collectAsStateWithLifecycle()
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
@@ -258,6 +274,18 @@ class MainActivity : ComponentActivity() {
                                     navigationUpdatesEnabled = !imeVisible && overlayEntry == null,
                                 )
 
+                                AppTab.SCHEDULE -> ScheduleScreen(
+                                    state = scheduleState,
+                                    onOpenSettings = container.navigationCoordinator::navigateToSettings,
+                                    onDateSelected = scheduleViewModel::onDateSelected,
+                                    onRangeStep = scheduleViewModel::onRangeStep,
+                                    onToday = scheduleViewModel::onToday,
+                                    onViewModeSelected = scheduleViewModel::onViewModeSelected,
+                                    onSourceFilterSelected =
+                                        scheduleViewModel::onSourceFilterSelected,
+                                    onDismissMessage = scheduleViewModel::onDismissMessage,
+                                )
+
                                 else -> PlaceholderScreen(
                                     title = tab.title,
                                     onOpenSettings = container.navigationCoordinator::navigateToSettings,
@@ -303,6 +331,10 @@ class MainActivity : ComponentActivity() {
                                             projectReopenPrompt = null,
                                         ),
                                     )
+
+                                    // 日程预览使用只读状态，不接任何回调（T-075、AC-N-21）。
+                                    AppTab.SCHEDULE -> ScheduleScreen(state = scheduleState)
+
                                     else -> PlaceholderScreen(
                                         title = backdrop.tab.title,
                                         onOpenSettings = {},
