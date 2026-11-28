@@ -5,6 +5,8 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import io.github.mazilin.nautile.domain.model.AppPage
 import io.github.mazilin.nautile.domain.model.GtdPosition
+import io.github.mazilin.nautile.domain.model.ScheduleViewMode
+import io.github.mazilin.nautile.domain.model.TimerMode
 import io.github.mazilin.nautile.domain.model.UserSettings
 import io.github.mazilin.nautile.domain.repository.SettingsRepository
 import java.io.IOException
@@ -55,6 +57,18 @@ class DataStoreSettingsRepository(
     override suspend fun setViewOptions(position: GtdPosition, options: String) {
         dataStore.updateData { current ->
             current.toMutablePreferences().apply { this[UserSettingsStore.viewOptionsKey(position)] = options }
+        }
+    }
+
+    override suspend fun setTimerMode(mode: TimerMode) {
+        dataStore.updateData { current ->
+            current.toMutablePreferences().apply { this[UserSettingsStore.timerMode] = mode.name }
+        }
+    }
+
+    override suspend fun setScheduleViewMode(mode: ScheduleViewMode) {
+        dataStore.updateData { current ->
+            current.toMutablePreferences().apply { this[UserSettingsStore.scheduleViewMode] = mode.name }
         }
     }
 }

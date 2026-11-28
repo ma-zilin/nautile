@@ -5,12 +5,15 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import io.github.mazilin.nautile.domain.model.AppPage
 import io.github.mazilin.nautile.domain.model.GtdPosition
+import io.github.mazilin.nautile.domain.model.ScheduleViewMode
+import io.github.mazilin.nautile.domain.model.TimerMode
 import io.github.mazilin.nautile.domain.model.UserSettings
 
 /**
- * 设置键与默认值（S1-T05 步骤 2；06-STO-03）。
+ * 设置键与默认值（S1-T05 步骤 2；06-STO-03；R6-G4 新增日志偏好）。
  *
  * 设置只存 DataStore，不进入 Room；键名固定，不随 UI 文案变化。
+ * 未知存储值一律回落默认，不抛异常（架构 §4.2）。
  */
 object UserSettingsStore {
 
@@ -18,6 +21,12 @@ object UserSettingsStore {
     val lastPage = stringPreferencesKey("last_page")
     val lastGtdPosition = stringPreferencesKey("last_gtd_position")
     val predictiveBackEnabled = booleanPreferencesKey("predictive_back_enabled")
+
+    /** 计时模式：PARALLEL / SINGLE；默认并行，未知值回落并行。 */
+    val timerMode = stringPreferencesKey("timer_mode")
+
+    /** 日程视图：DAY / THREE_DAY / WEEK；默认日视图，未知值回落日视图。 */
+    val scheduleViewMode = stringPreferencesKey("schedule_view_mode")
 
     /** `view_options_<module>`：按 GTD 模块保存的视图选项文本。 */
     fun viewOptionsKey(module: GtdPosition) = stringPreferencesKey("view_options_${module.name}")
@@ -31,6 +40,8 @@ object UserSettingsStore {
         lastGtdPosition = preferences[lastGtdPosition].toGtdPositionOrNull(),
         predictiveBackEnabled = preferences[predictiveBackEnabled] ?: true,
         perModuleViewOptions = readViewOptions(preferences),
+        timerMode = preferences[timerMode].toTimerMode(),
+        scheduleViewMode = preferences[scheduleViewMode].toScheduleViewMode(),
     )
 
     private fun readViewOptions(preferences: Preferences): Map<GtdPosition, String> =
@@ -47,4 +58,12 @@ object UserSettingsStore {
 
     private fun String?.toGtdPositionOrNull(): GtdPosition? =
         this?.let { stored -> GtdPosition.entries.firstOrNull { it.name == stored } }
+
+    private fun String?.toTimerMode(): TimerMode =
+        this?.let { stored -> TimerMode.entries.firstOrNull { it.name == stored } }
+            ?: TimerMode.PARALLEL
+
+    private fun String?.toScheduleViewMode(): ScheduleViewMode =
+        this?.let { stored -> ScheduleViewMode.entries.firstOrNull { it.name == stored } }
+            ?: ScheduleViewMode.DAY
 }

@@ -322,29 +322,34 @@ class ScheduleViewModel(
         val endAt = state.endInstant() ?: return
         viewModelScope.launch {
             editorState.update { it?.copy(isSaving = true, saveError = null) }
-            when (
-                val result = commands.create(
-                    title = state.title,
-                    note = state.note.ifBlank { null },
-                    startAt = startAt,
-                    endAt = endAt,
-                    tagId = state.tagId,
-                    source = ScheduleSource.REGULAR,
-                )
-            ) {
-                is ScheduleCommandResult.Success -> {
-                    editorRequest++
-                    editorState.value = null
-                    onCreated()
-                }
+            try {
+                when (
+                    val result = commands.create(
+                        title = state.title,
+                        note = state.note.ifBlank { null },
+                        startAt = startAt,
+                        endAt = endAt,
+                        tagId = state.tagId,
+                        source = ScheduleSource.REGULAR,
+                    )
+                ) {
+                    is ScheduleCommandResult.Success -> {
+                        editorRequest++
+                        editorState.value = null
+                        onCreated()
+                    }
 
-                is ScheduleCommandResult.Invalid -> editorState.update {
-                    it?.copy(isSaving = false, saveError = result.error.message())
-                }
+                    is ScheduleCommandResult.Invalid -> editorState.update {
+                        it?.copy(isSaving = false, saveError = result.error.message())
+                    }
 
-                else -> editorState.update {
-                    it?.copy(isSaving = false, saveError = "创建失败，请重试")
+                    else -> editorState.update {
+                        it?.copy(isSaving = false, saveError = "创建失败，请重试")
+                    }
                 }
+            } catch (error: Exception) {
+                // G4-T0：仓库异常转为错误态提示，不崩溃、不显示成功。
+                editorState.update { it?.copy(isSaving = false, saveError = "创建失败，请重试") }
             }
         }
     }
@@ -355,20 +360,25 @@ class ScheduleViewModel(
         val id = state.scheduleId ?: return
         viewModelScope.launch {
             editorState.update { it?.copy(isSaving = true, saveError = null) }
-            when (val result = commands.delete(id)) {
-                is ScheduleCommandResult.Deleted -> {
-                    editorRequest++
-                    editorState.value = null
-                    onDeleted()
-                }
+            try {
+                when (val result = commands.delete(id)) {
+                    is ScheduleCommandResult.Deleted -> {
+                        editorRequest++
+                        editorState.value = null
+                        onDeleted()
+                    }
 
-                is ScheduleCommandResult.NotFound -> editorState.update {
-                    it?.copy(isSaving = false, saveError = "日程不存在")
-                }
+                    is ScheduleCommandResult.NotFound -> editorState.update {
+                        it?.copy(isSaving = false, saveError = "日程不存在")
+                    }
 
-                else -> editorState.update {
-                    it?.copy(isSaving = false, saveError = "删除失败，请重试")
+                    else -> editorState.update {
+                        it?.copy(isSaving = false, saveError = "删除失败，请重试")
+                    }
                 }
+            } catch (error: Exception) {
+                // G4-T0：仓库异常转为错误态提示，不崩溃、不显示成功。
+                editorState.update { it?.copy(isSaving = false, saveError = "删除失败，请重试") }
             }
         }
     }
@@ -419,20 +429,27 @@ class ScheduleViewModel(
             saveMutex.withLock {
                 // 串行写入时用最新草稿覆盖同字段，避免快速连续输入被旧值回写。
                 val effective = latestFieldValue(update)
-                when (val result = commands.updateField(id, effective)) {
-                    is ScheduleCommandResult.Success -> editorState.update {
-                        it?.copy(isSaving = false, saveError = null)
-                    }
+                try {
+                    when (val result = commands.updateField(id, effective)) {
+                        is ScheduleCommandResult.Success -> editorState.update {
+                            it?.copy(isSaving = false, saveError = null)
+                        }
 
-                    is ScheduleCommandResult.Invalid -> editorState.update {
-                        it?.copy(isSaving = false, saveError = result.error.message())
-                    }
+                        is ScheduleCommandResult.Invalid -> editorState.update {
+                            it?.copy(isSaving = false, saveError = result.error.message())
+                        }
 
-                    is ScheduleCommandResult.NotFound -> editorState.update {
-                        it?.copy(isSaving = false, saveError = "日程不存在")
-                    }
+                        is ScheduleCommandResult.NotFound -> editorState.update {
+                            it?.copy(isSaving = false, saveError = "日程不存在")
+                        }
 
-                    else -> editorState.update {
+                        else -> editorState.update {
+                            it?.copy(isSaving = false, saveError = "保存失败，请重试")
+                        }
+                    }
+                } catch (error: Exception) {
+                    // G4-T0：仓库异常转为错误态提示，不崩溃、不显示成功。
+                    editorState.update {
                         it?.copy(isSaving = false, saveError = "保存失败，请重试")
                     }
                 }

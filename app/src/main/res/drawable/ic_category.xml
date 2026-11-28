@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- category：日志分类/全部分类（Material Symbols Outlined 线性风格，24dp/2dp 描边） -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/colorControlNormal">
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M4,4L10,4L10,10L4,10Z M14,4L20,4L20,10L14,10Z M4,14L10,14L10,20L4,20Z M14,14L20,14L20,20L14,20Z"
+        android:strokeColor="@android:color/black"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />
+</vector>

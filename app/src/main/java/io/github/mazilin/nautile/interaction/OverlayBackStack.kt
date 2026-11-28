@@ -19,6 +19,15 @@ sealed interface Overlay {
 
     /** 日程详情半屏；id 仅用于调试与宿主识别，数据由 ViewModel 读取。 */
     data class ScheduleDetail(val scheduleId: Long) : Overlay
+
+    /** 日志补录/新建半屏；保存才落库，取消不生成半成品（AC-L-02）。 */
+    data object NewLog : Overlay
+
+    /** 日志详情半屏；字段直接编辑即保存（AC-D-06 记录分支）。 */
+    data class LogDetail(val logId: Long) : Overlay
+
+    /** “全部分类”两级选择器；选中分类后开始计时并关闭（AC-T-21）。 */
+    data object LogCategoryPicker : Overlay
 }
 
 /**

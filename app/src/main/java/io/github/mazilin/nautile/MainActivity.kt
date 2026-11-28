@@ -37,9 +37,15 @@ import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.interaction.PreviewBackdrop
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
+import io.github.mazilin.nautile.ui.screen.log.LogOverlayHost
+import io.github.mazilin.nautile.ui.screen.log.LogScreen
+import io.github.mazilin.nautile.ui.screen.log.LogViewModel
+import io.github.mazilin.nautile.ui.screen.log.RunningTimerBar
 import io.github.mazilin.nautile.ui.screen.schedule.ScheduleOverlayHost
 import io.github.mazilin.nautile.ui.screen.schedule.ScheduleScreen
 import io.github.mazilin.nautile.ui.screen.schedule.ScheduleViewModel
+import io.github.mazilin.nautile.ui.screen.settings.CategoryManagementScreen
+import io.github.mazilin.nautile.ui.screen.settings.CategoryManagementViewModel
 import io.github.mazilin.nautile.ui.screen.settings.DefaultPageScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsViewModel
@@ -130,9 +136,43 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                 )
+                // R6-G4：日志记录/计时页；时间与模式均来自容器注入，UI 不读系统时钟。
+                val logViewModel: LogViewModel = viewModel(
+                    factory = remember {
+                        viewModelFactory {
+                            initializer {
+                                LogViewModel(
+                                    logRepository = container.timeLogRepository,
+                                    categoryRepository = container.timeCategoryRepository,
+                                    settingsRepository = container.settingsRepository,
+                                    commands = container.timeLogCommands,
+                                    clock = container.clock,
+                                )
+                            }
+                        }
+                    },
+                )
+                // R6-G4-T5：分类管理全屏子页。
+                val categoryManagementViewModel: CategoryManagementViewModel = viewModel(
+                    factory = remember {
+                        viewModelFactory {
+                            initializer {
+                                CategoryManagementViewModel(
+                                    timeCategoryRepository = container.timeCategoryRepository,
+                                    timeLogRepository = container.timeLogRepository,
+                                    commands = container.timeCategoryCommands,
+                                )
+                            }
+                        }
+                    },
+                )
                 val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
                 val scheduleState by scheduleViewModel.uiState.collectAsStateWithLifecycle()
                 val scheduleEditor by scheduleViewModel.editor.collectAsStateWithLifecycle()
+                val logState by logViewModel.uiState.collectAsStateWithLifecycle()
+                val logEditor by logViewModel.editor.collectAsStateWithLifecycle()
+                val logDetail by logViewModel.detail.collectAsStateWithLifecycle()
+                val categoryState by categoryManagementViewModel.uiState.collectAsStateWithLifecycle()
                 val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
                 val startup by settingsViewModel.startup.collectAsStateWithLifecycle()
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
@@ -146,6 +186,7 @@ class MainActivity : ComponentActivity() {
                 val overlayEntry by container.overlayBackStack.top.collectAsStateWithLifecycle()
                 var startupApplied by remember { mutableStateOf(false) }
                 var scrollNavigationVisible by remember { mutableStateOf(true) }
+                var logScrollNavigationVisible by remember { mutableStateOf(true) }
 
                 // 每次重组把最新的搜索开关暴露给 Activity 返回回调（不读 Compose 状态以外的数据）。
                 // 有覆盖层时仍按既有顺序先关覆盖层，搜索栏只在一级待办页上优先关闭。
@@ -189,6 +230,8 @@ class MainActivity : ComponentActivity() {
                 // 查询不跨页面保留（CMP-38）：离开待办模块时退出搜索。
                 LaunchedEffect(activeTab) {
                     if (activeTab != AppTab.TODO) todoViewModel.closeSearch()
+                    // 日志页导航显隐只在页内滚动时生效；离开/回到页面恢复可见。
+                    if (activeTab != AppTab.LOG || overlayEntry != null) logScrollNavigationVisible = true
                 }
                 // 日程覆盖层关闭后清理编辑器，避免异步加载完成后留下无宿主的草稿。
                 val scheduleOverlay = overlayEntry?.overlay
@@ -196,6 +239,15 @@ class MainActivity : ComponentActivity() {
                     scheduleOverlay == Overlay.NewSchedule || scheduleOverlay is Overlay.ScheduleDetail
                 LaunchedEffect(scheduleOverlayOpen) {
                     if (!scheduleOverlayOpen) scheduleViewModel.closeEditor()
+                }
+                // 日志覆盖层关闭后清理编辑器/详情，避免异步加载完成后留下无宿主的草稿。
+                val logOverlayOpen = scheduleOverlay == Overlay.NewLog ||
+                    scheduleOverlay is Overlay.LogDetail
+                LaunchedEffect(logOverlayOpen) {
+                    if (!logOverlayOpen) {
+                        logViewModel.closeEditor()
+                        logViewModel.closeDetail()
+                    }
                 }
                 if (startup == StartupState.Loading || !startupApplied) {
                     StartupPlaceholder()
@@ -228,12 +280,19 @@ class MainActivity : ComponentActivity() {
                 }
                 // 日程面板的关闭条件：无效字段由 ViewModel 阻止并提示（AC-D-06/08）。
                 val scheduleCanDismiss: () -> Boolean = { scheduleViewModel.dismissEditor() }
+                // 日志面板的关闭条件：无效字段/运行中编辑由 ViewModel 阻止并提示。
+                val logEditorCanDismiss: () -> Boolean = { logViewModel.dismissEditor() }
+                val logDetailCanDismiss: () -> Boolean = { logViewModel.dismissDetail() }
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     AppRoot(
                         navigation = container.navigationCoordinator,
                         overlays = container.overlayBackStack,
-                        scrollNavigationVisible = if (activeTab == AppTab.TODO) scrollNavigationVisible else true,
+                        scrollNavigationVisible = when (activeTab) {
+                            AppTab.TODO -> scrollNavigationVisible
+                            AppTab.LOG -> logScrollNavigationVisible
+                            else -> true
+                        },
                         tabContent = { tab ->
                             when (tab) {
                                 AppTab.TODO -> TodoScreen(
@@ -314,6 +373,35 @@ class MainActivity : ComponentActivity() {
                                     onDismissMessage = scheduleViewModel::onDismissMessage,
                                 )
 
+                                AppTab.LOG -> LogScreen(
+                                    state = logState,
+                                    onOpenSettings = container.navigationCoordinator::navigateToSettings,
+                                    onCategoryTap = logViewModel::onCategoryQuickTap,
+                                    onShowAllCategories = {
+                                        container.overlayBackStack.open(Overlay.LogCategoryPicker)
+                                    },
+                                    onOpenLog = { id ->
+                                        logViewModel.onOpenLog(id)
+                                        val opened = container.overlayBackStack.open(
+                                            Overlay.LogDetail(id.value),
+                                            canDismiss = logDetailCanDismiss,
+                                        )
+                                        if (!opened) logViewModel.closeDetail()
+                                    },
+                                    onOpenManual = {
+                                        logViewModel.onOpenManual()
+                                        val opened = container.overlayBackStack.open(
+                                            Overlay.NewLog,
+                                            canDismiss = logEditorCanDismiss,
+                                        )
+                                        if (!opened) logViewModel.closeEditor()
+                                    },
+                                    onDismissMessage = logViewModel::onDismissMessage,
+                                    onNavigationVisibilityChanged = {
+                                        logScrollNavigationVisible = it
+                                    },
+                                )
+
                                 else -> PlaceholderScreen(
                                     title = tab.title,
                                     onOpenSettings = container.navigationCoordinator::navigateToSettings,
@@ -329,6 +417,9 @@ class MainActivity : ComponentActivity() {
                                         container.navigationCoordinator.navigateToDefaultPage()
                                     },
                                     onPredictiveBackChanged = settingsViewModel::setPredictiveBackEnabled,
+                                    onOpenCategoryManagement = {
+                                        container.navigationCoordinator.navigateToCategoryManagement()
+                                    },
                                 )
 
                                 FullScreenPage.DefaultPage -> DefaultPageScreen(
@@ -336,9 +427,36 @@ class MainActivity : ComponentActivity() {
                                     onSelect = settingsViewModel::setDefaultPage,
                                     onBack = { container.navigationCoordinator.back() },
                                 )
+
+                                FullScreenPage.CategoryManagement -> CategoryManagementScreen(
+                                    state = categoryState,
+                                    onBack = { container.navigationCoordinator.back() },
+                                    onCreateTopLevel = categoryManagementViewModel::openCreateTopLevel,
+                                    onCreateChild = categoryManagementViewModel::openCreateChild,
+                                    onEdit = categoryManagementViewModel::openEdit,
+                                    onRequestDelete = categoryManagementViewModel::requestDelete,
+                                    onNameChanged = categoryManagementViewModel::onNameChanged,
+                                    onSave = categoryManagementViewModel::save,
+                                    onCloseEdit = categoryManagementViewModel::closeEdit,
+                                    onConfirmDelete = categoryManagementViewModel::confirmDelete,
+                                    onDismissDeleteConfirm =
+                                        categoryManagementViewModel::dismissDeleteConfirm,
+                                    onDismissGuard = categoryManagementViewModel::dismissGuard,
+                                    onDismissMessage = categoryManagementViewModel::onDismissMessage,
+                                )
                             }
                         },
                         predictiveBackEnabled = settings.predictiveBackEnabled,
+                        // 计时条是导航的扩展：仅在日志页、有运行中且键盘未打开时渲染；
+                        // 导航隐藏、覆盖层、全屏子页由 AppRoot 条件统一隐藏，但都不结束计时。
+                        bottomBarContent = {
+                            if (activeTab == AppTab.LOG && !imeVisible && logState.running.isNotEmpty()) {
+                                RunningTimerBar(
+                                    running = logState.running,
+                                    onTimerTap = logViewModel::onRunningTimerTap,
+                                )
+                            }
+                        },
                         overlayContent = { overlay ->
                             // 三类面板/详情改由下方宿主负责“先播退出、后关闭”（T5/T6），
                             // 这里只保留 GTD 占位；其余覆盖层不直接组合。
@@ -381,6 +499,14 @@ class MainActivity : ComponentActivity() {
                                         currentPage = settings.defaultPage,
                                         onSelect = {},
                                         onBack = {},
+                                    )
+
+                                    // 分类管理的预测预览映射为设置页（架构 §5.4），只读无回调。
+                                    FullScreenPage.CategoryManagement -> SettingsScreen(
+                                        settings = settings,
+                                        onBack = {},
+                                        onOpenDefaultPage = {},
+                                        onPredictiveBackChanged = {},
                                     )
                                 }
                             }
@@ -541,6 +667,17 @@ class MainActivity : ComponentActivity() {
                     ScheduleOverlayHost(
                         viewModel = scheduleViewModel,
                         editor = if (scheduleOverlayOpen) scheduleEditor else null,
+                        onOverlayClosed = { container.overlayBackStack.close() },
+                    )
+                    // R6-G4：日志补录/详情/“全部分类”两级选择器；同宿主先播退出、后关闭。
+                    LogOverlayHost(
+                        viewModel = logViewModel,
+                        editor = if (scheduleOverlay == Overlay.NewLog) logEditor else null,
+                        detail = if (scheduleOverlay is Overlay.LogDetail) logDetail else null,
+                        uiState = logState,
+                        pickerOpen = scheduleOverlay == Overlay.LogCategoryPicker,
+                        onCategoryPicked = logViewModel::onCategoryQuickTap,
+                        onPickerClosed = { container.overlayBackStack.close() },
                         onOverlayClosed = { container.overlayBackStack.close() },
                     )
                 }

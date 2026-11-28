@@ -13,7 +13,7 @@ enum class AppTab(val title: String) {
     AI("AI"),
 }
 
-/** 全屏子页；S1 只有设置根与默认页（AC-N-21、D-11）。 */
+/** 全屏子页；S1 有设置根与默认页，R6-G4 增加分类管理（AC-N-21、D-11）。 */
 sealed interface FullScreenPage {
     val title: String
 
@@ -23,6 +23,11 @@ sealed interface FullScreenPage {
 
     data object DefaultPage : FullScreenPage {
         override val title: String = "默认页"
+    }
+
+    /** 分类管理全屏子页：从根设置进入，返回“分类管理 → 根设置”（05 §2.6）。 */
+    data object CategoryManagement : FullScreenPage {
+        override val title: String = "分类管理"
     }
 }
 
@@ -73,6 +78,13 @@ class NavigationCoordinator {
     fun navigateToDefaultPage() {
         if (currentFullScreenPage != FullScreenPage.DefaultPage) {
             _fullScreenStack.update { it + FullScreenPage.DefaultPage }
+        }
+    }
+
+    /** 根设置 → 分类管理（全屏子页，05 §2.6）。 */
+    fun navigateToCategoryManagement() {
+        if (currentFullScreenPage != FullScreenPage.CategoryManagement) {
+            _fullScreenStack.update { it + FullScreenPage.CategoryManagement }
         }
     }
 

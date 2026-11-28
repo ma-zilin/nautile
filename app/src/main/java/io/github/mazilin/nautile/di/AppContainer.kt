@@ -14,14 +14,20 @@ import io.github.mazilin.nautile.data.db.NautileDatabase
 import io.github.mazilin.nautile.data.repository.RoomProjectRepository
 import io.github.mazilin.nautile.data.repository.RoomScheduleRepository
 import io.github.mazilin.nautile.data.repository.RoomTaskRepository
+import io.github.mazilin.nautile.data.repository.RoomTimeCategoryRepository
+import io.github.mazilin.nautile.data.repository.RoomTimeLogRepository
 import io.github.mazilin.nautile.domain.port.Clock
 import io.github.mazilin.nautile.domain.repository.ProjectRepository
 import io.github.mazilin.nautile.domain.repository.ScheduleRepository
 import io.github.mazilin.nautile.domain.repository.SettingsRepository
 import io.github.mazilin.nautile.domain.repository.TaskRepository
+import io.github.mazilin.nautile.domain.repository.TimeCategoryRepository
+import io.github.mazilin.nautile.domain.repository.TimeLogRepository
 import io.github.mazilin.nautile.domain.usecase.ProjectCommands
 import io.github.mazilin.nautile.domain.usecase.ScheduleCommands
 import io.github.mazilin.nautile.domain.usecase.TaskCommands
+import io.github.mazilin.nautile.domain.usecase.TimeCategoryCommands
+import io.github.mazilin.nautile.domain.usecase.TimeLogCommands
 import io.github.mazilin.nautile.interaction.BackDispatcher
 import io.github.mazilin.nautile.interaction.KeyboardCoordinator
 import io.github.mazilin.nautile.interaction.NavigationCoordinator
@@ -58,12 +64,16 @@ class AppContainer(context: Context) {
     val taskRepository: TaskRepository = RoomTaskRepository(database)
     val projectRepository: ProjectRepository = RoomProjectRepository(database)
     val scheduleRepository: ScheduleRepository = RoomScheduleRepository(database)
+    val timeLogRepository: TimeLogRepository = RoomTimeLogRepository(database)
+    val timeCategoryRepository: TimeCategoryRepository = RoomTimeCategoryRepository(database)
     val settingsRepository: SettingsRepository = DataStoreSettingsRepository(dataStore)
     val clock: Clock = SystemClock()
 
     val taskCommands = TaskCommands(taskRepository, projectRepository, clock)
     val projectCommands = ProjectCommands(projectRepository, taskRepository, clock)
     val scheduleCommands = ScheduleCommands(scheduleRepository, clock)
+    val timeLogCommands = TimeLogCommands(timeLogRepository, timeCategoryRepository, clock)
+    val timeCategoryCommands = TimeCategoryCommands(timeCategoryRepository, clock)
 
     val navigationCoordinator = NavigationCoordinator()
     val overlayBackStack = OverlayBackStack()
