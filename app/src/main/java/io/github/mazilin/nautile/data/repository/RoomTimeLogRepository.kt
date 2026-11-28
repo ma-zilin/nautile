@@ -37,6 +37,12 @@ class RoomTimeLogRepository(private val database: NautileDatabase) : TimeLogRepo
             .map { entities -> entities.map(TimeLogMapper::toDomain) }
     }
 
+    override suspend fun listForDay(day: LocalDate, zoneId: ZoneId): List<TimeLog> {
+        val dayStart = day.atStartOfDay(zoneId).toInstant().toEpochMilli()
+        val dayEnd = day.plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
+        return logDao.listForDay(dayStart, dayEnd).map(TimeLogMapper::toDomain)
+    }
+
     override fun observeInRange(range: TimeRange): Flow<List<TimeLog>> =
         logDao.observeInRange(
             range.startInclusive.toEpochMilli(),

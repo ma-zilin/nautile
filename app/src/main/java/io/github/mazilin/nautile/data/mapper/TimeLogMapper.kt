@@ -20,6 +20,7 @@ object TimeLogMapper {
         endAt = entity.endAt?.let { Instant.ofEpochMilli(it) },
         createdAt = Instant.ofEpochMilli(entity.createdAt),
         updatedAt = Instant.ofEpochMilli(entity.updatedAt),
+        colorIndex = entity.colorIndex,
     )
 
     fun toEntity(log: TimeLog): TimeLogEntity = TimeLogEntity(
@@ -29,5 +30,6 @@ object TimeLogMapper {
         endAt = log.endAt?.toEpochMilli(),
         createdAt = log.createdAt.toEpochMilli(),
         updatedAt = log.updatedAt.toEpochMilli(),
+        colorIndex = log.colorIndex,
     )
 }

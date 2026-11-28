@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,10 +91,13 @@ fun NautileTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) NautileDarkColorScheme else NautileLightColorScheme,
-        typography = NautileTypography,
-        shapes = NautileShapes,
-        content = content,
-    )
+    val eventColors = if (darkTheme) EventColorPalette.Dark else EventColorPalette.Light
+    CompositionLocalProvider(LocalNautileEventColors provides eventColors) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) NautileDarkColorScheme else NautileLightColorScheme,
+            typography = NautileTypography,
+            shapes = NautileShapes,
+            content = content,
+        )
+    }
 }

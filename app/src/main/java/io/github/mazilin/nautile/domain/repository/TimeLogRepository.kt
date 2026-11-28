@@ -35,6 +35,9 @@ interface TimeLogRepository {
 
     fun observeForDay(day: LocalDate, zoneId: ZoneId): Flow<List<TimeLog>>
 
+    /** 一次性查询与指定本地日相交的全部日志（含运行中；供开始计时/补录计算同日相邻异色）。 */
+    suspend fun listForDay(day: LocalDate, zoneId: ZoneId): List<TimeLog>
+
     fun observeInRange(range: TimeRange): Flow<List<TimeLog>>
 
     /** 运行中记录（`end_at IS NULL`），按开始时间升序；用于重启后墙钟恢复。 */

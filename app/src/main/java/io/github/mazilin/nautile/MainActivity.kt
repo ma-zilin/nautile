@@ -493,6 +493,12 @@ class MainActivity : ComponentActivity() {
                                     onDismissGuard = categoryManagementViewModel::dismissGuard,
                                     onDismissMessage = categoryManagementViewModel::onDismissMessage,
                                 )
+
+                                // R7-G1 最小编译占位；真实标签管理页面在 G3 接入。
+                                FullScreenPage.TagManagement -> PlaceholderScreen(
+                                    title = page.title,
+                                    onOpenSettings = { container.navigationCoordinator.back() },
+                                )
                             }
                         },
                         predictiveBackEnabled = settings.predictiveBackEnabled,
@@ -550,8 +556,10 @@ class MainActivity : ComponentActivity() {
                                         onBack = {},
                                     )
 
-                                    // 分类管理的预测预览映射为设置页（架构 §5.4），只读无回调。
-                                    FullScreenPage.CategoryManagement -> SettingsScreen(
+                                    // 分类管理/标签管理的预测预览映射为设置页（架构 §5.4、R7 §3.2.3），只读无回调。
+                                    FullScreenPage.CategoryManagement,
+                                    FullScreenPage.TagManagement,
+                                    -> SettingsScreen(
                                         settings = settings,
                                         onBack = {},
                                         onOpenDefaultPage = {},

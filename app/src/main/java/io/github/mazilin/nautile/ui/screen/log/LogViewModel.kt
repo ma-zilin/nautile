@@ -389,6 +389,7 @@ class LogViewModel(
                     TimeLogError.CATEGORY_NOT_FOUND -> "分类不存在"
                     TimeLogError.UNSUPPORTED_MODE -> "单活动模式尚未开放"
                     TimeLogError.END_NOT_AFTER_START -> "开始失败，请重试"
+                    TimeLogError.FUTURE_TIME_FORBIDDEN -> "不能补录未来时间"
                     TimeLogError.RUNNING_LOG -> "开始失败，请重试"
                 }
 
@@ -714,6 +715,7 @@ class LogViewModel(
     private fun TimeLogError.message(): String = when (this) {
         TimeLogError.CATEGORY_NOT_FOUND -> "分类不存在"
         TimeLogError.END_NOT_AFTER_START -> "结束时间必须晚于开始时间"
+        TimeLogError.FUTURE_TIME_FORBIDDEN -> "不能补录未来时间"
         TimeLogError.UNSUPPORTED_MODE -> "单活动模式尚未开放"
         TimeLogError.RUNNING_LOG -> RUNNING_HINT
     }

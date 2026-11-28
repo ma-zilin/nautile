@@ -44,4 +44,6 @@ data class TimeLogEntity(
     val createdAt: Long,
     @ColumnInfo(name = "updated_at")
     val updatedAt: Long,
+    @ColumnInfo(name = "color_index")
+    val colorIndex: Int? = null,
 )

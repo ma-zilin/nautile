@@ -4,10 +4,14 @@ import io.github.mazilin.nautile.domain.model.ScheduleEvent
 import io.github.mazilin.nautile.domain.model.ScheduleId
 import io.github.mazilin.nautile.domain.model.ScheduleSource
 import io.github.mazilin.nautile.domain.model.ScheduleTagId
+import io.github.mazilin.nautile.domain.model.TimeRange
 import io.github.mazilin.nautile.domain.port.Clock
 import io.github.mazilin.nautile.domain.repository.ScheduleRepository
+import io.github.mazilin.nautile.domain.rule.ColoredTimeSlot
+import io.github.mazilin.nautile.domain.rule.EventColorRules
 import io.github.mazilin.nautile.domain.rule.ScheduleRules
 import java.time.Instant
+import java.time.ZoneId
 
 /** 日程命令失败原因；UI 按枚举输出内联提示，不捕获裸异常（架构 §3.3）。 */
 enum class ScheduleError {
@@ -58,28 +62,27 @@ sealed interface ScheduleFieldUpdate {
 }
 
 /**
- * 日程写入用例（R6-G2-T2）。
+ * 日程写入用例（R6-G2-T2、R7 §2.3 / §4.2）。
  *
- * 规则：标题非空白、`endAt > startAt`、标签存在或 null；新建只接受 `REGULAR`。
+ * 规则：标题非空白、`endAt > startAt`、标签存在或 null；新建默认来源 [ScheduleSource.MANUAL]，
+ * 并按同日相邻异色规则自动分配持久化 `colorIndex`；编辑字段不重算 `colorIndex`。
  * 无效输入不写库，返回 [ScheduleError]；不产生半成品记录。
  */
 class ScheduleCommands(
     private val repository: ScheduleRepository,
     private val clock: Clock,
+    private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) {
 
-    /** 新建单次日程；来源固定普通，系列字段恒 null。 */
+    /** 新建单次日程；手工入口默认 [ScheduleSource.MANUAL]，系列字段恒 null。 */
     suspend fun create(
         title: String,
         note: String?,
         startAt: Instant,
         endAt: Instant,
         tagId: ScheduleTagId?,
-        source: ScheduleSource = ScheduleSource.REGULAR,
+        source: ScheduleSource = ScheduleSource.MANUAL,
     ): ScheduleCommandResult {
-        if (source != ScheduleSource.REGULAR) {
-            return ScheduleCommandResult.Invalid(ScheduleError.UNSUPPORTED_SOURCE)
-        }
         if (!ScheduleRules.isValidTitle(title)) {
             return ScheduleCommandResult.Invalid(ScheduleError.BLANK_TITLE)
         }
@@ -89,6 +92,24 @@ class ScheduleCommands(
         if (tagId != null && repository.getTag(tagId) == null) {
             return ScheduleCommandResult.Invalid(ScheduleError.TAG_NOT_FOUND)
         }
+        val day = startAt.atZone(zoneId).toLocalDate()
+        val dayRange = TimeRange(
+            startInclusive = day.atStartOfDay(zoneId).toInstant(),
+            endExclusive = day.plusDays(1).atStartOfDay(zoneId).toInstant(),
+        )
+        val sameDaySlots = repository.listInRange(dayRange).map { existing ->
+            ColoredTimeSlot(
+                startAt = existing.startAt,
+                endAt = existing.endAt,
+                colorIndex = existing.colorIndex,
+                fallbackId = existing.id.value,
+            )
+        }
+        val colorIndex = EventColorRules.pickColorIndex(
+            targetStart = startAt,
+            targetEnd = endAt,
+            sameDaySlots = sameDaySlots,
+        )
         val now = clock.now()
         val draft = ScheduleEvent(
             id = ScheduleId(0),
@@ -96,12 +117,13 @@ class ScheduleCommands(
             note = note?.takeIf { it.isNotBlank() },
             startAt = startAt,
             endAt = endAt,
-            source = ScheduleSource.REGULAR,
+            source = source,
             tagId = tagId,
             seriesId = null,
             originalStartAt = null,
             createdAt = now,
             updatedAt = now,
+            colorIndex = colorIndex,
         )
         val id = repository.insert(draft)
         return ScheduleCommandResult.Success(draft.copy(id = id))

@@ -29,6 +29,11 @@ sealed interface FullScreenPage {
     data object CategoryManagement : FullScreenPage {
         override val title: String = "分类管理"
     }
+
+    /** 标签管理全屏子页：从根设置进入，返回“标签管理 → 根设置”（R7 Q2）。 */
+    data object TagManagement : FullScreenPage {
+        override val title: String = "标签管理"
+    }
 }
 
 /**
@@ -87,6 +92,16 @@ class NavigationCoordinator {
             _fullScreenStack.update { it + FullScreenPage.CategoryManagement }
         }
     }
+
+    /** 根设置 → 标签管理（全屏子页，R7 Q2）。 */
+    fun navigateToTagManagement() {
+        if (currentFullScreenPage != FullScreenPage.TagManagement) {
+            _fullScreenStack.update { it + FullScreenPage.TagManagement }
+        }
+    }
+
+    /** 标签管理入口别名，等价于 [navigateToTagManagement]。 */
+    fun openTagManagement() = navigateToTagManagement()
 
     /** 全屏子页返回；栈空时返回 false，交系统处理。 */
     fun back(): Boolean {

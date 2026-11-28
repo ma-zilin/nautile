@@ -1,7 +1,9 @@
 package io.github.mazilin.nautile.domain.rule
 
+import io.github.mazilin.nautile.domain.model.ScheduleEvent
 import io.github.mazilin.nautile.domain.model.ScheduleSource
 import io.github.mazilin.nautile.domain.model.ScheduleTag
+import io.github.mazilin.nautile.domain.model.ScheduleTagId
 import java.time.Instant
 import java.time.LocalTime
 
@@ -42,10 +44,23 @@ object ScheduleRules {
         if (parseTimeText(text) == null) TIME_FORMAT_ERROR else null
 
     /**
-     * 默认标签：课程来源挂系统“课程表”，普通来源为无标签（架构 §3.5）。
+     * 默认标签：导入来源默认挂系统“课程表”，手动/AI 来源为无标签（R7 §2.3）。
      *
-     * 本轮新建只允许普通来源，本函数为未来导入与显示保留；普通日程手动选择标签不改来源。
+     * 手动日程修改标签不改变来源。
      */
     fun defaultTag(source: ScheduleSource, systemCourseTag: ScheduleTag?): Long? =
-        if (source == ScheduleSource.COURSE) systemCourseTag?.id?.value else null
+        if (source == ScheduleSource.IMPORTED) systemCourseTag?.id?.value else null
+
+    /**
+     * 按多选标签筛选日程（纯函数，委托至 [io.github.mazilin.nautile.domain.rule.filterByTags]）。
+     */
+    fun filterByTags(
+        events: List<ScheduleEvent>,
+        filter: ScheduleTagFilter,
+        courseTagId: ScheduleTagId? = null,
+    ): List<ScheduleEvent> = io.github.mazilin.nautile.domain.rule.filterByTags(
+        events = events,
+        filter = filter,
+        courseTagId = courseTagId,
+    )
 }

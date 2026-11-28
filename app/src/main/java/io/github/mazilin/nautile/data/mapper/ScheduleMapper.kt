@@ -10,11 +10,25 @@ import io.github.mazilin.nautile.domain.model.ScheduleTagId
 import java.time.Instant
 
 /**
- * 日程 entity ↔ domain 纯函数（架构 §4.1；沿用 TaskMapper 约定）。
+ * 日程 entity ↔ domain 纯函数（架构 §4.1、R7 §2.2；沿用 TaskMapper 约定）。
  *
- * 枚举按文本名往返，时间戳用 UTC epoch 毫秒；可空字段原样映射。
+ * 来源读兼容历史 `"REGULAR"`/`"COURSE"` 与规范 `"MANUAL"`/`"AI"`/`"IMPORTED"`，写恒用规范枚举名；
+ * 时间戳用 UTC epoch 毫秒；可空字段（含 `colorIndex`）原样映射。
  */
 object ScheduleMapper {
+
+    /**
+     * 显式白名单解析日程来源（R7 §2.2）：
+     * - `"MANUAL"` / `"REGULAR"` → [ScheduleSource.MANUAL]
+     * - `"AI"` → [ScheduleSource.AI]
+     * - `"IMPORTED"` / `"COURSE"` → [ScheduleSource.IMPORTED]
+     */
+    fun parseScheduleSource(raw: String): ScheduleSource = when (raw) {
+        "MANUAL", "REGULAR" -> ScheduleSource.MANUAL
+        "AI" -> ScheduleSource.AI
+        "IMPORTED", "COURSE" -> ScheduleSource.IMPORTED
+        else -> throw IllegalArgumentException("未知日程来源：$raw")
+    }
 
     fun toDomain(entity: ScheduleEventEntity): ScheduleEvent = ScheduleEvent(
         id = ScheduleId(entity.id),
@@ -22,12 +36,13 @@ object ScheduleMapper {
         note = entity.note,
         startAt = Instant.ofEpochMilli(entity.startAt),
         endAt = Instant.ofEpochMilli(entity.endAt),
-        source = ScheduleSource.valueOf(entity.source),
+        source = parseScheduleSource(entity.source),
         tagId = entity.tagId?.let { ScheduleTagId(it) },
         seriesId = entity.seriesId,
         originalStartAt = entity.originalStartAt?.let { Instant.ofEpochMilli(it) },
         createdAt = Instant.ofEpochMilli(entity.createdAt),
         updatedAt = Instant.ofEpochMilli(entity.updatedAt),
+        colorIndex = entity.colorIndex,
     )
 
     fun toEntity(event: ScheduleEvent): ScheduleEventEntity = ScheduleEventEntity(
@@ -42,6 +57,7 @@ object ScheduleMapper {
         originalStartAt = event.originalStartAt?.toEpochMilli(),
         createdAt = event.createdAt.toEpochMilli(),
         updatedAt = event.updatedAt.toEpochMilli(),
+        colorIndex = event.colorIndex,
     )
 
     fun toDomain(entity: ScheduleTagEntity): ScheduleTag = ScheduleTag(

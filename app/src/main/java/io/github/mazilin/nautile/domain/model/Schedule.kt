@@ -12,11 +12,13 @@ value class ScheduleId(val value: Long)
 value class ScheduleTagId(val value: Long)
 
 /**
- * 日程来源（架构 §1.3 第 7 条、AC-S-04）。
+ * 日程来源三分类（R7 #11、Q6）。
  *
- * 本轮新建只允许 [REGULAR]；[COURSE] 仅由未来课程表导入产生，“合并”只是页面筛选，不入库。
+ * - [MANUAL]：用户手动创建（读兼容历史值 `"REGULAR"`）；
+ * - [AI]：AI 助手创建；
+ * - [IMPORTED]：外部课表/日历导入（读兼容历史值 `"COURSE"`）。
  */
-enum class ScheduleSource { COURSE, REGULAR }
+enum class ScheduleSource { MANUAL, AI, IMPORTED }
 
 /** 日程视图模式：日 / 三天 / 周（AC-S-03/13）。 */
 enum class ScheduleViewMode { DAY, THREE_DAY, WEEK }
@@ -44,6 +46,7 @@ data class ScheduleTag(
  * @property tagId 标签 ID；null 表示无标签（不伪造“无标签”行）
  * @property seriesId 重复系列 ID；本轮恒 null
  * @property originalStartAt 系列实例原 occurrence；本轮恒 null
+ * @property colorIndex 事件色板槽位（0..7）；历史旧记录为 null，展示时按确定性回退解析（R7 #22）
  */
 data class ScheduleEvent(
     val id: ScheduleId,
@@ -57,6 +60,7 @@ data class ScheduleEvent(
     val originalStartAt: Instant?,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val colorIndex: Int? = null,
 )
 
 /** 闭区间本地日期范围；[dayCount] 为含首尾的天数（架构 §3.1）。 */

@@ -72,7 +72,7 @@ data class ScheduleEditorUiState(
     val startTime: LocalTime?,
     val endDate: LocalDate,
     val endTime: LocalTime?,
-    val source: ScheduleSource = ScheduleSource.REGULAR,
+    val source: ScheduleSource = ScheduleSource.MANUAL,
     val tagId: ScheduleTagId? = null,
     /** 系统“课程表”标签 id；未加载到时为 null，标签选择暂时不可用。 */
     val courseTagId: ScheduleTagId? = null,
@@ -110,8 +110,9 @@ data class ScheduleEditorUiState(
 
     val sourceLabel: String
         get() = when (source) {
-            ScheduleSource.REGULAR -> "普通"
-            ScheduleSource.COURSE -> "课程表"
+            ScheduleSource.MANUAL -> "手动创建"
+            ScheduleSource.AI -> "AI创建"
+            ScheduleSource.IMPORTED -> "导入"
         }
 }
 

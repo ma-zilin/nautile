@@ -150,3 +150,16 @@ val MIGRATION_3_4 = object : Migration(3, 4) {
         )
     }
 }
+
+/**
+ * schema v4 → v5：日程事件与时间日志各增加可空色槽列 `color_index`（R7 Q4-A、#22）。
+ *
+ * 只做增量 ALTER 且列可空、无默认值；旧行保持 NULL，展示时按确定性回退色槽渲染；
+ * 不重建表、不修改外键、不使用 destructive fallback。
+ */
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE schedule_events ADD COLUMN color_index INTEGER")
+        db.execSQL("ALTER TABLE time_logs ADD COLUMN color_index INTEGER")
+    }
+}

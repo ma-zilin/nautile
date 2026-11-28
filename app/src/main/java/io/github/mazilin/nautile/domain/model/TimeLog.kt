@@ -31,6 +31,7 @@ data class TimeCategory(
  * 时间日志（架构 §3.1）。
  *
  * [endAt] 为 null 表示运行中；跨天不拆行，统计时按本地 00:00 派生段。
+ * [colorIndex] 为事件色板槽位（0..7）；历史旧记录为 null，展示时按确定性回退解析（R7 #22）。
  */
 data class TimeLog(
     val id: TimeLogId,
@@ -39,6 +40,7 @@ data class TimeLog(
     val endAt: Instant?,
     val createdAt: Instant,
     val updatedAt: Instant,
+    val colorIndex: Int? = null,
 ) {
     val isRunning: Boolean get() = endAt == null
 }

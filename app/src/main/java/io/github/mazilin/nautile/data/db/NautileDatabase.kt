@@ -17,11 +17,11 @@ import io.github.mazilin.nautile.data.db.entity.TimeCategoryEntity
 import io.github.mazilin.nautile.data.db.entity.TimeLogEntity
 
 /**
- * Nautile 数据库（v4，R6-G2）。
+ * Nautile 数据库（v5，R7-G1）。
  *
- * v4 保留既有 tasks/projects，并一次建齐 6 张日程/日志表：
- * schedule_series、schedule_events、schedule_exceptions、schedule_tags、time_categories、time_logs。
- * v1→v2、v2→v3、v3→v4 均由增量迁移完成；schema 导出到 `app/schemas`，
+ * v4 保留既有 tasks/projects 并建齐 6 张日程/日志表；
+ * v5 为 `schedule_events` 与 `time_logs` 各增量增加可空色槽列 `color_index`。
+ * v1→v2、v2→v3、v3→v4、v4→v5 均由增量迁移完成；schema 导出到 `app/schemas`，
  * 不关闭导出、不使用 destructive fallback。
  */
 @Database(
@@ -35,7 +35,7 @@ import io.github.mazilin.nautile.data.db.entity.TimeLogEntity
         TimeCategoryEntity::class,
         TimeLogEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class NautileDatabase : RoomDatabase() {

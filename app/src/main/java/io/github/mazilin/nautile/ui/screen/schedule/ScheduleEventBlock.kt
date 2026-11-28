@@ -35,13 +35,13 @@ fun ScheduleEventBlockView(
     compact: Boolean = false,
 ) {
     val event = block.event
-    val isCourse = event.source == ScheduleSource.COURSE
-    val container = if (isCourse) {
+    val isImported = event.source == ScheduleSource.IMPORTED
+    val container = if (isImported) {
         MaterialTheme.colorScheme.tertiaryContainer
     } else {
         MaterialTheme.colorScheme.secondaryContainer
     }
-    val content = if (isCourse) {
+    val content = if (isImported) {
         MaterialTheme.colorScheme.onTertiaryContainer
     } else {
         MaterialTheme.colorScheme.onSecondaryContainer
@@ -73,7 +73,11 @@ fun ScheduleEventBlockView(
                 overflow = TextOverflow.Ellipsis,
             )
             // 来源与标签用文字表达（颜色不是唯一信息）；无标签时不显示“无标签”行。
-            val sourceLabel = if (isCourse) "课程" else "普通"
+            val sourceLabel = when (event.source) {
+                ScheduleSource.MANUAL -> "手动创建"
+                ScheduleSource.AI -> "AI创建"
+                ScheduleSource.IMPORTED -> "导入"
+            }
             Text(
                 text = if (tagName != null) "$sourceLabel · $tagName" else sourceLabel,
                 style = MaterialTheme.typography.labelSmall,

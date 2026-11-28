@@ -184,3 +184,103 @@ internal val NautileDarkColorScheme: ColorScheme = darkColorScheme(
     surfaceContainerLow = DarkSurfaceContainerLow,
     surfaceContainerLowest = DarkSurfaceContainerLowest,
 )
+
+// ---- R7 8 色事件色板：浅色套（06_R7统一视觉与交互规格 §3.1；COL-11 唯一十六进制落点） ----
+
+/** 0 湛蓝（浅色） */
+internal val LightEventSlot0Container = Color(0xFFE3ECFF)
+internal val LightEventSlot0Border = Color(0xFF5B83D9)
+internal val LightEventSlot0Accent = Color(0xFF3B6FE0)
+internal val LightEventSlot0OnContainer = Color(0xFF102A63)
+
+/** 1 青瓷（浅色） */
+internal val LightEventSlot1Container = Color(0xFFDCF2EE)
+internal val LightEventSlot1Border = Color(0xFF4A998E)
+internal val LightEventSlot1Accent = Color(0xFF267F74)
+internal val LightEventSlot1OnContainer = Color(0xFF0B3630)
+
+/** 2 鼠尾草绿（浅色） */
+internal val LightEventSlot2Container = Color(0xFFE3F2DF)
+internal val LightEventSlot2Border = Color(0xFF5E9958)
+internal val LightEventSlot2Accent = Color(0xFF3D7F37)
+internal val LightEventSlot2OnContainer = Color(0xFF153612)
+
+/** 3 暖琥珀（浅色） */
+internal val LightEventSlot3Container = Color(0xFFFCEFD6)
+internal val LightEventSlot3Border = Color(0xFFC28A38)
+internal val LightEventSlot3Accent = Color(0xFFA66E1B)
+internal val LightEventSlot3OnContainer = Color(0xFF422905)
+
+/** 4 陶土珊瑚（浅色） */
+internal val LightEventSlot4Container = Color(0xFFFCE6DF)
+internal val LightEventSlot4Border = Color(0xFFCC7058)
+internal val LightEventSlot4Accent = Color(0xFFB5543B)
+internal val LightEventSlot4OnContainer = Color(0xFF4A190D)
+
+/** 5 烟粉玫瑰（浅色） */
+internal val LightEventSlot5Container = Color(0xFFF9E3EC)
+internal val LightEventSlot5Border = Color(0xFFBF668C)
+internal val LightEventSlot5Accent = Color(0xFFA3476F)
+internal val LightEventSlot5OnContainer = Color(0xFF47122A)
+
+/** 6 薰衣草紫（浅色） */
+internal val LightEventSlot6Container = Color(0xFFEEE6FA)
+internal val LightEventSlot6Border = Color(0xFF886CC2)
+internal val LightEventSlot6Accent = Color(0xFF6B4EA8)
+internal val LightEventSlot6OnContainer = Color(0xFF29164D)
+
+/** 7 岩板青灰（浅色） */
+internal val LightEventSlot7Container = Color(0xFFE7ECF2)
+internal val LightEventSlot7Border = Color(0xFF6E7E91)
+internal val LightEventSlot7Accent = Color(0xFF516175)
+internal val LightEventSlot7OnContainer = Color(0xFF1E2733)
+
+// ---- R7 8 色事件色板：深色套（06_R7统一视觉与交互规格 §3.1；COL-11 唯一十六进制落点） ----
+
+/** 0 湛蓝（深色） */
+internal val DarkEventSlot0Container = Color(0xFF1E2D4D)
+internal val DarkEventSlot0Border = Color(0xFF6B94E8)
+internal val DarkEventSlot0Accent = Color(0xFF8FB0FF)
+internal val DarkEventSlot0OnContainer = Color(0xFFDCE7FF)
+
+/** 1 青瓷（深色） */
+internal val DarkEventSlot1Container = Color(0xFF183633)
+internal val DarkEventSlot1Border = Color(0xFF5CB3A6)
+internal val DarkEventSlot1Accent = Color(0xFF7ED1C4)
+internal val DarkEventSlot1OnContainer = Color(0xFFD2F2EC)
+
+/** 2 鼠尾草绿（深色） */
+internal val DarkEventSlot2Container = Color(0xFF20361E)
+internal val DarkEventSlot2Border = Color(0xFF75B36E)
+internal val DarkEventSlot2Accent = Color(0xFF94D18D)
+internal val DarkEventSlot2OnContainer = Color(0xFFDAF0D6)
+
+/** 3 暖琥珀（深色） */
+internal val DarkEventSlot3Container = Color(0xFF3D2E16)
+internal val DarkEventSlot3Border = Color(0xFFD4A150)
+internal val DarkEventSlot3Accent = Color(0xFFEBC073)
+internal val DarkEventSlot3OnContainer = Color(0xFFFAE8C8)
+
+/** 4 陶土珊瑚（深色） */
+internal val DarkEventSlot4Container = Color(0xFF3F231C)
+internal val DarkEventSlot4Border = Color(0xFFDF8B75)
+internal val DarkEventSlot4Accent = Color(0xFFF2A894)
+internal val DarkEventSlot4OnContainer = Color(0xFFFCDFD7)
+
+/** 5 烟粉玫瑰（深色） */
+internal val DarkEventSlot5Container = Color(0xFF3D202D)
+internal val DarkEventSlot5Border = Color(0xFFD682A5)
+internal val DarkEventSlot5Accent = Color(0xFFEB9EBD)
+internal val DarkEventSlot5OnContainer = Color(0xFFFADCE8)
+
+/** 6 薰衣草紫（深色） */
+internal val DarkEventSlot6Container = Color(0xFF2D2342)
+internal val DarkEventSlot6Border = Color(0xFFA48CD9)
+internal val DarkEventSlot6Accent = Color(0xFFBEA8ED)
+internal val DarkEventSlot6OnContainer = Color(0xFFEAE0FA)
+
+/** 7 岩板青灰（深色） */
+internal val DarkEventSlot7Container = Color(0xFF262C34)
+internal val DarkEventSlot7Border = Color(0xFF8999AD)
+internal val DarkEventSlot7Accent = Color(0xFFA5B5C9)
+internal val DarkEventSlot7OnContainer = Color(0xFFE0E6EE)

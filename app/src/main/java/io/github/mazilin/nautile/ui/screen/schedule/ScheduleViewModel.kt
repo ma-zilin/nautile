@@ -199,7 +199,7 @@ class ScheduleViewModel(
             startTime = startTime,
             endDate = end.toLocalDate(),
             endTime = end.toLocalTime(),
-            source = ScheduleSource.REGULAR,
+            source = ScheduleSource.MANUAL,
             tagId = null,
             courseTagId = courseTagId,
         )
@@ -330,7 +330,7 @@ class ScheduleViewModel(
                         startAt = startAt,
                         endAt = endAt,
                         tagId = state.tagId,
-                        source = ScheduleSource.REGULAR,
+                        source = ScheduleSource.MANUAL,
                     )
                 ) {
                     is ScheduleCommandResult.Success -> {
@@ -508,8 +508,8 @@ class ScheduleViewModel(
             startTime = start.toLocalTime(),
             endDate = end.toLocalDate(),
             endTime = end.toLocalTime(),
-            // 本轮来源只读展示“普通”；不提供修改入口，也不改写已有来源（设计默认，待确认）。
-            source = ScheduleSource.REGULAR,
+            // R7 #11：详情只读展示日程真实来源，编辑其他字段绝不篡改来源。
+            source = this.source,
             tagId = tagId,
             courseTagId = courseTagId,
         )

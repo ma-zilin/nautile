@@ -182,8 +182,9 @@ fun AppRoot(
         when (page) {
             FullScreenPage.Settings -> PreviewBackdrop.Tab(activeTab)
             FullScreenPage.DefaultPage -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
-            // 分类管理返回根设置；预览下层映射为设置页（架构 §5.4）。
+            // 分类管理/标签管理均返回根设置；预览下层映射为设置页（架构 §5.4、R7 §3.2.3）。
             FullScreenPage.CategoryManagement -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
+            FullScreenPage.TagManagement -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
         }
     }
     // pop 动画期间仍按最后一页渲染，结束后才移除（CMP-29）。
@@ -192,6 +193,7 @@ fun AppRoot(
             FullScreenPage.Settings -> PreviewBackdrop.Tab(activeTab)
             FullScreenPage.DefaultPage -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
             FullScreenPage.CategoryManagement -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
+            FullScreenPage.TagManagement -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
         }
     }
     // pop 到上一个全屏页时，动画期间用只读实例绘制目标页，避免触发导航/数据副作用。

@@ -7,10 +7,11 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * 单次日程；未来也承载系列实例（架构 §1.3）。
+ * 单次日程；未来也承载系列实例（架构 §1.3、R7 §1.1）。
  *
- * 来源存 TEXT 枚举 `COURSE` / `REGULAR`；`tag_id` 为 NULL 表示无标签；
- * 系列字段本轮恒 NULL。外键全部 RESTRICT，删除由用例显式处理。
+ * 来源存 TEXT 枚举 `MANUAL` / `AI` / `IMPORTED`（读兼容历史 `REGULAR` / `COURSE`）；
+ * `tag_id` 为 NULL 表示无标签；`color_index` 为可空色槽（旧行 NULL）；
+ * 系列字段本轮恒 NULL。外键全部 RESTRICT，删除由用例/仓库事务显式处理。
  */
 @Entity(
     tableName = "schedule_events",
@@ -56,4 +57,6 @@ data class ScheduleEventEntity(
     val createdAt: Long,
     @ColumnInfo(name = "updated_at")
     val updatedAt: Long,
+    @ColumnInfo(name = "color_index")
+    val colorIndex: Int? = null,
 )

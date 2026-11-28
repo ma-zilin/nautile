@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.designsystem
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
@@ -9,14 +10,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.only
@@ -26,8 +34,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -58,9 +70,14 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.ui.theme.NautileMotion
 import io.github.mazilin.nautile.ui.theme.NautileSheetMetrics
 import io.github.mazilin.nautile.ui.theme.NautileSpacing
@@ -251,10 +268,12 @@ internal fun Modifier.nautileSheetPullDown(
 }
 
 /**
- * 底部面板结构（设计 §7.5 CMP-15/16/17/19、SPC-08；05 §6.3 CMP-46）。
+ * 底部面板结构（DS-05；设计 §7.5 CMP-15/16/17/19、SPC-08；05 §6.3 CMP-46；06 §1.2/§7.2）。
  *
  * 遮罩 32%、surfaceContainerLow 底、顶部 28dp 圆角（底角 0）、22dp 拖拽柄区；
- * 内容内边距左右 24dp、顶部 8dp、底部 24dp + 导航栏 inset；inset 只在此处消费一次。
+ * 默认内容内边距左右 24dp、顶部 8dp、底部 24dp + 导航栏/IME inset（只在此处消费一次）。
+ * 内容容器内置 `animateContentSize(NautileMotion.ContainerExpand)`，确保切 Tab、切换日期/时间子视图、
+ * 展开子列表或显示内联错误时高度平滑过渡而不跳变（#21）。
  * 进入/退出/下拉/回弹按 MOT-08，退出动效结束后才回调 [onDismissed]。
  *
  * 下拉关闭同时覆盖拖拽柄与内容区：内容可滚动时到顶继续下拉由嵌套滚动接管；
@@ -263,6 +282,9 @@ internal fun Modifier.nautileSheetPullDown(
  *
  * @param contentScrollState 内容区的滚动状态；内容不可滚动时传 null。
  * @param pullDownInputExclusion 面板内文本输入区登记；无输入框时传 null。
+ * @param contentPadding 内容区自定义内边距（如切入日历子视图时可缩小水平边距防 360dp 挤压）。
+ * @param pullDownEnabled 是否允许下拉关闭（如日期/时间子视图展开时传 false 防止误关）。
+ * @param overlayContent 挂接于面板同级根容器上层的浮层插槽（如无遮罩属性菜单）。
  */
 @Composable
 fun NautileBottomSheet(
@@ -274,6 +296,14 @@ fun NautileBottomSheet(
     contentModifier: Modifier = Modifier,
     contentScrollState: ScrollState? = null,
     pullDownInputExclusion: SheetInputExclusion? = null,
+    contentPadding: PaddingValues = PaddingValues(
+        start = NautileSpacing.space6,
+        end = NautileSpacing.space6,
+        top = NautileSpacing.space2,
+        bottom = NautileSpacing.space6,
+    ),
+    pullDownEnabled: Boolean = true,
+    overlayContent: @Composable BoxScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val motion = rememberSheetMotion(visible = visible, onExitFinished = onDismissed)
@@ -283,6 +313,7 @@ fun NautileBottomSheet(
     val currentCanDismiss by rememberUpdatedState(canDismiss)
     val currentVisible by rememberUpdatedState(visible)
     val currentExclusion by rememberUpdatedState(pullDownInputExclusion)
+    val currentPullDownEnabled by rememberUpdatedState(pullDownEnabled)
     if (!motion.rendered) return
 
     val sheetShape = nautileSheetShape()
@@ -302,7 +333,8 @@ fun NautileBottomSheet(
                 source: NestedScrollSource,
             ): Offset {
                 // 内容先滚动；到顶继续下拉才累计并拖动面板（MOT-08.3）。
-                if (currentExclusion?.isActive() == true ||
+                if (!currentPullDownEnabled ||
+                    currentExclusion?.isActive() == true ||
                     pointerDownExcluded.value ||
                     source != NestedScrollSource.UserInput ||
                     available.y <= 0f ||
@@ -316,7 +348,11 @@ fun NautileBottomSheet(
             }
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (visible && currentExclusion?.isActive() != true && contentPull.floatValue > 0f) {
+                if (visible &&
+                    currentPullDownEnabled &&
+                    currentExclusion?.isActive() != true &&
+                    contentPull.floatValue > 0f
+                ) {
                     if (motion.shouldCommit(density, contentPull.floatValue, available.y)) {
                         currentOnDismissRequest()
                         motion.settle(scope, 0f, NautileMotion.StandardEffects)
@@ -341,10 +377,11 @@ fun NautileBottomSheet(
                 scope = scope,
                 onCommitClose = { currentOnDismissRequest() },
                 pass = PointerEventPass.Initial,
-                canStart = { contentScrollState == null },
+                canStart = { currentPullDownEnabled && contentScrollState == null },
                 isExcluded = { point ->
                     val inRoot = point + rootOrigin
-                    val excluded = currentExclusion?.let { it.isActive() || it.contains(inRoot) } == true ||
+                    val excluded = !currentPullDownEnabled ||
+                        currentExclusion?.let { it.isActive() || it.contains(inRoot) } == true ||
                         handleBounds?.contains(inRoot) == true
                     pointerDownExcluded.value = excluded
                     excluded
@@ -392,8 +429,10 @@ fun NautileBottomSheet(
                             visible = { currentVisible },
                             scope = scope,
                             onCommitClose = { currentOnDismissRequest() },
-                            // 输入框聚焦时拖拽柄也不参与下拉（T-088）。
-                            isExcluded = { currentExclusion?.isActive() == true },
+                            // 禁用下拉或输入框聚焦时拖拽柄不参与下拉（T-088）。
+                            isExcluded = {
+                                !currentPullDownEnabled || currentExclusion?.isActive() == true
+                            },
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -408,12 +447,9 @@ fun NautileBottomSheet(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = NautileSpacing.space6,
-                            end = NautileSpacing.space6,
-                            top = NautileSpacing.space2,
-                            bottom = NautileSpacing.space6,
-                        )
+                        // R7 #21：内容高度随 Tab / 日期时间子视图 / 折叠区 / 错误文案平滑伸缩。
+                        .animateContentSize(animationSpec = NautileMotion.ContainerExpand)
+                        .padding(contentPadding)
                         // 嵌套滚动必须位于内容 verticalScroll 外层（祖先），才能接收其剩余位移。
                         .nestedScroll(contentConnection)
                         .then(contentModifier),
@@ -421,7 +457,163 @@ fun NautileBottomSheet(
                 )
             }
         }
+        overlayContent()
     }
+}
+
+/**
+ * 底部面板统一标题行（DS-05；06_R7统一视觉与交互规格 §1.2）。
+ *
+ * 标题使用 `titleMedium` + `heading()` 语义；可选左侧前导槽 [leading] 与右侧关闭按钮 [onClose]。
+ */
+@Composable
+fun NautileSheetHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    onClose: (() -> Unit)? = null,
+    closeContentDescription: String = "关闭",
+    closeTestTag: String? = null,
+    leading: (@Composable RowScope.() -> Unit)? = null,
+    titleTestTag: String? = null,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = NautileSpacing.space12),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space1),
+    ) {
+        if (leading != null) {
+            leading()
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f)
+                .semantics { heading() }
+                .then(if (titleTestTag != null) Modifier.testTag(titleTestTag) else Modifier),
+        )
+        if (onClose != null) {
+            NautileIconButton(
+                iconRes = R.drawable.ic_close,
+                contentDescription = closeContentDescription,
+                onClick = onClose,
+                testTag = closeTestTag,
+            )
+        }
+    }
+}
+
+/**
+ * 底部面板统一底部操作行（DS-05；06_R7统一视觉与交互规格 §1.2、§4.4、§5.1）。
+ *
+ * 支持仅右侧按钮（`[取消][创建]` 或 `[删除日程]`）与双侧布局（左侧危险/辅助动作 + 右侧次/主操作）。
+ */
+@Composable
+fun NautileSheetFooter(
+    modifier: Modifier = Modifier,
+    showDivider: Boolean = true,
+    leading: (@Composable RowScope.() -> Unit)? = null,
+    trailing: @Composable RowScope.() -> Unit,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (showDivider) {
+            Spacer(modifier = Modifier.height(NautileSpacing.space4))
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            Spacer(modifier = Modifier.height(NautileSpacing.space3))
+        } else {
+            Spacer(modifier = Modifier.height(NautileSpacing.space2))
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(NautileSpacing.space2),
+        ) {
+            if (leading != null) {
+                leading()
+            }
+            Spacer(modifier = Modifier.weight(1f))
+            trailing()
+        }
+    }
+}
+
+/**
+ * 统一危险 / 普通二次确认弹窗（DS-05；06_R7统一视觉与交互规格 §0.1、§7.1 L3）。
+ *
+ * 危险操作（[destructive] = true）时确认按钮采用 `error` 色 `TextButton`，严禁占主按钮位；
+ * 单按钮守卫提示（如“知道了”）可将 [dismissText] 传 null。
+ */
+@Composable
+fun NautileConfirmDialog(
+    visible: Boolean,
+    title: String,
+    message: String,
+    confirmText: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    dismissText: String? = "取消",
+    destructive: Boolean = false,
+    confirmTestTag: String? = null,
+    dismissTestTag: String? = null,
+    dialogTestTag: String? = null,
+) {
+    if (!visible) return
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = modifier.then(
+            if (dialogTestTag != null) Modifier.testTag(dialogTestTag) else Modifier,
+        ),
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                modifier = if (confirmTestTag != null) Modifier.testTag(confirmTestTag) else Modifier,
+            ) {
+                Text(
+                    text = confirmText,
+                    color = if (destructive) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                )
+            }
+        },
+        dismissButton = dismissText?.let { label ->
+            {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = if (dismissTestTag != null) {
+                        Modifier.testTag(dismissTestTag)
+                    } else {
+                        Modifier
+                    },
+                ) {
+                    Text(label)
+                }
+            }
+        },
+    )
 }
 
 /**

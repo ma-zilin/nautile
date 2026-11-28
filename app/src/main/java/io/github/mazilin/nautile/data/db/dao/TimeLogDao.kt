@@ -27,6 +27,13 @@ interface TimeLogDao {
 
     @Query(
         "SELECT * FROM time_logs " +
+            "WHERE start_at < :dayEnd AND (end_at IS NULL OR end_at > :dayStart) " +
+            "ORDER BY start_at ASC, id ASC",
+    )
+    suspend fun listForDay(dayStart: Long, dayEnd: Long): List<TimeLogEntity>
+
+    @Query(
+        "SELECT * FROM time_logs " +
             "WHERE start_at < :rangeEnd AND (end_at IS NULL OR end_at > :rangeStart)",
     )
     fun observeInRange(rangeStart: Long, rangeEnd: Long): Flow<List<TimeLogEntity>>

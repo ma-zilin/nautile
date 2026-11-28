@@ -9,15 +9,22 @@ import io.github.mazilin.nautile.domain.repository.StartTimerOutcome
 import io.github.mazilin.nautile.domain.repository.StopTimerOutcome
 import io.github.mazilin.nautile.domain.repository.TimeCategoryRepository
 import io.github.mazilin.nautile.domain.repository.TimeLogRepository
+import io.github.mazilin.nautile.domain.rule.ColoredTimeSlot
+import io.github.mazilin.nautile.domain.rule.EventColorRules
+import io.github.mazilin.nautile.domain.rule.TimeLogRules
 import java.time.Instant
+import java.time.ZoneId
 
-/** 日志命令失败原因；UI 按枚举输出提示，不捕获裸异常（架构 §3.3）。 */
+/** 日志命令失败原因；UI 按枚举输出提示，不捕获裸异常（架构 §3.3、R7 Q3）。 */
 enum class TimeLogError {
     /** 分类不存在（含已删除）。 */
     CATEGORY_NOT_FOUND,
 
     /** 结束时间未晚于开始时间。 */
     END_NOT_AFTER_START,
+
+    /** 起止时间晚于当前时刻：严禁补录或修改为未来时间（R7 Q3，统一提示“不能补录未来时间”）。 */
+    FUTURE_TIME_FORBIDDEN,
 
     /** 本轮只支持默认并行；单活动模式延后。 */
     UNSUPPORTED_MODE,
@@ -56,9 +63,10 @@ class TimeLogCommands(
     private val logRepository: TimeLogRepository,
     private val categoryRepository: TimeCategoryRepository,
     private val clock: Clock,
+    private val zoneId: ZoneId = ZoneId.systemDefault(),
 ) {
 
-    /** 补录一条已完成记录。 */
+    /** 补录一条已完成记录；严禁未来时间，并自动计算同日相邻异色色槽。 */
     suspend fun createManual(
         categoryId: TimeCategoryId,
         startAt: Instant,
@@ -71,6 +79,14 @@ class TimeLogCommands(
             return TimeLogCommandResult.Invalid(TimeLogError.END_NOT_AFTER_START)
         }
         val now = clock.now()
+        if (startAt.isAfter(now) || endAt.isAfter(now)) {
+            return TimeLogCommandResult.Invalid(TimeLogError.FUTURE_TIME_FORBIDDEN)
+        }
+        val colorIndex = pickColorForDay(
+            targetStart = startAt,
+            targetEnd = endAt,
+            now = now,
+        )
         val draft = TimeLog(
             id = TimeLogId(0),
             categoryId = categoryId,
@@ -78,12 +94,13 @@ class TimeLogCommands(
             endAt = endAt,
             createdAt = now,
             updatedAt = now,
+            colorIndex = colorIndex,
         )
         val id = logRepository.insert(draft)
         return TimeLogCommandResult.Success(draft.copy(id = id))
     }
 
-    /** 整条更新（详情字段编辑即保存）；分类与起止同时校验，不写非法中间状态。 */
+    /** 整条更新（详情字段编辑即保存）；严禁未来时间，保留原色槽，不写非法中间状态。 */
     suspend fun update(
         id: TimeLogId,
         categoryId: TimeCategoryId,
@@ -101,11 +118,15 @@ class TimeLogCommands(
         if (endAt == null || !endAt.isAfter(startAt)) {
             return TimeLogCommandResult.Invalid(TimeLogError.END_NOT_AFTER_START)
         }
+        val now = clock.now()
+        if (startAt.isAfter(now) || endAt.isAfter(now)) {
+            return TimeLogCommandResult.Invalid(TimeLogError.FUTURE_TIME_FORBIDDEN)
+        }
         val updated = existing.copy(
             categoryId = categoryId,
             startAt = startAt,
             endAt = endAt,
-            updatedAt = clock.now(),
+            updatedAt = now,
         )
         logRepository.update(updated)
         return TimeLogCommandResult.Success(updated)
@@ -121,7 +142,7 @@ class TimeLogCommands(
         return TimeLogCommandResult.Deleted(id)
     }
 
-    /** 开始计时；同分类已有运行中只返回 [TimeLogCommandResult.AlreadyRunning]。 */
+    /** 开始计时；同分类已有运行中只返回 [TimeLogCommandResult.AlreadyRunning]，新记录写入相邻异色色槽。 */
     suspend fun startTimer(
         categoryId: TimeCategoryId,
         mode: TimerMode = TimerMode.PARALLEL,
@@ -133,6 +154,11 @@ class TimeLogCommands(
             return TimeLogCommandResult.Invalid(TimeLogError.CATEGORY_NOT_FOUND)
         }
         val now = clock.now()
+        val colorIndex = pickColorForDay(
+            targetStart = now,
+            targetEnd = now.plusSeconds(1),
+            now = now,
+        )
         val draft = TimeLog(
             id = TimeLogId(0),
             categoryId = categoryId,
@@ -140,6 +166,7 @@ class TimeLogCommands(
             endAt = null,
             createdAt = now,
             updatedAt = now,
+            colorIndex = colorIndex,
         )
         return when (val outcome = logRepository.startTimer(categoryId, draft)) {
             is StartTimerOutcome.Started -> TimeLogCommandResult.Success(outcome.log)
@@ -154,5 +181,27 @@ class TimeLogCommands(
             is StopTimerOutcome.Stopped -> TimeLogCommandResult.Success(outcome.log)
             StopTimerOutcome.NotRunning -> TimeLogCommandResult.NotRunning
         }
+    }
+
+    /** 按开始时刻所属本地日查已有日志（含运行中），挑选相邻异色槽位（R7 §4.2）。 */
+    private suspend fun pickColorForDay(
+        targetStart: Instant,
+        targetEnd: Instant,
+        now: Instant,
+    ): Int {
+        val startDate = TimeLogRules.startDate(targetStart, zoneId)
+        val sameDaySlots = logRepository.listForDay(startDate, zoneId).map { existing ->
+            ColoredTimeSlot(
+                startAt = existing.startAt,
+                endAt = existing.endAt ?: TimeLogRules.stopEndAt(existing.startAt, now),
+                colorIndex = existing.colorIndex,
+                fallbackId = existing.id.value,
+            )
+        }
+        return EventColorRules.pickColorIndex(
+            targetStart = targetStart,
+            targetEnd = targetEnd,
+            sameDaySlots = sameDaySlots,
+        )
     }
 }

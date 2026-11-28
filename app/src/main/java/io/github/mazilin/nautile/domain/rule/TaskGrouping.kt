@@ -1,8 +1,10 @@
 package io.github.mazilin.nautile.domain.rule
 
+import io.github.mazilin.nautile.domain.model.GtdPosition
 import io.github.mazilin.nautile.domain.model.Priority
 import io.github.mazilin.nautile.domain.model.Project
 import io.github.mazilin.nautile.domain.model.ProjectId
+import io.github.mazilin.nautile.domain.model.ProjectStatus
 import io.github.mazilin.nautile.domain.model.Task
 import io.github.mazilin.nautile.domain.model.ViewClassification
 import io.github.mazilin.nautile.domain.model.ViewOptions
@@ -41,6 +43,29 @@ object TaskGrouping {
     /** 旧语义：只输出有任务的项目组与（非空时）单独任务组，保持既有调用与单测不变。 */
     fun byProject(tasks: List<Task>, projects: List<Project>): List<TaskGroup> =
         groupByProject(tasks, projects, includeEmptyProjects = false)
+
+    /**
+     * 按当前 GTD 清单筛选应参与分组展示的项目集合（R7 #26、架构 §7.1）。
+     *
+     * - 非 [GtdPosition.ENDED] 清单（收件箱 / 进行中 / 等待中 / 将来／也许）：仅返回活跃项目（[ProjectStatus.ACTIVE]）；
+     * - [GtdPosition.ENDED] 清单（已结束）：返回所有已结束项目（非 ACTIVE，含 0 子任务空项目）
+     *   ∪ 含有已结束子任务的活跃项目（防止活跃项目下已结束子任务丢失归属误入“单独任务”）；
+     *   活跃空项目绝不出现在已结束清单。
+     * 输出保持原 [allProjects] 相对顺序。
+     */
+    fun visibleProjectsFor(
+        position: GtdPosition,
+        allProjects: List<Project>,
+        tasksInPosition: List<Task>,
+    ): List<Project> {
+        if (position != GtdPosition.ENDED) {
+            return allProjects.filter { it.status == ProjectStatus.ACTIVE }
+        }
+        val projectIdsWithTasks = tasksInPosition.mapNotNullTo(HashSet()) { it.projectId }
+        return allProjects.filter { project ->
+            project.status != ProjectStatus.ACTIVE || project.id in projectIdsWithTasks
+        }
+    }
 
     /**
      * 分组卡片视图：按 [projects] 顺序输出所有项目组（0 任务也保留），
