@@ -368,31 +368,54 @@ private fun AiMessageItem(
                 message.status == AiMessageStatus.FAILED -> aiErrorMessage(message.errorCode)
                 else -> null
             }
-            if (statusText != null) {
-                val isError = !isStreaming && message.status == AiMessageStatus.FAILED
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = statusText,
-                    style = if (isError) {
-                        MaterialTheme.typography.bodySmall
-                    } else {
-                        MaterialTheme.typography.labelSmall
-                    },
-                    color = if (isError) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    modifier = Modifier
-                        .testTag("ai_message_status_${message.id.value}")
-                        .then(
-                            if (isError) {
-                                Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                            } else {
-                                Modifier
-                            },
-                        ),
-                )
+            // 状态行只在消息边界变化：首次出现淡入（AI-ANIM-03）；
+            // “正在停止…”→“已停止”等文字切换用 Crossfade（AI-ANIM-13）；流式增量不触发。
+            AnimatedVisibility(
+                visible = statusText != null,
+                enter = fadeIn(animationSpec = NautileMotion.StandardEffects),
+                exit = fadeOut(animationSpec = NautileMotion.StandardEffects),
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Crossfade(
+                        targetState = statusText,
+                        animationSpec = NautileMotion.StandardEffects,
+                        label = "ai_message_status_crossfade",
+                    ) { text ->
+                        if (text != null) {
+                            val isError =
+                                !isStreaming && message.status == AiMessageStatus.FAILED
+                            // 终态/错误用 liveRegion 播报一次；流式过程不逐 token 播报（§10.1）。
+                            val announce = !isStreaming &&
+                                (message.status == AiMessageStatus.STOPPED ||
+                                    message.status == AiMessageStatus.FAILED)
+                            Text(
+                                text = text,
+                                style = if (isError) {
+                                    MaterialTheme.typography.bodySmall
+                                } else {
+                                    MaterialTheme.typography.labelSmall
+                                },
+                                color = if (isError) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                                modifier = Modifier
+                                    .testTag("ai_message_status_${message.id.value}")
+                                    .then(
+                                        if (announce) {
+                                            Modifier.semantics {
+                                                liveRegion = LiveRegionMode.Polite
+                                            }
+                                        } else {
+                                            Modifier
+                                        },
+                                    ),
+                            )
+                        }
+                    }
+                }
             }
         }
     }

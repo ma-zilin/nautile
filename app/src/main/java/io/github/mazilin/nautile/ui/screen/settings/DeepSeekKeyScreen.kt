@@ -1,5 +1,6 @@
 package io.github.mazilin.nautile.ui.screen.settings
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.password
 import androidx.compose.ui.semantics.semantics
@@ -36,6 +38,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import io.github.mazilin.nautile.ui.designsystem.NautileButton
+import io.github.mazilin.nautile.ui.theme.NautileMotion
 
 /**
  * DeepSeek Key 全屏子页（06 §6.2、架构 §7.4）。
@@ -77,7 +80,11 @@ fun DeepSeekKeyScreen(
             ) {
                 Text("返回")
             }
-            Text("DeepSeek Key", style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = "DeepSeek Key",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.semantics { heading() },
+            )
         }
         HorizontalDivider()
         Column(
@@ -143,20 +150,29 @@ fun DeepSeekKeyScreen(
                     Text("清除 Key")
                 }
             }
-            keyFeedbackText(state.keyFeedback)?.let { message ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (keyFeedbackIsError(state.keyFeedback)) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                    modifier = Modifier
-                        .testTag("ai_key_feedback")
-                        .semantics { liveRegion = LiveRegionMode.Polite },
-                )
+            // 一次性操作反馈切换用 Crossfade（AI-ANIM-09）；不影响输入与按钮可测性。
+            Crossfade(
+                targetState = keyFeedbackText(state.keyFeedback),
+                animationSpec = NautileMotion.StandardEffects,
+                label = "ai_key_feedback_crossfade",
+            ) { message ->
+                if (message != null) {
+                    Column {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (keyFeedbackIsError(state.keyFeedback)) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            modifier = Modifier
+                                .testTag("ai_key_feedback")
+                                .semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
