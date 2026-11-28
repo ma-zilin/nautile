@@ -25,3 +25,36 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL("ALTER TABLE tasks ADD COLUMN manual_order INTEGER")
     }
 }
+
+/**
+ * schema v3 → v4：新增 AI 会话/消息两张表（架构 §3.1、§4.1）。
+ *
+ * 只新增表与索引，不改 tasks/projects 的列、索引与外键；消息外键 RESTRICT。
+ * 不使用 destructive fallback，不删除既有数据。
+ */
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `ai_sessions` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`created_at` INTEGER NOT NULL, " +
+                "`updated_at` INTEGER NOT NULL)",
+        )
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `ai_messages` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`session_id` INTEGER NOT NULL, " +
+                "`role` TEXT NOT NULL, " +
+                "`content` TEXT NOT NULL, " +
+                "`status` TEXT NOT NULL, " +
+                "`error_code` TEXT, " +
+                "`created_at` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`session_id`) REFERENCES `ai_sessions`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE RESTRICT)",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_ai_messages_session_id` " +
+                "ON `ai_messages` (`session_id`)",
+        )
+    }
+}

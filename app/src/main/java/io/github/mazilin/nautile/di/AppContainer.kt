@@ -9,13 +9,19 @@ import androidx.room.Room
 import io.github.mazilin.nautile.data.datastore.DataStoreSettingsRepository
 import io.github.mazilin.nautile.data.db.MIGRATION_1_2
 import io.github.mazilin.nautile.data.db.MIGRATION_2_3
+import io.github.mazilin.nautile.data.db.MIGRATION_3_4
 import io.github.mazilin.nautile.data.db.NautileDatabase
+import io.github.mazilin.nautile.data.repository.RoomAiConversationRepository
 import io.github.mazilin.nautile.data.repository.RoomProjectRepository
 import io.github.mazilin.nautile.data.repository.RoomTaskRepository
+import io.github.mazilin.nautile.domain.port.AiGateway
 import io.github.mazilin.nautile.domain.port.Clock
+import io.github.mazilin.nautile.domain.port.SecretStore
+import io.github.mazilin.nautile.domain.repository.AiConversationRepository
 import io.github.mazilin.nautile.domain.repository.ProjectRepository
 import io.github.mazilin.nautile.domain.repository.SettingsRepository
 import io.github.mazilin.nautile.domain.repository.TaskRepository
+import io.github.mazilin.nautile.domain.usecase.AiKeyCommands
 import io.github.mazilin.nautile.domain.usecase.ProjectCommands
 import io.github.mazilin.nautile.domain.usecase.TaskCommands
 import io.github.mazilin.nautile.interaction.BackDispatcher
@@ -23,6 +29,8 @@ import io.github.mazilin.nautile.interaction.KeyboardCoordinator
 import io.github.mazilin.nautile.interaction.NavigationCoordinator
 import io.github.mazilin.nautile.interaction.OverlayBackStack
 import io.github.mazilin.nautile.platform.clock.SystemClock
+import io.github.mazilin.nautile.platform.keystore.AndroidKeystoreSecretStore
+import io.github.mazilin.nautile.platform.network.DeepSeekAiGateway
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,7 +51,7 @@ class AppContainer(context: Context) {
         NautileDatabase::class.java,
         DATABASE_NAME,
     )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
         .build()
 
     private val dataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(
@@ -58,6 +66,13 @@ class AppContainer(context: Context) {
 
     val taskCommands = TaskCommands(taskRepository, projectRepository, clock)
     val projectCommands = ProjectCommands(projectRepository, taskRepository, clock)
+
+    // AI Phase A：Key 存 Android Keystore；网关自行读取 Key；会话落 Room（v4）。
+    private val secretStore: SecretStore = AndroidKeystoreSecretStore(appContext)
+    val aiKeyCommands = AiKeyCommands(secretStore)
+    val aiGateway: AiGateway = DeepSeekAiGateway(secretStore)
+    val aiConversationRepository: AiConversationRepository =
+        RoomAiConversationRepository(database)
 
     val navigationCoordinator = NavigationCoordinator()
     val overlayBackStack = OverlayBackStack()

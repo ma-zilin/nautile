@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- AI Phase A：仅 DeepSeek HTTPS 流式请求所需的最小权限；不增加网络状态/存储/通知权限。 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".NautileApp"
         android:allowBackup="false"
