@@ -119,10 +119,9 @@ fun CategoryQuickEntry(
                 )
             }
         }
-        if (categories.isNotEmpty()) {
-            item(key = "all_categories") {
-                AllCategoriesEntry(onClick = onShowAll)
-            }
+        // “全部分类”常驻末尾：无论有无最近使用、分类是否为空都可见（AC-T-21）。
+        item(key = "all_categories") {
+            AllCategoriesEntry(onClick = onShowAll)
         }
     }
 }

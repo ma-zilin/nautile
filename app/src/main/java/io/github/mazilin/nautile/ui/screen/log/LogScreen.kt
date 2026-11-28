@@ -93,15 +93,15 @@ fun LogScreen(
                         .padding(horizontal = NautileSpacing.space4, vertical = NautileSpacing.space2)
                         .testTag("log_no_categories"),
                 )
-            } else {
-                CategoryQuickEntry(
-                    categories = state.recentCategories,
-                    running = state.running,
-                    onCategoryTap = onCategoryTap,
-                    onShowAll = onShowAllCategories,
-                    modifier = Modifier.padding(vertical = NautileSpacing.space2),
-                )
             }
+            // 快捷入口常驻：无历史或分类为空时只显示“全部分类”，仍可打开选择器（AC-T-21）。
+            CategoryQuickEntry(
+                categories = state.recentCategories,
+                running = state.running,
+                onCategoryTap = onCategoryTap,
+                onShowAll = onShowAllCategories,
+                modifier = Modifier.padding(vertical = NautileSpacing.space2),
+            )
             if (state.message != null) {
                 Text(
                     text = state.message,
