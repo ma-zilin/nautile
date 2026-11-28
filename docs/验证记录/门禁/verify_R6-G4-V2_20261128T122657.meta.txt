@@ -1,0 +1,8 @@
+task=R6-G4-V2
+time=2026-11-28T12:32:26+08:00
+head=5e57b9af869dcdd780223d8fb7ebbb7874657d8a
+dirty_entries=24
+connected_requested=1
+androidtest_compile=executed
+result=FAIL
+log=/home/wordwoods/Projects/Tride/.worktrees/schedule-log/docs/验证记录/门禁/verify_R6-G4-V2_20261128T122657.log

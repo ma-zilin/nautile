@@ -1,0 +1,40 @@
+== 2026-11-28T12:47:53+08:00 AC-L-05 force-stop sequence (emulator-5554)
+HEAD=5e57b9af869dcdd780223d8fb7ebbb7874657d8a
+$ adb shell am force-stop io.github.mazilin.nautile
+$ adb shell am instrument -w -e l05_manual true -e class ...#seedRunningTimerForForceStop
+
+io.github.mazilin.nautile.verification.AcLogL05RestoreTest:.
+
+Time: 0.034
+
+OK (1 test)
+
+
+$ adb shell am force-stop io.github.mazilin.nautile
+$ adb shell am start -W -n io.github.mazilin.nautile/.MainActivity
+Starting: Intent { cmp=io.github.mazilin.nautile/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: io.github.mazilin.nautile/.MainActivity
+TotalTime: 434
+WaitTime: 436
+Complete
+$ adb shell input tap 677 2274
+-- UI dump 关键文本（force-stop 后冷启动）：
+text="验证分类（L05）"
+text="计时中 00:15:11"
+text="验证分类（L05）"
+text="12:32–计时中"
+text="计时中 00:15:11"
+text="验证分类（L05）"
+(screencap) -> 证据材料/待整理/R6-G4/g4_l05_force_stop_restore_light.png
+$ adb shell am instrument -w -e l05_manual true -e class ...#verifyRunningTimerSurvivedForceStop
+
+io.github.mazilin.nautile.verification.AcLogL05RestoreTest:.
+
+Time: 0.029
+
+OK (1 test)
+
+
+SEQUENCE_EXIT=0
