@@ -37,7 +37,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import io.github.mazilin.nautile.R
 import io.github.mazilin.nautile.ui.designsystem.NautileButton
+import io.github.mazilin.nautile.ui.designsystem.NautileIconButton
 import io.github.mazilin.nautile.ui.theme.NautileMotion
 
 /**
@@ -67,22 +69,23 @@ fun DeepSeekKeyScreen(
     val canSave = input.trim().isNotEmpty() && !state.savingKey
 
     Column(modifier = modifier.fillMaxSize().testTag("ai_key_screen")) {
-        // 返回沿用现状设置页头部风格（titleLarge + TextButton“返回”），不新建 NautilePageTopBar。
+        // 头部按 06 §6.2：48dp 图标按钮返回 + headlineSmall 标题，不新建 NautilePageTopBar。
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(
+            NautileIconButton(
+                iconRes = R.drawable.ic_arrow_back,
+                contentDescription = "返回",
                 onClick = onBack,
-                modifier = Modifier.testTag("ai_key_back"),
-            ) {
-                Text("返回")
-            }
+                testTag = "ai_key_back",
+            )
             Text(
                 text = "DeepSeek Key",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.semantics { heading() },
             )
         }
