@@ -1,0 +1,428 @@
+============================================================
+T-051 刚性验证门禁
+任务号：R6-G2-V2
+时间：2026-11-28T08:54:58+08:00
+HEAD：8bb713c8435b2a6f0c4c5c8dd79599715f123c2c
+工作区未提交条目数：32
+日志：/home/wordwoods/Projects/Tride/.worktrees/schedule-log/docs/验证记录/门禁/verify_R6-G2-V2_20261128T085458.log
+============================================================
+
+===== [STEP] assembleDebug =====
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:processDebugNavigationResources
+> Task :app:parseDebugLocalResources
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugRFile
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:generateDebugGlobalSynthetics
+> Task :app:desugarDebugFileDependencies
+> Task :app:mapDebugSourceSetPaths
+> Task :app:checkDebugAarMetadata
+> Task :app:checkDebugDuplicateClasses
+> Task :app:compileDebugNavigationResources
+> Task :app:mergeLibDexDebug
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:processDebugMainManifest
+> Task :app:mergeDebugResources
+> Task :app:processDebugManifest
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugNativeLibs
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so. Run with --info option to learn more.
+
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
+
+> Task :app:kspDebugKotlin
+w: [ksp] /home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/main/java/io/github/mazilin/nautile/data/db/entity/ScheduleExceptionEntity.kt:38: override_event_id column references a foreign key but it is not part of an index. This may trigger full table scans whenever parent table is modified so you are highly advised to create an index that covers this column.
+
+> Task :app:mergeExtDexDebug
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:compressDebugJavaRes
+> Task :app:mergeDebugJavaResource
+> Task :app:dexBuilderDebug
+> Task :app:mergeProjectDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+
+BUILD SUCCESSFUL in 7s
+37 actionable tasks: 37 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html
+[STEP] assembleDebug EXIT=0
+
+===== [STEP] assembleDebugAndroidTest(compile-only) =====
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:processDebugNavigationResources
+> Task :app:parseDebugLocalResources
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugRFile
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:compileDebugNavigationResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:generateDebugAndroidTestResources
+> Task :app:packageDebugAndroidTestResources
+> Task :app:processDebugAndroidTestNavigationResources
+> Task :app:mergeDebugResources
+> Task :app:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :app:javaPreCompileDebugAndroidTest
+> Task :app:parseDebugAndroidTestLocalResources
+> Task :app:mergeDebugAndroidTestAssets
+> Task :app:generateDebugAndroidTestRFile
+> Task :app:compressDebugAndroidTestAssets
+> Task :app:generateDebugAndroidTestGlobalSynthetics
+> Task :app:checkDebugAndroidTestDuplicateClasses
+> Task :app:desugarDebugAndroidTestFileDependencies
+> Task :app:mergeLibDexDebugAndroidTest
+> Task :app:checkDebugAndroidTestAarMetadata
+> Task :app:processDebugManifestForPackage
+> Task :app:mapDebugAndroidTestSourceSetPaths
+> Task :app:compileDebugAndroidTestNavigationResources
+> Task :app:mergeDebugAndroidTestResources
+> Task :app:mergeDebugAndroidTestManifest
+> Task :app:processDebugAndroidTestManifest
+> Task :app:mergeDebugAndroidTestJniLibFolders
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeDebugNativeLibs
+> Task :app:validateSigningDebugAndroidTest
+> Task :app:mergeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :app:stripDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :app:writeDebugAndroidTestSigningConfigVersions
+> Task :app:processDebugResources
+> Task :app:processDebugAndroidTestResources
+> Task :app:mergeExtDexDebugAndroidTest
+
+> Task :app:kspDebugKotlin
+w: [ksp] /home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/main/java/io/github/mazilin/nautile/data/db/entity/ScheduleExceptionEntity.kt:38: override_event_id column references a foreign key but it is not part of an index. This may trigger full table scans whenever parent table is modified so you are highly advised to create an index that covers this column.
+
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:kspDebugAndroidTestKotlin
+
+> Task :app:compileDebugAndroidTestKotlin
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/TodoScreenSmokeTest.kt:17:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/ui/AppRootTest.kt:38:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcAppRootT06Test.kt:36:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcCardGroupsT091Test.kt:77:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcDetailEditR4G5Test.kt:94:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcDetailNewTaskUiT08T09Test.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcDetailPullT088Test.kt:43:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcG2R5DrawerAndBoundaryTest.kt:74:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcG3R5RowCheckboxSwipeTest.kt:90:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcGtdHeaderT090Test.kt:71:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcNewTaskSheetR4G4Test.kt:89:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcNewTaskToolbarG6Test.kt:91:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcScheduleS03UiTest.kt:34:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcScheduleS04UiTest.kt:35:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcScheduleS13UiTest.kt:40:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSettingsEntryP1Test.kt:45:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSettingsExitG4Test.kt:42:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSettingsFullScreenG2R4Test.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSheetPullG4Test.kt:62:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcTodoT07Test.kt:57:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcUiT071Test.kt:58:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcUiT077T081Test.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G10ScreenshotTest.kt:57:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G2ScreenshotTest.kt:38:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G3R4ScreenshotTest.kt:46:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G4R4NewTaskScreenshotTest.kt:43:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G5R4EditScreenshotTest.kt:43:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G6NewTaskScreenshotTest.kt:42:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G6R4R2PanelTapProbeTest.kt:35:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G6R4R3PanelIsolationTest.kt:75:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G6R4SwipeOverlayTest.kt:102:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G7DetailAttributeUiTest.kt:99:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G7DetailScreenshotTest.kt:41:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G7R4ScreenshotTest.kt:62:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G8SearchActivityTest.kt:34:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G8SearchScreenshotTest.kt:37:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G8SearchUiTest.kt:69:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G9ScreenshotTest.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G9ViewModelViewOptionsTest.kt:64:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G9ViewUiTest.kt:69:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+
+> Task :app:compileDebugAndroidTestJavaWithJavac NO-SOURCE
+> Task :app:compressDebugAndroidTestJavaRes
+> Task :app:mergeDebugAndroidTestJavaResource
+> Task :app:dexBuilderDebugAndroidTest
+> Task :app:mergeProjectDexDebugAndroidTest
+> Task :app:packageDebugAndroidTest
+> Task :app:createDebugAndroidTestApkListingFileRedirect
+> Task :app:assembleDebugAndroidTest
+
+[Incubating] Problems report is available at: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 9s
+52 actionable tasks: 52 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html
+[STEP] assembleDebugAndroidTest(compile-only) EXIT=0
+
+===== [STEP] testDebugUnitTest =====
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:processDebugNavigationResources
+> Task :app:parseDebugLocalResources
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugRFile
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:compileDebugNavigationResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:processDebugManifestForPackage
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:mergeDebugUnitTestManifest
+> Task :app:processDebugUnitTestManifest
+> Task :app:processDebugResources
+> Task :app:packageDebugUnitTestForUnitTest
+
+> Task :app:kspDebugKotlin
+w: [ksp] /home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/main/java/io/github/mazilin/nautile/data/db/entity/ScheduleExceptionEntity.kt:38: override_event_id column references a foreign key but it is not part of an index. This may trigger full table scans whenever parent table is modified so you are highly advised to create an index that covers this column.
+
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:compressDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:kspDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:compressDebugUnitTestJavaRes
+> Task :app:extractDebugUnitTestJavaRes
+> Task :app:generateDebugUnitTestConfig
+> Task :app:testDebugUnitTest
+
+BUILD SUCCESSFUL in 7s
+32 actionable tasks: 32 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html
+[STEP] testDebugUnitTest EXIT=0
+
+===== [STEP] lintDebug =====
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:processDebugNavigationResources
+> Task :app:parseDebugLocalResources
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugRFile
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:compileDebugNavigationResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:extractProguardFiles
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugResources
+> Task :app:processDebugResources
+
+> Task :app:kspDebugKotlin
+w: [ksp] /home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/main/java/io/github/mazilin/nautile/data/db/entity/ScheduleExceptionEntity.kt:38: override_event_id column references a foreign key but it is not part of an index. This may trigger full table scans whenever parent table is modified so you are highly advised to create an index that covers this column.
+
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:generateDebugLintReportModel
+> Task :app:generateDebugAndroidTestLintModel
+> Task :app:generateDebugUnitTestLintModel
+> Task :app:lintAnalyzeDebugUnitTest
+> Task :app:lintAnalyzeDebugAndroidTest
+> Task :app:lintAnalyzeDebug
+
+> Task :app:lintReportDebug
+Wrote HTML report to file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/build/reports/lint-results-debug.html
+Wrote SARIF report to file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/build/reports/lint-results-debug.sarif
+
+> Task :app:lintDebug
+
+BUILD SUCCESSFUL in 15s
+28 actionable tasks: 28 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html
+[STEP] lintDebug EXIT=0
+
+===== [STEP] 测试结果统计 =====
+suites=46 tests=278 failures=0 errors=0 skipped=0
+[STEP] 测试结果统计 EXIT=0
+
+===== [STEP] schema 产物 =====
+schema 存在：app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/1.json/app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/2.json/app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/3.json（历史）与 app/schemas/io.github.mazilin.nautile.data.db.NautileDatabase/4.json（当前）
+[STEP] schema v3 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）
+[STEP] schema v4 内容检查 EXIT=0（version 4，8 表，end_at/tag_id/parent_id 可空，end_at 无默认）
+
+
+===== [STEP] connectedDebugAndroidTest =====
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:processDebugNavigationResources
+> Task :app:parseDebugLocalResources
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugRFile
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:compileDebugNavigationResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:generateDebugAndroidTestResources
+> Task :app:packageDebugAndroidTestResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugAndroidTestNavigationResources
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:javaPreCompileDebugAndroidTest
+> Task :app:parseDebugAndroidTestLocalResources
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:generateDebugAndroidTestRFile
+> Task :app:generateDebugGlobalSynthetics
+> Task :app:desugarDebugFileDependencies
+> Task :app:mergeDebugJniLibFolders
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugNativeLibs
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeLibDexDebug
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so. Run with --info option to learn more.
+
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeDebugAndroidTestAssets
+> Task :app:compressDebugAndroidTestAssets
+> Task :app:processDebugResources
+> Task :app:generateDebugAndroidTestGlobalSynthetics
+> Task :app:desugarDebugAndroidTestFileDependencies
+> Task :app:checkDebugAndroidTestDuplicateClasses
+> Task :app:checkDebugAndroidTestAarMetadata
+> Task :app:mapDebugAndroidTestSourceSetPaths
+> Task :app:mergeLibDexDebugAndroidTest
+> Task :app:compileDebugAndroidTestNavigationResources
+> Task :app:mergeDebugAndroidTestResources
+> Task :app:mergeDebugAndroidTestManifest
+> Task :app:processDebugAndroidTestManifest
+> Task :app:mergeDebugAndroidTestJniLibFolders
+> Task :app:mergeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :app:stripDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebugAndroidTest
+> Task :app:writeDebugAndroidTestSigningConfigVersions
+> Task :app:processDebugAndroidTestResources
+> Task :app:mergeExtDexDebugAndroidTest
+
+> Task :app:kspDebugKotlin
+w: [ksp] /home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/main/java/io/github/mazilin/nautile/data/db/entity/ScheduleExceptionEntity.kt:38: override_event_id column references a foreign key but it is not part of an index. This may trigger full table scans whenever parent table is modified so you are highly advised to create an index that covers this column.
+
+> Task :app:mergeExtDexDebug
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:compressDebugJavaRes
+> Task :app:mergeDebugJavaResource
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:dexBuilderDebug
+> Task :app:kspDebugAndroidTestKotlin
+> Task :app:mergeProjectDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+
+> Task :app:compileDebugAndroidTestKotlin
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/TodoScreenSmokeTest.kt:17:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/ui/AppRootTest.kt:38:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcAppRootT06Test.kt:36:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcCardGroupsT091Test.kt:77:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcDetailEditR4G5Test.kt:94:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcDetailNewTaskUiT08T09Test.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcDetailPullT088Test.kt:43:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcG2R5DrawerAndBoundaryTest.kt:74:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcG3R5RowCheckboxSwipeTest.kt:90:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcGtdHeaderT090Test.kt:71:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcNewTaskSheetR4G4Test.kt:89:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcNewTaskToolbarG6Test.kt:91:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcScheduleS03UiTest.kt:34:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcScheduleS04UiTest.kt:35:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcScheduleS13UiTest.kt:40:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSettingsEntryP1Test.kt:45:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSettingsExitG4Test.kt:42:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSettingsFullScreenG2R4Test.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcSheetPullG4Test.kt:62:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcTodoT07Test.kt:57:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcUiT071Test.kt:58:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/AcUiT077T081Test.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G10ScreenshotTest.kt:57:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G2ScreenshotTest.kt:38:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G3R4ScreenshotTest.kt:46:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G4R4NewTaskScreenshotTest.kt:43:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G5R4EditScreenshotTest.kt:43:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G6NewTaskScreenshotTest.kt:42:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G6R4R2PanelTapProbeTest.kt:35:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G6R4R3PanelIsolationTest.kt:75:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G6R4SwipeOverlayTest.kt:102:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G7DetailAttributeUiTest.kt:99:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G7DetailScreenshotTest.kt:41:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G7R4ScreenshotTest.kt:62:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G8SearchActivityTest.kt:34:23 'fun <reified A : ComponentActivity> createAndroidComposeRule(effectContext: CoroutineContext = ...): AndroidComposeTestRule<ActivityScenarioRule<A>, A>' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createAndroidComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G8SearchScreenshotTest.kt:37:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G8SearchUiTest.kt:69:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G9ScreenshotTest.kt:49:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G9ViewModelViewOptionsTest.kt:64:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+w: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/app/src/androidTest/java/io/github/mazilin/nautile/verification/G9ViewUiTest.kt:69:23 'fun createComposeRule(effectContext: CoroutineContext = ...): ComposeContentTestRule' is deprecated. Use `androidx.compose.ui.test.junit4.v2.createComposeRule` instead. The v2 APIs use StandardTestDispatcher instead of UnconfinedTestDispatcher, which aligns with standard coroutine behavior by queuing tasks rather than executing them immediately. Tests relying on immediate execution may require explicit synchronization. Please refer to the migration guide for more details.
+
+> Task :app:compileDebugAndroidTestJavaWithJavac NO-SOURCE
+> Task :app:compressDebugAndroidTestJavaRes
+> Task :app:mergeDebugAndroidTestJavaResource
+> Task :app:dexBuilderDebugAndroidTest
+> Task :app:mergeProjectDexDebugAndroidTest
+> Task :app:packageDebugAndroidTest
+> Task :app:createDebugAndroidTestApkListingFileRedirect
+
+> Task :app:connectedDebugAndroidTest
+Running tests on devices: nautile_api36(AVD) - 16
+
+[Incubating] Problems report is available at: file:///home/wordwoods/Projects/Tride/.worktrees/schedule-log/build/reports/problems/problems-report.html
+
+BUILD SUCCESSFUL in 3m 35s
+70 actionable tasks: 70 executed
+Consider enabling configuration cache to speed up this build: https://docs.gradle.org/9.6.0/userguide/configuration_cache_enabling.html
+[STEP] connectedDebugAndroidTest EXIT=0
+
+============================================================
+GATE RESULT: PASS
+日志：/home/wordwoods/Projects/Tride/.worktrees/schedule-log/docs/验证记录/门禁/verify_R6-G2-V2_20261128T085458.log
+元数据：/home/wordwoods/Projects/Tride/.worktrees/schedule-log/docs/验证记录/门禁/verify_R6-G2-V2_20261128T085458.meta.txt
+============================================================

@@ -1,0 +1,8 @@
+task=MERGE-R6
+time=2026-11-28T15:31:38+08:00
+head=c4bafdbd4ba2c08d1208e579a0687581729abc7e
+dirty_entries=201
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_MERGE-R6_20261128T152944.log

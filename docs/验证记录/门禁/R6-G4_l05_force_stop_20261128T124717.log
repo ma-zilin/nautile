@@ -1,0 +1,53 @@
+== 2026-11-28T12:47:17+08:00 AC-L-05 force-stop sequence (emulator-5554)
+HEAD=5e57b9af869dcdd780223d8fb7ebbb7874657d8a
+$ adb shell am force-stop io.github.mazilin.nautile
+$ adb shell am instrument ...#seedRunningTimerForForceStop -e l05_manual true
+android.util.AndroidException: INSTRUMENTATION_FAILED: io.github.mazilin.nautile.test/androidx.test.runner.AndroidJUnitRunner
+	at com.android.commands.am.Instrument.run(Instrument.java:543)
+	at com.android.commands.am.Am.runInstrument(Am.java:213)
+	at com.android.commands.am.Am.onRun(Am.java:85)
+	at com.android.internal.os.BaseCommand.run(BaseCommand.java:63)
+	at com.android.commands.am.Am.main(Am.java:54)
+	at com.android.internal.os.RuntimeInit.nativeFinishInit(Native Method)
+	at com.android.internal.os.RuntimeInit.main(RuntimeInit.java:371)
+INSTRUMENTATION_STATUS: Error=Unable to find instrumentation info for: ComponentInfo{io.github.mazilin.nautile.test/androidx.test.runner.AndroidJUnitRunner}
+INSTRUMENTATION_STATUS: id=ActivityManagerService
+INSTRUMENTATION_STATUS_CODE: -1
+$ adb shell am force-stop io.github.mazilin.nautile
+$ adb shell am start -W -n io.github.mazilin.nautile/.MainActivity
+Starting: Intent { cmp=io.github.mazilin.nautile/.MainActivity }
+Error type 3
+Error: Activity class {io.github.mazilin.nautile/io.github.mazilin.nautile.MainActivity} does not exist.
+Traceback (most recent call last):
+  File "<stdin>", line 6, in <module>
+ValueError: max() iterable argument is empty
+$ adb shell input tap 
+
+Exception occurred while executing 'tap':
+java.lang.IllegalArgumentException: Argument expected after "tap"
+	at com.android.modules.utils.BasicShellCommandHandler.getNextArgRequired(BasicShellCommandHandler.java:295)
+	at com.android.server.input.InputShellCommand.runTap(InputShellCommand.java:484)
+	at com.android.server.input.InputShellCommand.onCommand(InputShellCommand.java:294)
+	at com.android.modules.utils.BasicShellCommandHandler.exec(BasicShellCommandHandler.java:97)
+	at android.os.ShellCommand.exec(ShellCommand.java:38)
+	at com.android.server.input.InputManagerService.onShellCommand(InputManagerService.java:3887)
+	at android.os.Binder.shellCommand(Binder.java:1151)
+	at android.os.Binder.onTransact(Binder.java:953)
+	at android.hardware.input.IInputManager$Stub.onTransact(IInputManager.java:1576)
+	at android.os.Binder.execTransactInternal(Binder.java:1426)
+	at android.os.Binder.execTransact(Binder.java:1365)
+-- UI dump 关键文本（force-stop 后冷启动）：
+$ (screencap) -> 证据材料/待整理/R6-G4/g4_l05_force_stop_restore_light.png
+$ adb shell am instrument ...#verifyRunningTimerSurvivedForceStop -e l05_manual true
+android.util.AndroidException: INSTRUMENTATION_FAILED: io.github.mazilin.nautile.test/androidx.test.runner.AndroidJUnitRunner
+	at com.android.commands.am.Instrument.run(Instrument.java:543)
+	at com.android.commands.am.Am.runInstrument(Am.java:213)
+	at com.android.commands.am.Am.onRun(Am.java:85)
+	at com.android.internal.os.BaseCommand.run(BaseCommand.java:63)
+	at com.android.commands.am.Am.main(Am.java:54)
+	at com.android.internal.os.RuntimeInit.nativeFinishInit(Native Method)
+	at com.android.internal.os.RuntimeInit.main(RuntimeInit.java:371)
+INSTRUMENTATION_STATUS: Error=Unable to find instrumentation info for: ComponentInfo{io.github.mazilin.nautile.test/androidx.test.runner.AndroidJUnitRunner}
+INSTRUMENTATION_STATUS: id=ActivityManagerService
+INSTRUMENTATION_STATUS_CODE: -1
+SEQUENCE_EXIT=1

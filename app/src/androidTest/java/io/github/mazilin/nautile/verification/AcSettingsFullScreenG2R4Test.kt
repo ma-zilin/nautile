@@ -21,6 +21,8 @@ import io.github.mazilin.nautile.interaction.NavigationCoordinator
 import io.github.mazilin.nautile.interaction.OverlayBackStack
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
+import io.github.mazilin.nautile.ui.screen.settings.CategoryManagementScreen
+import io.github.mazilin.nautile.ui.screen.settings.CategoryManagementUiState
 import io.github.mazilin.nautile.ui.screen.settings.DefaultPageScreen
 import io.github.mazilin.nautile.ui.screen.settings.SettingsScreen
 import io.github.mazilin.nautile.ui.screen.todo.TodoScreen
@@ -79,12 +81,31 @@ class AcSettingsFullScreenG2R4Test {
                                 onPredictiveBackChanged = { enabled ->
                                     settings = settings.copy(predictiveBackEnabled = enabled)
                                 },
+                                // R6-G4：设置根 → 分类管理（P-09/FR-N-30 设置子页全屏）。
+                                onOpenCategoryManagement = navigation::navigateToCategoryManagement,
                             )
 
                             FullScreenPage.DefaultPage -> DefaultPageScreen(
                                 currentPage = settings.defaultPage,
                                 onSelect = { page2 -> settings = settings.copy(defaultPage = page2) },
                                 onBack = { navigation.back() },
+                            )
+
+                            // R6-G4 新增枚举分支：仅补齐穷举并渲染真实分类管理页（默认空态）。
+                            FullScreenPage.CategoryManagement -> CategoryManagementScreen(
+                                state = CategoryManagementUiState(),
+                                onBack = { navigation.back() },
+                                onCreateTopLevel = {},
+                                onCreateChild = {},
+                                onEdit = {},
+                                onRequestDelete = {},
+                                onNameChanged = {},
+                                onSave = {},
+                                onCloseEdit = {},
+                                onConfirmDelete = {},
+                                onDismissDeleteConfirm = {},
+                                onDismissGuard = {},
+                                onDismissMessage = {},
                             )
                         }
                     },
@@ -181,5 +202,28 @@ class AcSettingsFullScreenG2R4Test {
         composeRule.onNodeWithText("默认页").assertIsDisplayed()
         composeRule.onNodeWithText("预测性返回").assertIsDisplayed()
         composeRule.onNodeWithTag("predictive_back_switch").assertIsDisplayed()
+    }
+
+    /**
+     * R6-G4 冻结用例适配：设置根 → 分类管理（P-09/FR-N-30 设置子页全屏），返回逐级回到设置根。
+     * 只补新增枚举分支与对应导航断言，不放宽原有断言。
+     */
+    @Test
+    fun G4_category_management_entry_opens_full_screen_and_back_returns_settings_root() {
+        setHost()
+
+        composeRule.onNodeWithTag("settings_entry").performClick()
+        composeRule.onNodeWithTag("settings_category_management").assertIsDisplayed().performClick()
+        composeRule.runOnIdle {
+            assertEquals(FullScreenPage.CategoryManagement, navigation.currentFullScreenPage)
+        }
+        composeRule.onNodeWithTag("category_add_top").assertIsDisplayed()
+        composeRule.onNodeWithText("分类管理").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("category_management_back").performClick()
+        composeRule.runOnIdle {
+            assertEquals(FullScreenPage.Settings, navigation.currentFullScreenPage)
+        }
+        composeRule.onNodeWithTag("settings_default_page").assertIsDisplayed()
     }
 }

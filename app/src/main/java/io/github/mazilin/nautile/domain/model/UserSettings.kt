@@ -9,6 +9,8 @@ package io.github.mazilin.nautile.domain.model
  * @property lastGtdPosition 待办上次 GTD 清单；尚未记录时为 null
  * @property perModuleViewOptions 按 GTD 模块记忆的视图选项，内容为不透明文本；
  *   S1 只做默认分组（D-10），不解析具体选项，键值格式由 T05/T07 约定
+ * @property timerMode 计时模式；本轮只用默认并行，不暴露切换 UI（FR-T-08 Phase A）
+ * @property scheduleViewMode 日程视图偏好；属于 UI 偏好，不写 Room（架构 §4.2）
  */
 data class UserSettings(
     val defaultPage: AppPage = AppPage.TODO,
@@ -16,4 +18,6 @@ data class UserSettings(
     val lastGtdPosition: GtdPosition? = null,
     val predictiveBackEnabled: Boolean = true,
     val perModuleViewOptions: Map<GtdPosition, String> = emptyMap(),
+    val timerMode: TimerMode = TimerMode.PARALLEL,
+    val scheduleViewMode: ScheduleViewMode = ScheduleViewMode.DAY,
 )

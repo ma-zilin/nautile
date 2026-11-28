@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -75,6 +76,8 @@ fun AppRoot(
     predictiveBackEnabled: Boolean = false,
     overlayContent: @Composable (Overlay) -> Unit = {},
     previewContent: @Composable (PreviewBackdrop) -> Unit = {},
+    /** 导航上方插槽（R6-G4 计时条）；与导航同一可见性条件下渲染，隐藏时整块不占位。 */
+    bottomBarContent: @Composable () -> Unit = {},
 ) {
     val activeTab by navigation.activeTab.collectAsStateWithLifecycle()
     val fullScreenStack by navigation.fullScreenStack.collectAsStateWithLifecycle()
@@ -179,6 +182,8 @@ fun AppRoot(
         when (page) {
             FullScreenPage.Settings -> PreviewBackdrop.Tab(activeTab)
             FullScreenPage.DefaultPage -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
+            // 分类管理返回根设置；预览下层映射为设置页（架构 §5.4）。
+            FullScreenPage.CategoryManagement -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
         }
     }
     // pop 动画期间仍按最后一页渲染，结束后才移除（CMP-29）。
@@ -186,6 +191,7 @@ fun AppRoot(
         when (page) {
             FullScreenPage.Settings -> PreviewBackdrop.Tab(activeTab)
             FullScreenPage.DefaultPage -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
+            FullScreenPage.CategoryManagement -> PreviewBackdrop.FullScreen(FullScreenPage.Settings)
         }
     }
     // pop 到上一个全屏页时，动画期间用只读实例绘制目标页，避免触发导航/数据副作用。
@@ -218,24 +224,28 @@ fun AppRoot(
                 modifier = Modifier.fillMaxSize(),
                 bottomBar = {
                     if (scrollNavigationVisible && overlayEntry == null && topFullScreen == null) {
-                        NavigationBar {
-                            AppTab.entries.forEach { tab ->
-                                NavigationBarItem(
-                                    selected = tab == activeTab,
-                                    onClick = {
-                                        if (tab != activeTab) animateTabEntry = true
-                                        navigation.selectTab(tab)
-                                    },
-                                    icon = {
-                                        // 装饰性图标：可见标签负责可读性，避免 TalkBack 重复朗读（§6.2、A11Y-16）。
-                                        Icon(
-                                            painter = painterResource(tab.iconRes),
-                                            contentDescription = null,
-                                        )
-                                    },
-                                    label = { Text(tab.title) },
-                                    modifier = Modifier.testTag("tab_${tab.name}"),
-                                )
+                        Column {
+                            // 计时条是导航的扩展：同一可见性条件下渲染在导航正上方（05 §2.7）。
+                            bottomBarContent()
+                            NavigationBar {
+                                AppTab.entries.forEach { tab ->
+                                    NavigationBarItem(
+                                        selected = tab == activeTab,
+                                        onClick = {
+                                            if (tab != activeTab) animateTabEntry = true
+                                            navigation.selectTab(tab)
+                                        },
+                                        icon = {
+                                            // 装饰性图标：可见标签负责可读性，避免 TalkBack 重复朗读（§6.2、A11Y-16）。
+                                            Icon(
+                                                painter = painterResource(tab.iconRes),
+                                                contentDescription = null,
+                                            )
+                                        },
+                                        label = { Text(tab.title) },
+                                        modifier = Modifier.testTag("tab_${tab.name}"),
+                                    )
+                                }
                             }
                         }
                     }

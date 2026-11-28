@@ -1,0 +1,8 @@
+task=R6-G3
+time=2026-11-28T09:59:10+08:00
+head=0b66f533e1b596270d444b20f6276194586425cf
+dirty_entries=10
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/.worktrees/schedule-log/docs/验证记录/门禁/verify_R6-G3_20261128T095825.log

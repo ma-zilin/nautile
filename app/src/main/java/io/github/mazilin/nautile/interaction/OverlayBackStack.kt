@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** S1 主覆盖层：详情、GTD 选择器、新建待办底部面板。 */
+/** 主覆盖层：待办详情/GTD/新建，以及日程新建/详情（R6 G3）。 */
 sealed interface Overlay {
     data class TaskDetail(val taskId: Long? = null) : Overlay
 
@@ -13,6 +13,27 @@ sealed interface Overlay {
     data object GtdSelector : Overlay
 
     data object NewTaskSheet : Overlay
+
+    /** 日程新建半屏；只承载 UI，创建成功才落库（AC-D-07）。 */
+    data object NewSchedule : Overlay
+
+    /** 日程详情半屏；id 仅用于调试与宿主识别，数据由 ViewModel 读取。 */
+    data class ScheduleDetail(val scheduleId: Long) : Overlay
+
+    /** 日志补录/新建半屏；保存才落库，取消不生成半成品（AC-L-02）。 */
+    data object NewLog : Overlay
+
+    /** 日志详情半屏；字段直接编辑即保存（AC-D-06 记录分支）。 */
+    data class LogDetail(val logId: Long) : Overlay
+
+    /** “全部分类”两级选择器；选中分类后开始计时并关闭（AC-T-21）。 */
+    data object LogCategoryPicker : Overlay
+
+    /** 日志模式选择器半屏；打开不改变模式，选中“记录/统计”后才切换并关闭（AC-T-20）。 */
+    data object LogModeSelector : Overlay
+
+    /** 统计自定义范围半屏；确认合法范围后关闭并刷新统计（AC-L-07/11）。 */
+    data object StatsPeriodSelector : Overlay
 }
 
 /**

@@ -22,7 +22,7 @@ import io.github.mazilin.nautile.domain.model.UserSettings
 /**
  * 根设置页 P-13（S1-T10、FR-N-19）。
  *
- * 只提供默认页入口与预测性返回开关；分类/标签/Key/个人记忆等未实现入口不展示。
+ * 提供分类管理入口、默认页入口与预测性返回开关；标签/Key/个人记忆等未实现入口不展示。
  * 设置页为全屏子页，返回由 NavigationCoordinator 逐级处理。
  */
 @Composable
@@ -31,6 +31,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onOpenDefaultPage: () -> Unit,
     onPredictiveBackChanged: (Boolean) -> Unit,
+    onOpenCategoryManagement: () -> Unit = {},
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
@@ -43,6 +44,17 @@ fun SettingsScreen(
                 Text("返回")
             }
             Text("设置", style = MaterialTheme.typography.titleLarge)
+        }
+        HorizontalDivider()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpenCategoryManagement)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .testTag("settings_category_management"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("分类管理", modifier = Modifier.weight(1f))
         }
         HorizontalDivider()
         Row(

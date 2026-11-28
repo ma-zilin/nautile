@@ -1,0 +1,24 @@
+R6-G2 V1 测试自身错误记录（非业务缺陷）
+时间：2026-11-28 08:35 左右（Asia/Shanghai）
+HEAD：8bb713c8435b2a6f0c4c5c8dd79599715f123c2c
+
+现象
+- 首次运行新增契约测试（仅 JVM 选区）：
+  ./gradlew :app:testDebugUnitTest --rerun-tasks --tests '*ScheduleRepositoryContract*' --tests '*AcScheduleS13DensityRulesTest*'
+  结果：BUILD FAILED，10 tests completed, 2 failed
+  - InMemoryScheduleRepositoryContractTest > g2_delete_removesEventFromAllReads FAILED
+    java.time.DateTimeException at ValueRange.java:319
+  - InMemoryScheduleRepositoryContractTest > acS04_sourceFilter_separatesRegularAndCourseWithoutTouchingData FAILED
+    java.time.DateTimeException at ValueRange.java:319
+
+原因（事实）
+- 测试辅助函数 range(0, 24) 调用 LocalDate.atTime(24, 0)，24 不是合法小时，抛 DateTimeException。
+- 属测试夹具错误，不是业务代码缺陷；同一断言在 androidTest 副本中已使用 wholeDay()。
+
+处理
+- 将 test 源集契约中两处 range(0, 24) 改为等价的 wholeDay()
+  （TimeRange(当日 00:00, 次日 00:00)），未删除或放宽任何断言。
+- 复跑同一命令：BUILD SUCCESSFUL（10 tests，0 failed）。
+
+保留说明
+- 原失败输出已在本记录与验证报告中如实保留，不以后续通过覆盖失败事实。
