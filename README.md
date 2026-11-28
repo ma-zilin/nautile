@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/status-todo%20slice%20(R5)-blue.svg" alt="Status: todo slice (R5)">
+  <img src="https://img.shields.io/badge/status-R5%20%2B%20R6%20Phase%20A-blue.svg" alt="Status: R5 + R6 Phase A">
 </p>
 
 ## Overview
@@ -15,25 +15,22 @@ Nautile is a personal planning, time-tracking and review app. It keeps todos, sc
 
 ## Status
 
-First-release implementation is in progress (current milestone: **R5 todo interaction & visual alignment**, aligned with requirements baseline **v2.16**). The project builds a debug APK and, when the external signing file exists, a signed release APK. Room 2.8.5 + KSP 2.3.14 are enabled; database version is **3** with `tasks` and `projects`, nullable `tasks.detail` (v1→v2) and `tasks.manual_order` (v2→v3), and schemas `1.json`/`2.json`/`3.json` committed under `app/schemas/`.
+First-release implementation is in progress (current `main` branch integrates **R5 todo interaction & visual alignment** and **R6 Schedule & Time Log Phase A**, aligned with requirements baseline **v2.16**). The project builds a debug APK and, when the external signing file exists, a signed release APK. Room 2.8.5 + KSP 2.3.14 are enabled; database version is **4** with **8 tables** (`tasks`, `projects`, `schedule_series`, `schedule_events`, `schedule_exceptions`, `schedule_tags`, `time_categories`, `time_logs`), migrations `MIGRATION_1_2` / `MIGRATION_2_3` / `MIGRATION_3_4`, and schemas `1.json`–`4.json` committed under `app/schemas/`.
 
-Implemented todo & settings slice (through R5):
+Implemented slice on `main` (R5 todo/settings + R6 Phase A schedule/time log):
 
-- four-tab shell (todo, schedule, log, AI) with a top-right settings entry on each primary page;
-- todo screen: MD3 light/dark blue theme, project-grouped cards (including empty project groups and standalone tasks), circular FAB, real-time search bar, and per-position view classification/sorting menu (manual sort entry suspended per `FR-V-03`, with stored `manual` falling back to `created`);
-- GTD full-height left drawer (240–320dp, right scrim, four close paths, tap-only switching while open) and main-page boundary pull with initial direction lock, reverse-past-zero cancellation, and non-wrapping first/last hints;
-- task rows and swipe: leading M3 Checkbox, inline detail and due date/time (overdue highlighted with `error` color plus a non-color-only `"已逾期 · "` prefix without auto-closing), 220ms linear Checkbox complete exit animation (same completion path as right swipe), swapped right-swipe complete / left-swipe abandon (with child-count confirmation on project rows), and disabled Checkbox/swipe on closed rows;
-- unified new-task sheet and isomorphic task-detail bottom sheet: fixed two-line title/detail, four icon+text attributes (date, priority, project, GTD checklist) with scrim-free anchored menus, shared calendar date picker (weekday header non-overlapping) and `"时间"` row opening an M3 24h `TimePicker` dial (strict `HH:mm` validation, clear action, layered system back); task detail saves fields/attributes immediately, blocks closing on invalid fields, and supports reopening closed tasks (separate edit sheets and header edit icons removed);
-- project detail sheet: inline edit-as-you-go project name, icon-only chevron collapse toggle (with `contentDescription`), and closed-project reopen confirmation;
-- settings root and default-page subpage with light/dark system-bar insets, predictive-back toggle, and startup default/last primary page mapping.
+- **Navigation & settings**: four-tab shell (todo, schedule, log, AI) with a top-right settings entry on each primary page; settings root, default-page subpage, and full-screen two-level **Category Management** subpage; light/dark system-bar insets, predictive-back toggle, and startup default/last primary page mapping.
+- **Todo (through R5)**: MD3 light/dark blue theme, project-grouped cards (including empty project groups and standalone tasks), circular FAB, real-time search bar, per-position view classification/sorting menu (manual sort entry suspended per `FR-V-03`, stored `manual` falls back to `created`); full-height GTD left drawer (240–320dp, right scrim, four close paths, tap-only switching) and main-page direction-locked boundary pull (reverse-past-zero cancellation, non-wrapping first/last hints); task rows with leading M3 Checkbox, inline detail and due date/time (overdue highlighted with `error` color + `"已逾期 · "` prefix without auto-closing), 220ms linear Checkbox complete exit animation, swapped right-swipe complete / left-swipe abandon (child-count confirmation on project rows), and disabled Checkbox/swipe on closed rows; unified new-task and isomorphic task-detail bottom sheets (fixed two-line title/detail, four icon+text attributes, scrim-free anchored menus, non-overlapping calendar + `"时间"` row opening an M3 24h `TimePicker` dial with strict `HH:mm` validation and layered back); project detail with inline name editing, icon-only chevron collapse toggle (`contentDescription`), and closed-project reopen confirmation.
+- **Schedule (R6 Phase A)**: day, three-day, and fixed Mon–Sun week views switched via a view menu button; top date strip (tap date / Today shortcut, no horizontal swipe date change); fixed 60dp/hour time grid (no pinch-to-zoom); new-event and edit-as-you-go detail bottom sheets with strict 24h `HH:mm` validation, date/24h time dial, end strictly after start (cross-day allowed), and delete confirmation; three-state source filter (`课程表` / `合并` / `仅普通`, empty state when no imported classes exist, read-only `"普通"` source in detail) and label field (`课程表` / `无标签`, without tag filtering UI).
+- **Time log (R6 Phase A)**: two-level category management (parent/child CRUD, rejects 3rd level, no bulk clear, blocks deletion with a prompt while children or logs exist); newest-first log records with backfill, edit-as-you-go detail, and deletion; parallel multi-category timing with wall-clock restoration (tap category quick-entry to start — recent first plus persistent `"全部分类"` — duplicate tap only prompts, no pause, tap active timer bar entry to stop and save); horizontally scrollable timer bar above bottom navigation (hides with navigation while timing continues); half-screen mode selector opened from the title button to switch between Record and Statistics (resets to today on exit); day/month/year/custom pie-chart statistics with legend, parent totals, untracked slice, live inclusion of running timers, `"含重叠累计"` indicator, and cross-day logs stored as one logical record while split at `00:00` in statistics.
 
-Verification scope: R5 G1–G6 independent verification passed on an **Android 16 (API 36) emulator (`emulator-5554`, not a physical device)** — JVM 240/240, emulator instrumentation 313/313, Lint 0 errors, static UI token check 0 hits, and 32 light/dark screenshots reviewed; see [docs/交付报告_R5.md](docs/交付报告_R5.md). Earlier S1 instrumentation also passed on a vivo V2458A physical device (`docs/验证记录/T-085_第三轮复测_2026-11-24.md`). R5 has **not** yet been verified on the target physical device (vivo X200s / OriginOS 6 / Android 16), and does not constitute full-product or physical-device acceptance.
+Verification scope: combined R5 + R6 regression on `main` passed on an **Android 16 (API 36) emulator (`emulator-5554`, not a physical device)** — JVM **60 suites / 387 tests / 0 failures** (`PackageBoundaryTest` 8/8), emulator instrumentation **64 suites / 413 tests (411 passed + 2 expected skips in `AcLogL05RestoreTest`, 0 failures, 0 errors)**, Lint **0 errors**, static UI token check (21 files, 8 rules) **0 hits**, Room DB v4 (8 tables) schema/migration verified, and debug APK cold-start verified with 0 fatal exceptions; see [docs/验证记录/R5-R6_合并主分支联合回归验证_2026-11-28.md](docs/验证记录/R5-R6_合并主分支联合回归验证_2026-11-28.md), [docs/交付报告_R5.md](docs/交付报告_R5.md), and [docs/交付报告_R6.md](docs/交付报告_R6.md). Earlier S1 instrumentation also passed on a vivo V2458A physical device (`docs/验证记录/T-085_第三轮复测_2026-11-24.md`). The merged R5 + R6 build has **not** yet been verified on the target physical device (vivo X200s / OriginOS 6 / Android 16), and does not constitute full-product or physical-device acceptance.
 
-Schedule and class-schedule import, time logs/timing/statistics, AI assistance and personal memory, tags, reminders, recurrence, subtasks, project colors/icons, quadrant view, undo, and backup/restore are **not implemented**. Manual sort entry remains suspended per `FR-V-03`.
+AI assistance and personal memory, reminders (todo & schedule), recurring schedules, class-schedule import, schedule tag filtering, schedule-todo linking, time-log task linking, single-activity timer mode switching, pull-to-switch between log record and statistics, todo tags, subtasks, project colors/icons, quadrant view, undo, backup/restore, and Dynamic Island timing are **not implemented**. Manual sort entry remains suspended per `FR-V-03`.
 
 ## Planned Features
 
-The first-release scope is listed below. Only the todo/settings subset described under Status is implemented; the rest is planned and is not an acceptance result.
+The first-release scope is listed below. Only the todo, schedule (Phase A), time log (Phase A), and settings subset described under Status is implemented; the rest is planned and is not an acceptance result.
 
 **Plan and organize**
 
@@ -86,21 +83,21 @@ These are outside the first-release scope and are not implemented yet.
 
 ## Known limitations
 
-- R5 verification ran on an Android 16 (API 36) emulator (`emulator-5554`), not on the target physical device (vivo X200s / OriginOS 6 / Android 16).
-- Motion feel and physical gestures are not automated: 220ms linear completion exit animation smoothness, 1:1 follow-through/rebound on drawer/boundary/swipe/sheets, 24h dial touch feel, reduced-motion (`AnimatorDurationScale = 0`) degradation, real IME keyboard transition, and edge-back conflicts require physical-device review.
-- 200% font scaling, TalkBack screen-reader walkthrough, Accessibility Scanner checks, dark-theme contrast ratios, and performance metrics (FPS/memory/startup) have not been measured.
-- AC-N-21 predictive-back preview composes an independent read-only instance of the lower page rather than an exact state snapshot, and still needs physical-device review.
-- Whole-process restart UI restoration is not automated (database close/reopen persistence is covered by tests).
-- Manual sort entry is suspended per `FR-V-03` (stored `manual` falls back to `created`; `manual_order` data and DB v3 schema are preserved). `DatePicker` currently renders in `en-US` locale.
-- Schedule/import, time log/timing/statistics, AI/memory, tags, reminders, recurrence, subtasks, and project colors/icons are not implemented. AC-D-07 covers todo creation only. Manual-review ACs are not acceptance results in this README.
+- Combined R5 + R6 verification ran on an Android 16 (API 36) emulator (`emulator-5554`), not on the target physical device (vivo X200s / OriginOS 6 / Android 16); lock-screen, background/recents kill, and device-reboot timer persistence (`AC-L-05` / `AC-L-17`) have not been verified on a physical device.
+- In full connected regression runs, 2 tests in `AcLogL05RestoreTest` are intentionally skipped unless `-e l05_manual true` is supplied for the manual `force-stop` sequence.
+- Motion feel and physical gestures are not automated: 220ms linear completion exit smoothness, 1:1 follow-through/rebound on drawer/boundary/swipe/shared `NautileBottomSheet` content-top pull, 24h dial touch feel, record↔stats / calendar↔form crossfade, pie-chart & timer-bar animations, reduced-motion (`AnimatorDurationScale = 0`) degradation, real IME keyboard insets/transitions, and edge-back conflicts require physical-device review.
+- 200% font scaling, 360dp week-view density, TalkBack screen-reader walkthrough (`liveRegion` announcements), Accessibility Scanner checks, light/dark contrast ratio measurements (including pie-chart palette), and performance metrics (FPS/memory/startup) have not been measured.
+- AC-N-21 predictive-back preview composes an independent read-only instance of the lower page rather than an exact state snapshot, and still needs physical-device review. Whole-process restart UI restoration is not automated (database close/reopen persistence is covered by tests).
+- Manual sort entry is suspended per `FR-V-03` (stored `manual` falls back to `created`; `manual_order` data and DB v4 schema are preserved). `DatePicker` currently renders in `en-US` locale. KSP emits a non-blocking missing-index warning on `schedule_exceptions.override_event_id` (table unused in Phase A).
+- AI assistance/memory, reminders, recurring schedules, class-schedule import, schedule tag filtering, time-log task linking, single-activity timer mode switching, log boundary pull-to-switch statistics, todo tags, subtasks, project colors/icons, quadrant view, undo, and backup/restore are not implemented. Manual-review ACs are not acceptance results in this README.
 
 ## Screenshots
 
-32 light and dark emulator verification screenshots from R5 are archived under `docs/验证记录/门禁/r5*.png` (indexed in [docs/交付报告_R5.md](docs/交付报告_R5.md)); curated screenshots have not yet been embedded directly into this README.
+32 light and dark emulator verification screenshots from R5 are archived under `docs/验证记录/门禁/r5*.png` (indexed in [docs/交付报告_R5.md](docs/交付报告_R5.md)); R6 verification screenshots are kept outside version control for manual review (listed in [docs/交付报告_R6.md](docs/交付报告_R6.md)). Curated screenshots have not yet been embedded directly into this README.
 
 ## Getting Started
 
-Nautile builds and runs the current todo/settings slice (through R5). Schedule, log, AI and the remaining first-release features are not available yet.
+Nautile builds and runs the current todo, schedule (Phase A), time log (Phase A), and settings slice on `main`. AI assistance and the remaining first-release features are not available yet.
 
 ### Prerequisites
 
@@ -125,11 +122,15 @@ DEEPSEEK_API_KEY=<your-key>
 
 ### Database
 
-Storage uses Room and KSP (Room 2.8.5, KSP 2.3.14). Database version **3** defines `tasks` and `projects`, with nullable `tasks.detail` added in migration 1→2 (`ALTER TABLE tasks ADD COLUMN detail TEXT`) and nullable `tasks.manual_order` added in migration 2→3 (`ALTER TABLE tasks ADD COLUMN manual_order INTEGER`). Schemas `1.json`, `2.json` and `3.json` are committed under `app/schemas/`. Migration and DAO tests run on JVM and on an Android 16 emulator/device (see verification records).
+Storage uses Room and KSP (Room 2.8.5, KSP 2.3.14). Database version **4** defines **8 tables**: `tasks`, `projects`, `schedule_series`, `schedule_events`, `schedule_exceptions`, `schedule_tags`, `time_categories`, and `time_logs` — built via explicit non-destructive migrations `MIGRATION_1_2` (`tasks.detail`), `MIGRATION_2_3` (`tasks.manual_order`), and `MIGRATION_3_4` (the 6 schedule/time-log tables and indexes). Schemas `1.json`–`4.json` are committed under `app/schemas/`. Migration and repository contract tests run on JVM and on an Android 16 emulator (see verification records).
 
 ## Usage
 
-Implemented todo & settings workflow: open the todo page, switch GTD positions via the left GTD drawer or direction-locked boundary pull, complete tasks via the leading Checkbox (220ms linear exit) or right swipe, left-swipe to abandon, tap a task for the isomorphic bottom detail sheet (edit title/detail or pick date/24h time dial, priority, project, or checklist with instant save), tap a project to edit its name inline or collapse children with the chevron icon, search or adjust view grouping/sorting from the top bar, use the circular FAB to create a todo or project, and open settings from the top-right entry. Predictive-back preference, default page, last page/position, and per-position view options are stored in DataStore.
+Implemented workflow on `main`:
+- **Todo**: switch GTD positions via the left GTD drawer or direction-locked boundary pull; complete tasks via the leading Checkbox (220ms linear exit) or right swipe, left-swipe to abandon; tap a task for the isomorphic bottom detail sheet (instant save for title/detail, date/24h time dial, priority, project, checklist) or tap a project to rename inline / collapse children with the chevron icon; search, adjust view grouping/sorting, or create items via the circular FAB.
+- **Schedule (Phase A)**: switch day/three-day/week views from the view button, pick dates from the top strip, filter sources (`课程表` / `合并` / `仅普通`), and create/edit/delete regular events via bottom sheets with strict 24h time validation.
+- **Time log (Phase A)**: manage two-level categories from Settings → Category Management; tap a category quick-entry on the Log page to start parallel timing and tap the active timer bar entry to stop and save; backfill/edit/delete records; open the mode selector from the title button to view day/month/year/custom pie-chart statistics (including untracked time and cross-day splitting).
+- **Settings**: open from the top-right entry on each primary page to configure the default page, predictive-back switch, and category management. Preferences are stored in DataStore.
 
 ## Documentation
 
@@ -141,6 +142,8 @@ Implemented todo & settings workflow: open the todo page, switch GTD positions v
 | [docs/需求基线.md](docs/需求基线.md) | Requirements baseline v2.16: scope and acceptance criteria (Chinese) |
 | [docs/开发架构设计.md](docs/开发架构设计.md) | Development workflow, roles, verification and evidence rules (Chinese) |
 | [docs/交付报告_R5.md](docs/交付报告_R5.md) | R5 delivery report and emulator verification summary (Chinese) |
+| [docs/交付报告_R6.md](docs/交付报告_R6.md) | R6 Schedule & Time Log (Phase A) delivery report (Chinese) |
+| [docs/验证记录/R5-R6_合并主分支联合回归验证_2026-11-28.md](docs/验证记录/R5-R6_合并主分支联合回归验证_2026-11-28.md) | R5 + R6 merged `main` combined regression verification report (Chinese) |
 
 `docs/任务进度.md` and `docs/项目初始化工作纪要.md` are internal process records and are not listed here.
 
