@@ -60,7 +60,7 @@ class AcScheduleCommandsG2Test {
         assertTrue("预期 Success，实际=$result", result is ScheduleCommandResult.Success)
         val stored = (result as ScheduleCommandResult.Success).event
         assertTrue("新日程 id 应大于 0", stored.id.value > 0L)
-        assertEquals(ScheduleSource.REGULAR, repository.get(stored.id)?.source)
+        assertEquals(ScheduleSource.MANUAL, repository.get(stored.id)?.source)
         assertEquals("概率论", repository.get(stored.id)?.title)
         assertEquals(1, repository.writeCount)
     }
@@ -95,18 +95,29 @@ class AcScheduleCommandsG2Test {
     }
 
     @Test
-    fun g2_create_courseSourceIsRejectedThisPhase() = runTest {
-        val result = commands.create(
-            title = "课程来源",
+    fun r7_create_supportsExplicitAiAndImportedSources() = runTest {
+        val aiResult = commands.create(
+            title = "AI 创建日程",
             note = null,
             startAt = start,
             endAt = end,
             tagId = null,
-            source = ScheduleSource.COURSE,
+            source = ScheduleSource.AI,
         )
+        assertTrue("R7 允许显式 AI 来源，实际=$aiResult", aiResult is ScheduleCommandResult.Success)
+        assertEquals(ScheduleSource.AI, (aiResult as ScheduleCommandResult.Success).event.source)
 
-        assertEquals(ScheduleError.UNSUPPORTED_SOURCE, invalidError(result))
-        assertEquals(0, repository.writeCount)
+        val importedResult = commands.create(
+            title = "导入课程",
+            note = null,
+            startAt = start,
+            endAt = end,
+            tagId = ScheduleTagId(1L),
+            source = ScheduleSource.IMPORTED,
+        )
+        assertTrue("R7 允许显式 IMPORTED 来源，实际=$importedResult", importedResult is ScheduleCommandResult.Success)
+        assertEquals(ScheduleSource.IMPORTED, (importedResult as ScheduleCommandResult.Success).event.source)
+        assertEquals(2, repository.writeCount)
     }
 
     @Test
@@ -118,11 +129,11 @@ class AcScheduleCommandsG2Test {
     }
 
     @Test
-    fun g2_create_knownCourseTagKeepsRegularSource() = runTest {
+    fun g2_create_knownCourseTagKeepsManualSource() = runTest {
         val result = commands.create("打课程表标签的普通日程", null, start, end, ScheduleTagId(1L))
 
         val stored = (result as ScheduleCommandResult.Success).event
-        assertEquals("标签不改变来源（AC-S-04）", ScheduleSource.REGULAR, stored.source)
+        assertEquals("标签不改变来源（AC-S-04）", ScheduleSource.MANUAL, stored.source)
         assertEquals(ScheduleTagId(1L), stored.tagId)
     }
 

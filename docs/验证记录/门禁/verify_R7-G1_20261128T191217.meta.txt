@@ -1,0 +1,8 @@
+task=R7-G1
+time=2026-11-28T19:13:10+08:00
+head=65399244547ad87e73577f9bafa6a5f32f7635a7
+dirty_entries=73
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/docs/验证记录/门禁/verify_R7-G1_20261128T191217.log

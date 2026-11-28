@@ -104,7 +104,7 @@ class AcScheduleG3SheetsUiTest {
                     note = null,
                     startAt = start,
                     endAt = end,
-                    source = ScheduleSource.REGULAR,
+                    source = ScheduleSource.MANUAL,
                     tagId = null,
                     seriesId = null,
                     originalStartAt = null,
@@ -207,10 +207,10 @@ class AcScheduleG3SheetsUiTest {
         composeRule.onNodeWithTag("schedule_title_field").performClick()
         waitForStored("备注切换字段即保存") { it?.note == "备注草稿" }
 
-        // 标签：选择“课程表”，来源仍普通。
+        // 标签：选择“课程表”，来源仍手动创建。
         composeRule.onNodeWithTag("schedule_tag_course").performClick()
         waitForStored("标签选择即保存") { it?.tagId?.value == ScheduleG2TestSupport.COURSE_TAG_ID }
-        composeRule.onNodeWithText("普通").assertIsDisplayed()
+        composeRule.onNodeWithText("手动创建").assertIsDisplayed()
 
         // 结束时间：圆盘直输 11:30 并确认，立即回填并保存。
         composeRule.onNodeWithTag("schedule_end_time").performClick()
@@ -417,7 +417,7 @@ class AcScheduleG3SheetsUiTest {
         // 不跳页、不改筛选（AC-D-07）。
         composeRule.onNodeWithTag("schedule_source_regular").assertIsSelected()
         assertEquals(2, storedCount())
-        assertEquals("新建来源固定普通", ScheduleSource.REGULAR, created.source)
+        assertEquals("新建来源固定手动创建", ScheduleSource.MANUAL, created.source)
     }
 
     // ---------- AC-M-01：严格 24h 输入与分层返回（辅助核对） ----------
@@ -489,7 +489,7 @@ class AcScheduleG3SheetsUiTest {
 
         composeRule.onNodeWithTag("schedule_tag_course").performClick()
         composeRule.onNodeWithTag("schedule_tag_course").assertIsSelected()
-        composeRule.onNodeWithTag("schedule_source_value").assertTextContains("普通")
+        composeRule.onNodeWithTag("schedule_source_value").assertTextContains("手动创建")
 
         composeRule.onNodeWithTag("schedule_title_field").performTextInput("打课程表标签的普通日程")
         composeRule.onNodeWithTag("schedule_create").performScrollTo().performClick()
@@ -499,7 +499,7 @@ class AcScheduleG3SheetsUiTest {
         composeRule.waitUntil(5_000) {
             viewModel.uiState.value.events.any { it.event.id.value == created.id.value }
         }
-        assertEquals("标签不改变来源（AC-S-04）", ScheduleSource.REGULAR, created.source)
+        assertEquals("标签不改变来源（AC-S-04）", ScheduleSource.MANUAL, created.source)
         assertEquals(ScheduleG2TestSupport.COURSE_TAG_ID, created.tagId?.value)
 
         // 来源筛选按来源而非标签：课程表来源仍为空态。

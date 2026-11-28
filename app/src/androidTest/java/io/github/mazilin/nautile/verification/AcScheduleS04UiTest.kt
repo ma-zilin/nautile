@@ -78,9 +78,9 @@ class AcScheduleS04UiTest {
     @Test
     fun acS04_courseFilterShowsEmptyState_andTagDoesNotCountAsCourseSource() {
         launch()
-        // 默认“合并”：普通日程可见，并显示“普通 · 课程表”，来源仍是普通。
+        // 默认“合并”：手动日程可见，并显示“手动创建 · 课程表”，来源仍是手动创建。
         composeRule.onNodeWithTag("schedule_event_1").assertIsDisplayed()
-        composeRule.onNodeWithText("普通 · 课程表").assertExists()
+        composeRule.onNodeWithText("手动创建 · 课程表").assertExists()
 
         composeRule.onNodeWithTag("schedule_source_course").performClick()
         composeRule.waitForIdle()

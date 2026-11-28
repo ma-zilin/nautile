@@ -86,7 +86,7 @@ class AcScheduleG4ErrorRegressionTest {
             note = null,
             startAt = start,
             endAt = end,
-            source = ScheduleSource.REGULAR,
+            source = ScheduleSource.MANUAL,
             tagId = null,
             seriesId = null,
             originalStartAt = null,

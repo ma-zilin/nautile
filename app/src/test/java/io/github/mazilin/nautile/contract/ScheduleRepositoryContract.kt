@@ -48,7 +48,7 @@ abstract class ScheduleRepositoryContract {
         title: String,
         startAt: Instant,
         endAt: Instant,
-        source: ScheduleSource = ScheduleSource.REGULAR,
+        source: ScheduleSource = ScheduleSource.MANUAL,
         id: Long = 0L,
     ): ScheduleEvent = ScheduleEvent(
         id = ScheduleId(id),
@@ -79,7 +79,7 @@ abstract class ScheduleRepositoryContract {
         assertTrue("新日程 id 应大于 0", id.value > 0L)
         val stored = schedules.get(id)
         assertEquals("新建日程", stored?.title)
-        assertEquals(ScheduleSource.REGULAR, stored?.source)
+        assertEquals(ScheduleSource.MANUAL, stored?.source)
         assertNull("本轮默认无标签", stored?.tagId)
         assertEquals("新建日程", schedules.observeEvent(id).first()?.title)
     }
@@ -113,7 +113,7 @@ abstract class ScheduleRepositoryContract {
     fun acS04_sourceFilter_separatesRegularAndCourseWithoutTouchingData() = runBlocking {
         schedules.insert(event("普通日程", instant(today, 9), instant(today, 10)))
         schedules.insert(
-            event("课程日程", instant(today, 10), instant(today, 11), source = ScheduleSource.COURSE),
+            event("课程日程", instant(today, 10), instant(today, 11), source = ScheduleSource.IMPORTED),
         )
 
         val merged = schedules.observeInRange(wholeDay(), ScheduleSourceFilter.MERGED).first()
@@ -124,7 +124,7 @@ abstract class ScheduleRepositoryContract {
         assertEquals("课程表来源只应含课程", listOf("课程日程"), courseOnly.map { it.title })
         assertEquals("仅普通只应含普通日程", listOf("普通日程"), regularOnly.map { it.title })
         // 拒绝：仅普通筛选不得出现课程来源。
-        assertTrue(regularOnly.all { it.source == ScheduleSource.REGULAR })
+        assertTrue(regularOnly.all { it.source == ScheduleSource.MANUAL })
     }
 
     @Test
@@ -145,10 +145,10 @@ abstract class ScheduleRepositoryContract {
             regularOnly.map { it.title }.toSet(),
         )
         val tagged = regularOnly.first { it.title == "标课程表标签的普通日程" }
-        assertEquals("标签不得改变来源（AC-S-04）", ScheduleSource.REGULAR, tagged.source)
+        assertEquals("标签不得改变来源（AC-S-04）", ScheduleSource.MANUAL, tagged.source)
         assertEquals("标签应原样保存", courseTag, tagged.tagId)
         // 拒绝：课程表来源筛选不得因标签而包含普通日程。
-        assertTrue("课程表来源筛选不得出现普通日程", courseOnly.none { it.source == ScheduleSource.REGULAR })
+        assertTrue("课程表来源筛选不得出现普通日程", courseOnly.none { it.source == ScheduleSource.MANUAL })
         assertTrue(courseOnly.isEmpty())
     }
 

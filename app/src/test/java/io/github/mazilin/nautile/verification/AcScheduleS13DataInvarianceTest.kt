@@ -72,7 +72,7 @@ class AcScheduleS13DataInvarianceTest {
             note = null,
             startAt = start,
             endAt = end,
-            source = ScheduleSource.REGULAR,
+            source = ScheduleSource.MANUAL,
             tagId = null,
             seriesId = null,
             originalStartAt = null,

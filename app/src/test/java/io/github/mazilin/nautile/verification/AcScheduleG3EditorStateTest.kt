@@ -40,7 +40,7 @@ class AcScheduleG3EditorStateTest {
         startTime = startTime,
         endDate = endDate,
         endTime = endTime,
-        source = ScheduleSource.REGULAR,
+        source = ScheduleSource.MANUAL,
         tagId = null,
         isSaving = isSaving,
     )
@@ -155,12 +155,13 @@ class AcScheduleG3EditorStateTest {
     }
 
     @Test
-    fun acS04_editor_source_isAlwaysRegularThisPhase() {
-        val editor = state()
-
-        assertEquals("本轮新建/详情来源固定普通（用户 2026-11-28 确认只读）", ScheduleSource.REGULAR, editor.source)
-        assertEquals("普通", editor.sourceLabel)
-        assertNull("默认无标签", editor.tagId)
-        assertFalse("默认未选中课程表标签", editor.isCourseTagSelected)
+    fun acS04_editor_sourceLabels_matchR7ThreeCategories() {
+        val manual = state()
+        assertEquals("R7 手动来源默认 MANUAL", ScheduleSource.MANUAL, manual.source)
+        assertEquals("手动创建", manual.sourceLabel)
+        assertEquals("AI创建", manual.copy(source = ScheduleSource.AI).sourceLabel)
+        assertEquals("导入", manual.copy(source = ScheduleSource.IMPORTED).sourceLabel)
+        assertNull("默认无标签", manual.tagId)
+        assertFalse("默认未选中课程表标签", manual.isCourseTagSelected)
     }
 }

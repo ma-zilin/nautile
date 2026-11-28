@@ -43,7 +43,7 @@ internal object ScheduleG2TestSupport {
         date: LocalDate,
         startHour: Int,
         endHour: Int,
-        source: ScheduleSource = ScheduleSource.REGULAR,
+        source: ScheduleSource = ScheduleSource.MANUAL,
         tagId: Long? = null,
     ): ScheduleEvent {
         val start = instant(date, startHour)

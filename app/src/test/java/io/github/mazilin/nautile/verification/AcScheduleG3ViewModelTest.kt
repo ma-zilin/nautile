@@ -86,7 +86,7 @@ class AcScheduleG3ViewModelTest {
             note = null,
             startAt = start,
             endAt = end,
-            source = ScheduleSource.REGULAR,
+            source = ScheduleSource.MANUAL,
             tagId = tagId,
             seriesId = null,
             originalStartAt = null,
@@ -120,7 +120,7 @@ class AcScheduleG3ViewModelTest {
         viewModel.onOpenNew()
         val opened = viewModel.editorOrFail()
         assertEquals(ScheduleEditorMode.CREATE, opened.mode)
-        assertEquals("新建默认来源普通", ScheduleSource.REGULAR, opened.source)
+        assertEquals("新建默认来源手动创建", ScheduleSource.MANUAL, opened.source)
         assertEquals("新建默认无标签", null, opened.tagId)
 
         viewModel.closeEditor()
@@ -198,7 +198,7 @@ class AcScheduleG3ViewModelTest {
         assertEquals("创建不得改来源筛选（AC-D-07）", ScheduleSourceFilter.REGULAR_ONLY, after.sourceFilter)
         assertEquals("新建日期应沿用打开面板时的选中日", placeholder.startDate, today)
         val created = repository.snapshot.first { it.title == "原位插入的日程" }
-        assertEquals("标签不改变来源（AC-S-04）", ScheduleSource.REGULAR, created.source)
+        assertEquals("标签不改变来源（AC-S-04）", ScheduleSource.MANUAL, created.source)
         assertEquals(2, repository.snapshot.size)
     }
 
@@ -276,17 +276,17 @@ class AcScheduleG3ViewModelTest {
         val viewModel = newViewModel()
         viewModel.onOpenDetail(ScheduleId(1L))
         val opened = viewModel.editorOrFail()
-        assertEquals("详情来源只读显示普通（用户 2026-11-28 确认）", ScheduleSource.REGULAR, opened.source)
+        assertEquals("详情来源只读显示手动创建", ScheduleSource.MANUAL, opened.source)
 
         viewModel.onCourseTagSelected()
         val tagged = repository.snapshot.first()
-        assertEquals("手动标课程表不得改来源（AC-S-04）", ScheduleSource.REGULAR, tagged.source)
+        assertEquals("手动标课程表不得改来源（AC-S-04）", ScheduleSource.MANUAL, tagged.source)
         assertEquals(courseTag.id, tagged.tagId)
         assertTrue(viewModel.editorOrFail().isCourseTagSelected)
 
         viewModel.onNoTagSelected()
         assertNull("切回无标签应清空 tagId", repository.snapshot.first().tagId)
-        assertEquals(ScheduleSource.REGULAR, repository.snapshot.first().source)
+        assertEquals(ScheduleSource.MANUAL, repository.snapshot.first().source)
     }
 
     @Test

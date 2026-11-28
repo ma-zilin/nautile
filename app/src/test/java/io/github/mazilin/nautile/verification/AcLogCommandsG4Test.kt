@@ -74,7 +74,7 @@ class AcLogCommandsG4Test {
         assertEquals(end, created.endAt)
         assertEquals(study, created.categoryId)
 
-        val todayLog = manual(work, now.plusSeconds(3600), now.plusSeconds(5400))
+        val todayLog = manual(work, now.minusSeconds(3600), now)
         val ordered = logStore.observeAllDescending().first()
         assertEquals("今天记录在前、昨天记录在后", listOf(todayLog.id, created.id), ordered.map { it.id })
     }

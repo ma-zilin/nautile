@@ -107,6 +107,12 @@ class AcSettingsFullScreenG2R4Test {
                                 onDismissGuard = {},
                                 onDismissMessage = {},
                             )
+
+                            // R7-G1 新增枚举分支：G4 将接入真实 TagManagementScreen，此处仅补齐穷举。
+                            FullScreenPage.TagManagement -> PlaceholderScreen(
+                                title = page.title,
+                                onOpenSettings = { navigation.back() },
+                            )
                         }
                     },
                     predictiveBackEnabled = settings.predictiveBackEnabled,

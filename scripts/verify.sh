@@ -97,8 +97,9 @@ PY
     SCHEMA_V2="$SCHEMA_DIR/2.json"
     SCHEMA_V3="$SCHEMA_DIR/3.json"
     SCHEMA_V4="$SCHEMA_DIR/4.json"
-    if [ -f "$SCHEMA_V1" ] && [ -f "$SCHEMA_V2" ] && [ -f "$SCHEMA_V3" ] && [ -f "$SCHEMA_V4" ]; then
-        echo "schema 存在：$SCHEMA_V1/$SCHEMA_V2/$SCHEMA_V3（历史）与 $SCHEMA_V4（当前）"
+    SCHEMA_V5="$SCHEMA_DIR/5.json"
+    if [ -f "$SCHEMA_V1" ] && [ -f "$SCHEMA_V2" ] && [ -f "$SCHEMA_V3" ] && [ -f "$SCHEMA_V4" ] && [ -f "$SCHEMA_V5" ]; then
+        echo "schema 存在：$SCHEMA_V1/$SCHEMA_V2/$SCHEMA_V3/$SCHEMA_V4（历史）与 $SCHEMA_V5（当前）"
         if grep -q '"version": 3' "$SCHEMA_V3" \
             && grep -q '"tableName": "tasks"' "$SCHEMA_V3" \
             && grep -q '"tableName": "projects"' "$SCHEMA_V3" \
@@ -164,8 +165,90 @@ PY
             echo "[STEP] schema v4 内容检查 EXIT=1（见上方原因）"
             FAIL=1
         fi
+
+        # R7-G1：v5 必须含 8 张表；schedule_events.color_index 与 time_logs.color_index 可空无默认 INTEGER；
+        # schedule_tags 与 time_categories 不含 color_index；既有可空列约束保持不变。
+        if python3 - "$SCHEMA_V5" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    data = json.load(handle)
+database = data["database"]
+tables = {table["tableName"]: table for table in database["entities"]}
+expected = [
+    "tasks", "projects", "schedule_series", "schedule_events",
+    "schedule_exceptions", "schedule_tags", "time_categories", "time_logs",
+]
+if database["version"] != 5:
+    print(f"version={database['version']}，期望 5")
+    sys.exit(1)
+missing = [name for name in expected if name not in tables]
+if missing:
+    print(f"缺少表：{missing}")
+    sys.exit(1)
+if len(tables) != len(expected):
+    print(f"表数量={len(tables)}，期望 {len(expected)}")
+    sys.exit(1)
+
+
+def find_column(table, name):
+    for field in tables[table]["fields"]:
+        if field["columnName"] == name:
+            return field
+    return None
+
+
+def column(table, name):
+    found = find_column(table, name)
+    if found is None:
+        print(f"缺少列：{table}.{name}")
+        sys.exit(1)
+    return found
+
+
+for table in ("schedule_events", "time_logs"):
+    color = column(table, "color_index")
+    if color.get("affinity") != "INTEGER":
+        print(f"{table}.color_index affinity={color.get('affinity')}，期望 INTEGER")
+        sys.exit(1)
+    if color.get("notNull", False):
+        print(f"{table}.color_index 不应 NOT NULL")
+        sys.exit(1)
+    if color.get("defaultValue") is not None:
+        print(f"{table}.color_index 不应有默认值")
+        sys.exit(1)
+
+for table in ("schedule_tags", "time_categories"):
+    if find_column(table, "color_index") is not None:
+        print(f"{table} 不应包含 color_index 列")
+        sys.exit(1)
+
+end_at = column("time_logs", "end_at")
+if end_at.get("notNull", False):
+    print("time_logs.end_at 不应 NOT NULL")
+    sys.exit(1)
+if end_at.get("defaultValue") is not None:
+    print("time_logs.end_at 不应有默认值")
+    sys.exit(1)
+for table, name in [
+    ("schedule_events", "tag_id"),
+    ("schedule_events", "series_id"),
+    ("time_categories", "parent_id"),
+]:
+    if column(table, name).get("notNull", False):
+        print(f"{table}.{name} 应可空")
+        sys.exit(1)
+PY
+        then
+            echo "[STEP] schema v5 内容检查 EXIT=0（version 5，8 表，schedule_events/time_logs.color_index 可空无默认 INTEGER，tag/category 无 color_index，既有可空列保持）"
+        else
+            echo "[STEP] schema v5 内容检查 EXIT=1（见上方原因）"
+            FAIL=1
+        fi
     else
-        echo "[STEP] schema 产物检查 EXIT=1（1.json、2.json、3.json 或 4.json 不存在）"
+        echo "[STEP] schema 产物检查 EXIT=1（1.json、2.json、3.json、4.json 或 5.json 不存在）"
         FAIL=1
     fi
 

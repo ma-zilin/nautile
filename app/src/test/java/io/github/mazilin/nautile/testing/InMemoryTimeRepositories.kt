@@ -61,6 +61,15 @@ class InMemoryTimeLogRepository(
         }
     }
 
+    override suspend fun listForDay(day: LocalDate, zoneId: ZoneId): List<TimeLog> {
+        val dayStart = day.atStartOfDay(zoneId).toInstant()
+        val dayEnd = day.plusDays(1).atStartOfDay(zoneId).toInstant()
+        return logs.value.values
+            .filter { it.startAt.isBefore(dayEnd) }
+            .filter { it.endAt == null || it.endAt.isAfter(dayStart) }
+            .byStartDesc()
+    }
+
     override fun observeInRange(range: TimeRange): Flow<List<TimeLog>> =
         logs.map { stored ->
             stored.values

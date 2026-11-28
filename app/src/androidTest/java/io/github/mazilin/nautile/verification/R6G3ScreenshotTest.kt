@@ -58,7 +58,7 @@ class R6G3ScreenshotTest {
         startTime = LocalTime.of(9, 0),
         endDate = today,
         endTime = LocalTime.of(10, 30),
-        source = ScheduleSource.REGULAR,
+        source = ScheduleSource.MANUAL,
         tagId = null,
         courseTagId = courseTagId,
         saveError = saveError,
@@ -73,7 +73,7 @@ class R6G3ScreenshotTest {
         startTime = LocalTime.of(9, 0),
         endDate = today,
         endTime = LocalTime.of(10, 30),
-        source = ScheduleSource.REGULAR,
+        source = ScheduleSource.MANUAL,
         tagId = null,
         courseTagId = courseTagId,
     )

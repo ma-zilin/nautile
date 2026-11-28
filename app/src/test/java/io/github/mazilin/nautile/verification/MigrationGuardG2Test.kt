@@ -48,7 +48,7 @@ class MigrationGuardG2Test {
     }
 
     @Test
-    fun g2_app_container_registers_all_three_migrations() {
+    fun g2_app_container_registers_all_migrations_through_v5() {
         val container = File(mainRoot, "io/github/mazilin/nautile/di/AppContainer.kt")
         assertTrue("缺少 AppContainer.kt", container.isFile)
         val text = container.readText()
@@ -56,6 +56,12 @@ class MigrationGuardG2Test {
         assertTrue("未注册 MIGRATION_1_2", text.contains("MIGRATION_1_2"))
         assertTrue("未注册 MIGRATION_2_3", text.contains("MIGRATION_2_3"))
         assertTrue("未注册 MIGRATION_3_4", text.contains("MIGRATION_3_4"))
+        assertTrue("未注册 MIGRATION_4_5", text.contains("MIGRATION_4_5"))
         assertTrue("数据库构建未调用 addMigrations", text.contains("addMigrations"))
+
+        val dbFile = File(mainRoot, "io/github/mazilin/nautile/data/db/NautileDatabase.kt")
+        assertTrue("缺少 NautileDatabase.kt", dbFile.isFile)
+        val dbText = dbFile.readText()
+        assertTrue("NautileDatabase 版本应已升级至 v5", dbText.contains("version = 5"))
     }
 }
