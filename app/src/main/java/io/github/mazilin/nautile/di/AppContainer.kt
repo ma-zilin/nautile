@@ -21,6 +21,7 @@ import io.github.mazilin.nautile.domain.repository.AiConversationRepository
 import io.github.mazilin.nautile.domain.repository.ProjectRepository
 import io.github.mazilin.nautile.domain.repository.SettingsRepository
 import io.github.mazilin.nautile.domain.repository.TaskRepository
+import io.github.mazilin.nautile.domain.usecase.AiChatCoordinator
 import io.github.mazilin.nautile.domain.usecase.AiKeyCommands
 import io.github.mazilin.nautile.domain.usecase.ProjectCommands
 import io.github.mazilin.nautile.domain.usecase.TaskCommands
@@ -73,6 +74,16 @@ class AppContainer(context: Context) {
     val aiGateway: AiGateway = DeepSeekAiGateway(secretStore)
     val aiConversationRepository: AiConversationRepository =
         RoomAiConversationRepository(database)
+
+    // 进程级 AI 协调器：单请求门闩与清除串行化都依赖同一个应用级 scope（架构 §2.4）。
+    private val aiScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val aiChatCoordinator = AiChatCoordinator(
+        repository = aiConversationRepository,
+        gateway = aiGateway,
+        keyCommands = aiKeyCommands,
+        clock = clock,
+        scope = aiScope,
+    )
 
     val navigationCoordinator = NavigationCoordinator()
     val overlayBackStack = OverlayBackStack()

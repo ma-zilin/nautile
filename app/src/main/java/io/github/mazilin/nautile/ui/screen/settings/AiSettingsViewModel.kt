@@ -2,7 +2,7 @@ package io.github.mazilin.nautile.ui.screen.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.mazilin.nautile.domain.repository.AiConversationRepository
+import io.github.mazilin.nautile.domain.usecase.AiChatCoordinator
 import io.github.mazilin.nautile.domain.usecase.AiKeyCommands
 import io.github.mazilin.nautile.domain.usecase.KeyClearResult
 import io.github.mazilin.nautile.domain.usecase.KeySaveResult
@@ -41,12 +41,12 @@ data class AiSettingsUiState(
  * 设置页 AI 视图模型（独立于 SettingsViewModel，避免改动其构造器与既有测试依赖）。
  *
  * - Key 是否已保存每次从 [AiKeyCommands.hasKey] 读取真实存储，不做内存缓存；
- * - 清除会话只调用 [AiConversationRepository.clearConversation]，不触碰待办/项目/Key；
- * - 不打印 Key；异常只映射为失败反馈，不暴露内部文本。
+ * - 清除会话经 [AiChatCoordinator]：若正在流式，先停止并等待终态写入，再事务删除；
+ * - 不触碰待办/项目/Key；不打印 Key；异常只映射为失败反馈，不暴露内部文本。
  */
 class AiSettingsViewModel(
     private val keyCommands: AiKeyCommands,
-    private val conversationRepository: AiConversationRepository,
+    private val coordinator: AiChatCoordinator,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AiSettingsUiState())
@@ -114,16 +114,16 @@ class AiSettingsViewModel(
     }
 
     /**
-     * 清除 AI 会话：删除 ai_messages 与 ai_sessions，成功/失败都给一次性反馈。
+     * 清除 AI 会话：经协调器先停止并等待流式终态写入，再删除 ai_messages 与 ai_sessions。
      *
-     * 删除后停留在设置页（由界面保证）；AI 页空态与草稿清空由 G3 的 AI 页状态负责。
+     * 成功/失败都给一次性反馈；删除后停留在设置页（由界面保证）。
      */
     fun clearConversation() {
         if (_uiState.value.clearingConversation) return
         _uiState.update { it.copy(clearingConversation = true, conversationFeedback = null) }
         viewModelScope.launch {
             val feedback = try {
-                conversationRepository.clearConversation()
+                coordinator.clearConversation()
                 AiSettingsFeedback.ConversationCleared
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 // 结构化并发：取消必须继续向上传播，不伪装成业务失败。

@@ -122,7 +122,8 @@ class MainActivity : ComponentActivity() {
                             initializer {
                                 AiSettingsViewModel(
                                     keyCommands = container.aiKeyCommands,
-                                    conversationRepository = container.aiConversationRepository,
+                                    // 清除会话改经协调器：流式中先停止并等待终态写入，再删除。
+                                    coordinator = container.aiChatCoordinator,
                                 )
                             }
                         }

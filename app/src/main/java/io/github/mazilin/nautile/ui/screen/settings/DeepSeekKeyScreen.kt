@@ -63,7 +63,7 @@ fun DeepSeekKeyScreen(
     }
     val canSave = input.trim().isNotEmpty() && !state.savingKey
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize().testTag("ai_key_screen")) {
         // 返回沿用现状设置页头部风格（titleLarge + TextButton“返回”），不新建 NautilePageTopBar。
         Row(
             modifier = Modifier
