@@ -1,0 +1,53 @@
+INSTRUMENTATION_STATUS: class=io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest:
+INSTRUMENTATION_STATUS: test=streamingMessageExposesStateDescription
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (StateDescription = '正在生成')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest.streamingMessageExposesStateDescription(AiG4A11ySemanticsTest.kt:131)
+
+INSTRUMENTATION_STATUS: stream=
+Error in streamingMessageExposesStateDescription(io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest):
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (StateDescription = '正在生成')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest.streamingMessageExposesStateDescription(AiG4A11ySemanticsTest.kt:131)
+
+INSTRUMENTATION_STATUS: test=streamingMessageExposesStateDescription
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 0.763
+There was 1 failure:
+1) streamingMessageExposesStateDescription(io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest)
+java.lang.AssertionError: Failed: assertExists.
+Reason: Expected exactly '1' node but could not find any node that satisfies: (StateDescription = '正在生成')
+
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow(SemanticsNodeInteraction.kt:178)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.fetchOneOrThrow$default(SemanticsNodeInteraction.kt:150)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists(SemanticsNodeInteraction.kt:125)
+	at androidx.compose.ui.test.SemanticsNodeInteraction.assertExists$default(SemanticsNodeInteraction.kt:124)
+	at io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest.streamingMessageExposesStateDescription(AiG4A11ySemanticsTest.kt:131)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

@@ -1,0 +1,8 @@
+INSTRUMENTATION_STATUS: class=io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=8
+INSTRUMENTATION_STATUS: stream=
+io.github.mazilin.nautile.verification.AiG4A11ySemanticsTest:
+INSTRUMENTATION_STATUS: test=messageRoleAndContentMergeIntoReadableNode
+INSTRUMENTATION_STATUS_CODE: 1

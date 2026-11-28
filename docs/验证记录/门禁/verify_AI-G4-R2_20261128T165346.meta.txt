@@ -1,0 +1,8 @@
+task=AI-G4-R2
+time=2026-11-28T16:54:22+08:00
+head=efcb02050262a5df9bcb36a7d0984faf7f28d725
+dirty_entries=28
+connected_requested=0
+androidtest_compile=executed
+result=PASS
+log=/home/wordwoods/Projects/Tride/.worktrees/ai-chat/docs/验证记录/门禁/verify_AI-G4-R2_20261128T165346.log

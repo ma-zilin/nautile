@@ -1,0 +1,9 @@
+[light] back_clickable_bounds=[11,139][137,265] size_px=(126, 126) size_dp=48.0
+[light] back_icon_desc=返回 bounds=[43,171][106,234] size_px=(63, 63) size_dp=24.0
+[light] title_text='DeepSeek Key' bounds=[137,160][532,244] height_px=84 height_dp=32.0 (headlineSmall lineHeight=32sp → 84px)
+[light] model_name_present=False
+[dark] back_clickable_bounds=[11,139][137,265] size_px=(126, 126) size_dp=48.0
+[dark] back_icon_desc=返回 bounds=[43,171][106,234] size_px=(63, 63) size_dp=24.0
+[dark] title_text='DeepSeek Key' bounds=[137,160][532,244] height_px=84 height_dp=32.0 (headlineSmall lineHeight=32sp → 84px)
+[dark] model_name_present=False
+[masked] EditText text='•••••••••••••' password=true bounds=[42,505][1038,673]

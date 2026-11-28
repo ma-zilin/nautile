@@ -1,0 +1,2 @@
+--------- beginning of main
+11-28 16:14:21.911 14742 14742 E adbd    : service_to_fd shell,v2,TERM=dumb:export ANDROID_LOG_TAGS="''"; exec logcat '-d' '-t' '400'
