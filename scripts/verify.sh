@@ -96,21 +96,76 @@ PY
     SCHEMA_V1="$SCHEMA_DIR/1.json"
     SCHEMA_V2="$SCHEMA_DIR/2.json"
     SCHEMA_V3="$SCHEMA_DIR/3.json"
-    if [ -f "$SCHEMA_V1" ] && [ -f "$SCHEMA_V2" ] && [ -f "$SCHEMA_V3" ]; then
-        echo "schema 存在：$SCHEMA_V1（历史）、$SCHEMA_V2（历史）与 $SCHEMA_V3（当前）"
+    SCHEMA_V4="$SCHEMA_DIR/4.json"
+    if [ -f "$SCHEMA_V1" ] && [ -f "$SCHEMA_V2" ] && [ -f "$SCHEMA_V3" ] && [ -f "$SCHEMA_V4" ]; then
+        echo "schema 存在：$SCHEMA_V1/$SCHEMA_V2/$SCHEMA_V3（历史）与 $SCHEMA_V4（当前）"
         if grep -q '"version": 3' "$SCHEMA_V3" \
             && grep -q '"tableName": "tasks"' "$SCHEMA_V3" \
             && grep -q '"tableName": "projects"' "$SCHEMA_V3" \
             && grep -q '"columnName": "detail"' "$SCHEMA_V3" \
             && grep -q '"columnName": "manual_order"' "$SCHEMA_V3" \
             && grep -q 'manual_order` INTEGER' "$SCHEMA_V3"; then
-            echo "[STEP] schema 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）"
+            echo "[STEP] schema v3 内容检查 EXIT=0（version 3，tasks/projects/detail/manual_order；1/2.json 保留）"
         else
-            echo "[STEP] schema 内容检查 EXIT=1（缺 version 3、tasks/projects/detail/manual_order）"
+            echo "[STEP] schema v3 内容检查 EXIT=1（缺 version 3、tasks/projects/detail/manual_order）"
+            FAIL=1
+        fi
+
+        # R6-G2：v4 必须含 8 张表与关键列；time_logs.end_at 可空、无默认；保留历史 schema。
+        if python3 - "$SCHEMA_V4" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    data = json.load(handle)
+database = data["database"]
+tables = {table["tableName"]: table for table in database["entities"]}
+expected = [
+    "tasks", "projects", "schedule_series", "schedule_events",
+    "schedule_exceptions", "schedule_tags", "time_categories", "time_logs",
+]
+if database["version"] != 4:
+    print(f"version={database['version']}，期望 4")
+    sys.exit(1)
+missing = [name for name in expected if name not in tables]
+if missing:
+    print(f"缺少表：{missing}")
+    sys.exit(1)
+
+
+def column(table, name):
+    for field in tables[table]["fields"]:
+        if field["columnName"] == name:
+            return field
+    print(f"缺少列：{table}.{name}")
+    sys.exit(1)
+
+
+end_at = column("time_logs", "end_at")
+if end_at.get("notNull", False):
+    print("time_logs.end_at 不应 NOT NULL")
+    sys.exit(1)
+if end_at.get("defaultValue") is not None:
+    print("time_logs.end_at 不应有默认值")
+    sys.exit(1)
+for table, name in [
+    ("schedule_events", "tag_id"),
+    ("schedule_events", "series_id"),
+    ("time_categories", "parent_id"),
+]:
+    if column(table, name).get("notNull", False):
+        print(f"{table}.{name} 应可空")
+        sys.exit(1)
+PY
+        then
+            echo "[STEP] schema v4 内容检查 EXIT=0（version 4，8 表，end_at/tag_id/parent_id 可空，end_at 无默认）"
+        else
+            echo "[STEP] schema v4 内容检查 EXIT=1（见上方原因）"
             FAIL=1
         fi
     else
-        echo "[STEP] schema 产物检查 EXIT=1（1.json、2.json 或 3.json 不存在）"
+        echo "[STEP] schema 产物检查 EXIT=1（1.json、2.json、3.json 或 4.json 不存在）"
         FAIL=1
     fi
 

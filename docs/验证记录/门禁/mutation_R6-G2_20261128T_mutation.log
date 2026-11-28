@@ -1,0 +1,32 @@
+R6-G2 变异抽查（先红后绿）记录
+时间：2026-11-28（Asia/Shanghai）
+HEAD：8bb713c8435b2a6f0c4c5c8dd79599715f123c2c
+被测文件：app/src/main/java/io/github/mazilin/nautile/domain/rule/ScheduleRangeRules.kt
+
+一、变异内容（只改一处）
+- 原：LocalDateRange(weekStart, weekStart.plusDays(6))   # WEEK=7 天
+- 变异：LocalDateRange(weekStart, weekStart.plusDays(5)) # WEEK=6 天
+
+二、哈希
+- HEAD 版本 sha256：013ae2286390fab17b47c13144d34833e50e6f91ff129bf9f4d43fff87da7687
+- 变异版本 sha256：6f3978eda2dc30141a2e20192892d3316912fc9a418a88bb4565d9239ec02028
+- 还原后 sha256：013ae2286390fab17b47c13144d34833e50e6f91ff129bf9f4d43fff87da7687
+  （与 `git show HEAD:...ScheduleRangeRules.kt` 的 sha256 相同；git status 该文件无改动）
+
+三、红（变异态）
+命令：./gradlew :app:testDebugUnitTest --rerun-tasks --tests '*AcScheduleS03RangeRulesTest*'
+结果：FAILED，7 tests completed, 3 failed
+失败用例：
+- AcScheduleS03RangeRulesTest > acS03_weekView_isSameIsoWeekSevenDaysStartingMonday FAILED（断言 7 天，实际 6 天）
+- AcScheduleS03RangeRulesTest > acS03_weekView_crossesMonthAndYearBoundariesWithoutSplittingWeek FAILED（跨月周尾 11-01 缺失）
+- AcScheduleS03RangeRulesTest > acS03_weekView_includesSelectedDateForEveryWeekday FAILED（周日起点偏移）
+
+四、绿（还原态）
+命令：./gradlew :app:testDebugUnitTest --rerun-tasks --tests '*AcScheduleS03RangeRulesTest*'
+结果：BUILD SUCCESSFUL，GREEN_EXIT=0
+
+五、过程偏差（如实记录）
+- 首次变异命令疑似被沙箱重复执行：/tmp 备份在第二次执行时被已变异内容覆盖，
+  导致首次“cp 备份还原”仍为变异态；随后改用 `git checkout -- <file>` 从 HEAD 精确还原，
+  并以 `git show HEAD:<file> | shasum -a 256` 交叉校验一致（见第二节）。
+- 未删除或放宽任何断言；红/绿均为实际执行结果。
