@@ -37,6 +37,7 @@ import io.github.mazilin.nautile.interaction.Overlay
 import io.github.mazilin.nautile.interaction.PreviewBackdrop
 import io.github.mazilin.nautile.ui.AppRoot
 import io.github.mazilin.nautile.ui.screen.common.PlaceholderScreen
+import io.github.mazilin.nautile.ui.screen.schedule.ScheduleOverlayHost
 import io.github.mazilin.nautile.ui.screen.schedule.ScheduleScreen
 import io.github.mazilin.nautile.ui.screen.schedule.ScheduleViewModel
 import io.github.mazilin.nautile.ui.screen.settings.DefaultPageScreen
@@ -123,6 +124,7 @@ class MainActivity : ComponentActivity() {
                                 ScheduleViewModel(
                                     repository = container.scheduleRepository,
                                     clock = container.clock,
+                                    commands = container.scheduleCommands,
                                 )
                             }
                         }
@@ -130,6 +132,7 @@ class MainActivity : ComponentActivity() {
                 )
                 val todoState by todoViewModel.uiState.collectAsStateWithLifecycle()
                 val scheduleState by scheduleViewModel.uiState.collectAsStateWithLifecycle()
+                val scheduleEditor by scheduleViewModel.editor.collectAsStateWithLifecycle()
                 val settings by settingsViewModel.settings.collectAsStateWithLifecycle()
                 val startup by settingsViewModel.startup.collectAsStateWithLifecycle()
                 val taskDetailState by todoViewModel.taskDetail.collectAsStateWithLifecycle()
@@ -187,6 +190,13 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(activeTab) {
                     if (activeTab != AppTab.TODO) todoViewModel.closeSearch()
                 }
+                // 日程覆盖层关闭后清理编辑器，避免异步加载完成后留下无宿主的草稿。
+                val scheduleOverlay = overlayEntry?.overlay
+                val scheduleOverlayOpen =
+                    scheduleOverlay == Overlay.NewSchedule || scheduleOverlay is Overlay.ScheduleDetail
+                LaunchedEffect(scheduleOverlayOpen) {
+                    if (!scheduleOverlayOpen) scheduleViewModel.closeEditor()
+                }
                 if (startup == StartupState.Loading || !startupApplied) {
                     StartupPlaceholder()
                     return@NautileTheme
@@ -216,6 +226,8 @@ class MainActivity : ComponentActivity() {
                     container.overlayBackStack.close()
                     scrollNavigationVisible = true
                 }
+                // 日程面板的关闭条件：无效字段由 ViewModel 阻止并提示（AC-D-06/08）。
+                val scheduleCanDismiss: () -> Boolean = { scheduleViewModel.dismissEditor() }
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     AppRoot(
@@ -283,6 +295,22 @@ class MainActivity : ComponentActivity() {
                                     onViewModeSelected = scheduleViewModel::onViewModeSelected,
                                     onSourceFilterSelected =
                                         scheduleViewModel::onSourceFilterSelected,
+                                    onOpenNew = {
+                                        scheduleViewModel.onOpenNew()
+                                        val opened = container.overlayBackStack.open(
+                                            Overlay.NewSchedule,
+                                            canDismiss = scheduleCanDismiss,
+                                        )
+                                        if (!opened) scheduleViewModel.closeEditor()
+                                    },
+                                    onOpenDetail = { id ->
+                                        scheduleViewModel.onOpenDetail(id)
+                                        val opened = container.overlayBackStack.open(
+                                            Overlay.ScheduleDetail(id.value),
+                                            canDismiss = scheduleCanDismiss,
+                                        )
+                                        if (!opened) scheduleViewModel.closeEditor()
+                                    },
                                     onDismissMessage = scheduleViewModel::onDismissMessage,
                                 )
 
@@ -508,6 +536,12 @@ class MainActivity : ComponentActivity() {
                                 container.overlayBackStack.close()
                             }
                         },
+                    )
+                    // R6-G3：日程新建/详情半屏；“先播退出、后关闭”，不改待办覆盖层行为。
+                    ScheduleOverlayHost(
+                        viewModel = scheduleViewModel,
+                        editor = if (scheduleOverlayOpen) scheduleEditor else null,
+                        onOverlayClosed = { container.overlayBackStack.close() },
                     )
                 }
             }

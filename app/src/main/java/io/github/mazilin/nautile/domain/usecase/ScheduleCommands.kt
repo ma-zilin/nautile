@@ -51,6 +51,9 @@ sealed interface ScheduleFieldUpdate {
 
     data class End(val endAt: Instant) : ScheduleFieldUpdate
 
+    /** 起止同时变更（日期/时间行编辑）：一次性校验，避免先写一端产生非法中间状态。 */
+    data class Range(val startAt: Instant, val endAt: Instant) : ScheduleFieldUpdate
+
     data class Tag(val tagId: ScheduleTagId?) : ScheduleFieldUpdate
 }
 
@@ -115,6 +118,11 @@ class ScheduleCommands(
             is ScheduleFieldUpdate.Note -> existing.copy(note = update.note?.takeIf { it.isNotBlank() })
             is ScheduleFieldUpdate.Start -> existing.copy(startAt = update.startAt)
             is ScheduleFieldUpdate.End -> existing.copy(endAt = update.endAt)
+            is ScheduleFieldUpdate.Range -> existing.copy(
+                startAt = update.startAt,
+                endAt = update.endAt,
+            )
+
             is ScheduleFieldUpdate.Tag -> existing.copy(tagId = update.tagId)
         }
         if (!ScheduleRules.isValidTitle(updated.title)) {

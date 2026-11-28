@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** S1 主覆盖层：详情、GTD 选择器、新建待办底部面板。 */
+/** 主覆盖层：待办详情/GTD/新建，以及日程新建/详情（R6 G3）。 */
 sealed interface Overlay {
     data class TaskDetail(val taskId: Long? = null) : Overlay
 
@@ -13,6 +13,12 @@ sealed interface Overlay {
     data object GtdSelector : Overlay
 
     data object NewTaskSheet : Overlay
+
+    /** 日程新建半屏；只承载 UI，创建成功才落库（AC-D-07）。 */
+    data object NewSchedule : Overlay
+
+    /** 日程详情半屏；id 仅用于调试与宿主识别，数据由 ViewModel 读取。 */
+    data class ScheduleDetail(val scheduleId: Long) : Overlay
 }
 
 /**
